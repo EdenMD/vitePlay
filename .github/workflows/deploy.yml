@@ -1,9 +1,10 @@
 name: Deploy Application
 
-on: 
+on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
