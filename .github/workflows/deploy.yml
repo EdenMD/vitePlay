@@ -1,26 +1,344 @@
-name: Deploy Application
+# .github/workflows/generate-video.yml
+# APEX Video Engine v2.2 — GitHub Actions CI Workflow
+# Image generation: Pollinations.AI API (HTTP) — no local model, no RAM issues
+
+name: Generate Video
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      config:
+        description: 'Config file (must exist in repo root)'
+        required: false
+        default: 'config.js'
+  push:
+    branches: [main]
+    paths: ['config.js','engine-ci.js','src/**']
 
 jobs:
-  deploy:
+  generate:
     runs-on: ubuntu-latest
+    timeout-minutes: 150   # Pollinations is fast — 5 images ~2min, full render ~15min
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
+      # This one checkout is the entire private/public split. The workflow
+      # YAML itself lives in (and runs from) the PUBLIC repo — GitHub
+      # doesn't need that repo's contents checked out to execute its own
+      # workflow — so this step pulls the real engine (config.js,
+      # engine-ci.js, src/**, ApexCasing/**, package.json) straight from
+      # the PRIVATE repo, landing at the workspace root so every relative
+      # path below (config.js, work/, src/**) keeps working unmodified.
+      - name: Checkout private engine repo
+        uses: actions/checkout@v4
+        with:
+          repository: EdenMD/ApexV2
+          token: ${{ secrets.PRIVATE_SRC_PAT }}
+          fetch-depth: 1
 
-    - name: Install dependencies
-      run: npm install
+      # Cache the downloaded .deb files (not the install itself) — this keeps
+      # a REAL `apt-get install` (full dependency resolution + postinst
+      # scripts, incl. ldconfig) while still avoiding a full network
+      # re-download on cache hit. The previous approach used an action that
+      # skips postinst scripts, which left ffmpeg linked against a missing
+      # libblas.so.3 — completely broken. Don't reintroduce that.
+      - name: Cache apt archives
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: apt-archives-${{ runner.os }}-v2-${{ hashFiles('.github/workflows/generate-video.yml') }}
 
-    - name: Run deploy script
-      run: node deploy.js
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            ffmpeg libcairo2-dev libpango1.0-dev libjpeg-dev \
+            libgif-dev librsvg2-dev build-essential pkg-config \
+            python3 python3-pip python3-dev \
+            espeak-ng espeak-ng-data libespeak-ng-dev \
+            libsndfile1 libsndfile1-dev jq \
+            libnss3 libatk1.0-0 libatk-bridge2.0-0 \
+            libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+            libxfixes3 libxrandr2 libgbm1 libasound2t64
+          # Sanity check — fail fast here instead of 10 minutes into the run
+          # if ffmpeg's dynamic linking is broken for any reason.
+          ffmpeg -version >/dev/null || { echo "❌ ffmpeg is broken after install"; exit 1; }
+
+      # ── Detect whether the config needs WhisperX ──────────────────────────
+      # Scans the actual config file being used for the three trigger strings:
+      #   subtitleBurn === 'whisperx'
+      #   lyricsTiming === 'whisperx'
+      #   lyricsTiming === 'precise'
+      # Sets NEED_WHISPERX=true in GITHUB_ENV so later steps can branch on it.
+      - name: Detect WhisperX requirement
+        run: |
+          CONFIG_FILE="${{ github.event.inputs.config || 'config.js' }}"
+          echo "Scanning ${CONFIG_FILE} for WhisperX triggers..."
+          if grep -qE "(subtitleBurn|lyricsTiming)\s*[:=]\s*['\"]?(whisperx|precise)" "${CONFIG_FILE}" 2>/dev/null; then
+            echo "NEED_WHISPERX=true" >> $GITHUB_ENV
+            echo "✅ WhisperX required — will install"
+          else
+            echo "NEED_WHISPERX=false" >> $GITHUB_ENV
+            echo "⏭  WhisperX not needed — skipping"
+          fi
+
+      - name: Cache Python packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          # Cache key includes whisperx flag so a config change that adds
+          # WhisperX triggers a fresh install rather than reusing stale cache
+          key: kokoro-pip-${{ runner.os }}-v5-wx${{ env.NEED_WHISPERX }}
+
+      - name: Cache Kokoro model weights (Hugging Face hub)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          # Static key — bump the suffix only when you deliberately upgrade
+          # the pinned kokoro/misaki version below, otherwise this stays a
+          # cache hit forever and the ~300MB model is never redownloaded.
+          key: kokoro-hf-weights-v1
+
+      - name: Install Kokoro TTS
+        run: |
+          pip3 install --quiet --upgrade pip
+          pip3 install --quiet numpy soundfile "misaki[en]" "kokoro>=0.9.4"
+          # Pillow needed for fallback PNG generation
+          pip3 install --quiet Pillow
+          python3 -c "from kokoro import KPipeline; print('Kokoro OK')"
+
+      - name: Install WhisperX (only when config requires it)
+        if: env.NEED_WHISPERX == 'true'
+        run: |
+          echo "Installing WhisperX for precise word alignment..."
+          pip3 install --quiet whisperx
+          python3 -c "import whisperx; print('WhisperX OK')"
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ensure package.json exists
+        run: |
+          if [ ! -f package.json ]; then
+            echo '{"name":"apex-videogen","version":"2.2.0","private":true}' > package.json
+          fi
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-canvas-v3-${{ hashFiles('package.json') }}
+
+      - name: Install Node dependencies
+        run: npm install --save canvas fluent-ffmpeg fs-extra omggif puppeteer
+        env:
+          npm_config_build_from_source: true
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+
+      - name: Cache Kokoro wrapper script
+        uses: actions/cache@v4
+        with:
+          path: kokoro
+          key: kokoro-model-v2
+
+      - name: Cache AI generated images
+        uses: actions/cache@v4
+        with:
+          path: work/ai-images
+          key: ai-images-${{ runner.os }}-${{ hashFiles('config.js') }}-v3
+
+      - name: Cache HTML recordings
+        uses: actions/cache@v4
+        with:
+          path: work/html-frames
+          key: html-frames-${{ runner.os }}-${{ hashFiles('config.js') }}-v1
+
+      - name: Cache stock images
+        uses: actions/cache@v4
+        with:
+          path: work/stock-images
+          key: stock-images-${{ runner.os }}-${{ hashFiles('config.js') }}-v1
+
+      - name: Cache Giphy frames
+        uses: actions/cache@v4
+        with:
+          path: work/giphy
+          key: giphy-frames-${{ runner.os }}-${{ hashFiles('config.js') }}-v1
+
+      - name: Cache URL images and audio
+        uses: actions/cache@v4
+        with:
+          path: |
+            work/url-images
+            work/music
+          key: url-cache-${{ runner.os }}-${{ hashFiles('config.js') }}-v1
+
+      - name: Prepare work directories
+        run: mkdir -p work/tts work/ai-images work/stock-images work/url-images work/music work/sfx work/html-frames work/giphy
+
+      - name: Cache Puppeteer's Chrome for Testing
+        uses: actions/cache@v4
+        id: puppeteer-cache
+        with:
+          path: ~/.cache/puppeteer
+          # Static-ish key — bump the suffix if you ever deliberately upgrade
+          # the puppeteer version in package.json and CI starts complaining
+          # about a Chrome/Puppeteer version mismatch.
+          key: puppeteer-chrome-v1
+
+      - name: Install Puppeteer's Chrome (unconditional — fast on cache hit)
+        run: npx puppeteer browsers install chrome
+
+      - name: Generate video
+        run: node engine-ci.js
+        env:
+          VIDEO_CONFIG:           ${{ github.event.inputs.config || 'config.js' }}
+          # Lowered from 6144: GitHub-hosted ubuntu-latest runners have ~7GB
+          # total RAM. Reserving 6GB for Node's heap left too little for
+          # headless Chrome (which also wants real RAM, especially with
+          # --disable-gpu forcing software rendering) — under that pressure
+          # the Chrome renderer process can go unresponsive to CDP commands
+          # without crashing, which is what caused every html-record
+          # screenshot to hang at SHOT_TIMEOUT_MS in a row. 4096 leaves
+          # Chrome real headroom; src/html-record.js also now recovers from
+          # a wedged renderer via browser relaunch as a second line of defense.
+          NODE_OPTIONS:           '--max-old-space-size=4096'
+          SERPAPI_API_KEY:        ${{ secrets.SERPAPI_API_KEY }}
+          GIPHY_API_KEY:          ${{ secrets.GIPHY_API_KEY }}
+          POLLINATIONS_API_KEY:   ${{ secrets.POLLINATIONS_API_KEY }}
+          UNSPLASH_ACCESS_KEY:    ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          PEXELS_API_KEY:         ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY:        ${{ secrets.PIXABAY_API_KEY }}
+          FREESOUND_API_KEY:      ${{ secrets.FREESOUND_API_KEY }}
+        timeout-minutes: 145
+
+      - name: Upload video (5-platform fallback chain)
+        if: success()
+        timeout-minutes: 6
+        run: |
+          divider() { echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; }
+          announce_success() {
+            local p="$1" u="$2" n="$3"
+            divider
+            echo "✅ Upload successful!"
+            echo "🔗 Platform : $p"
+            echo "⏱  Expiry   : $n"
+            echo "📹 URL      : $u"
+            divider
+          }
+
+          VIDEO_FILE=$(ls work/*.mp4 2>/dev/null | head -n 1)
+          if [ -z "$VIDEO_FILE" ]; then
+            echo "❌ No MP4 found in work/"
+            exit 1
+          fi
+
+          FILENAME=$(basename "$VIDEO_FILE")
+          FILESIZE=$(stat -c%s "$VIDEO_FILE")
+          echo "🎬 File: $VIDEO_FILE ($(du -sh "$VIDEO_FILE" | cut -f1))"
+
+          MAX_TIME=$(( 60 + FILESIZE / 51200 ))
+          [ "$MAX_TIME" -gt 280 ] && MAX_TIME=280
+          CURL_FLAGS="--silent --connect-timeout 8 --speed-limit 10240 --speed-time 15 --max-time ${MAX_TIME} --retry 1 --retry-delay 3"
+          UPLOADED=false
+
+          echo ""; echo "📤 [1/5] GoFile..."
+          SERVER=$(curl --silent --connect-timeout 8 --max-time 12 \
+            https://api.gofile.io/servers \
+            | jq -r '.data.servers[0].name' 2>/dev/null) || true
+          if [ -n "$SERVER" ] && [ "$SERVER" != "null" ]; then
+            RESPONSE=$(curl $CURL_FLAGS -F "file=@${VIDEO_FILE}" "https://${SERVER}.gofile.io/uploadFile") || true
+            # FIX: this script runs under `bash -e`. jq exits non-zero (status 5)
+            # on empty/malformed input — e.g. a rate-limit page, a connection
+            # reset mid-response, or a truncated body — which are all things
+            # the curl call above already tolerates via `|| true`. Without a
+            # guard here too, that jq failure was killing the ENTIRE script
+            # immediately, before the `if [ "$STATUS" = "ok" ]` check or the
+            # "⚠️ Failed" message could ever run — which is why every fallback
+            # platform below (transfer.sh, oshi.at, Filebin, Catbox) never even
+            # got attempted. `|| STATUS=""` makes a parse failure behave like
+            # any other "this platform failed" case instead of a hard abort.
+            STATUS=$(echo "$RESPONSE" | jq -r '.status' 2>/dev/null) || STATUS=""
+            if [ "$STATUS" = "ok" ]; then
+              LINK=$(echo "$RESPONSE" | jq -r '.data.downloadPage') || LINK=""
+              announce_success "GoFile" "$LINK" "No expiry"
+              UPLOADED=true
+            else
+              echo "   ⚠️  Failed"
+            fi
+          fi
+
+          if [ "$UPLOADED" = "false" ]; then
+            echo ""; echo "📤 [2/5] transfer.sh..."
+            RESPONSE=$(curl $CURL_FLAGS --upload-file "$VIDEO_FILE" "https://transfer.sh/${FILENAME}") || true
+            if echo "$RESPONSE" | grep -q "^https://"; then
+              announce_success "transfer.sh" "$RESPONSE" "14 days"
+              UPLOADED=true
+            else
+              echo "   ⚠️  Failed"
+            fi
+          fi
+
+          if [ "$UPLOADED" = "false" ]; then
+            echo ""; echo "📤 [3/5] oshi.at..."
+            RESPONSE=$(curl $CURL_FLAGS -F "f=@${VIDEO_FILE}" https://oshi.at) || true
+            LINK=$(echo "$RESPONSE" | grep -oP "(?<=DL: )https://\S+" | head -n 1) || true
+            if [ -n "$LINK" ]; then
+              announce_success "oshi.at" "$LINK" "~90 days"
+              UPLOADED=true
+            else
+              echo "   ⚠️  Failed"
+            fi
+          fi
+
+          if [ "$UPLOADED" = "false" ]; then
+            echo ""; echo "📤 [4/5] Filebin..."
+            BUCKET="apex-$(date +%s)-$$"
+            RESPONSE=$(curl $CURL_FLAGS -X POST \
+              -H "filename: ${FILENAME}" -H "bin: ${BUCKET}" \
+              --data-binary "@${VIDEO_FILE}" \
+              "https://filebin.net/${BUCKET}/${FILENAME}") || true
+            # Same fix as GoFile's STATUS line above — see that comment.
+            FNAME=$(echo "$RESPONSE" | jq -r '.file.filename' 2>/dev/null) || FNAME=""
+            if [ -n "$FNAME" ] && [ "$FNAME" != "null" ]; then
+              announce_success "Filebin" "https://filebin.net/${BUCKET}/${FILENAME}" "~6 days idle"
+              UPLOADED=true
+            else
+              echo "   ⚠️  Failed"
+            fi
+          fi
+
+          if [ "$UPLOADED" = "false" ]; then
+            echo ""; echo "📤 [5/5] Catbox (200MB cap)..."
+            MAX_CATBOX=$((200 * 1024 * 1024))
+            if [ "$FILESIZE" -gt "$MAX_CATBOX" ]; then
+              echo "   ⚠️  File exceeds 200MB — skipping"
+            else
+              RESPONSE=$(curl $CURL_FLAGS \
+                -F "reqtype=fileupload" -F "fileToUpload=@${VIDEO_FILE}" \
+                https://catbox.moe/user/api.php) || true
+              if echo "$RESPONSE" | grep -q "^https://"; then
+                announce_success "Catbox" "$RESPONSE" "Permanent"
+                UPLOADED=true
+              else
+                echo "   ⚠️  Failed"
+              fi
+            fi
+          fi
+
+          if [ "$UPLOADED" = "false" ]; then
+            echo "❌ All 5 platforms failed."
+            exit 1
+          fi
+
+     
+      - name: Upload debug logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-logs-${{ github.run_number }}
+          path: work/tts/
+          retention-days: 3
+          if-no-files-found: ignore
