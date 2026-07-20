@@ -36,6 +36,30 @@ jobs:
           token: ${{ secrets.PRIVATE_SRC_PAT }}
           fetch-depth: 1
 
+      # The private checkout above landed the engine at the workspace root —
+      # config.js included, if EdenMD/ApexV2 still has one. This step checks
+      # out THIS repo (the public one running the workflow — no `repository:`
+      # or `token:` needed, that's the default) into a subfolder, then
+      # overwrites whichever config file was requested at the root with the
+      # public-repo version, so configs can live here instead of privately.
+      - name: Checkout public repo (for config files)
+        uses: actions/checkout@v4
+        with:
+          path: _public-configs
+
+      - name: Place selected config at workspace root
+        run: |
+          CONFIG_FILE="${{ github.event.inputs.config || 'config.js' }}"
+          SRC="_public-configs/${CONFIG_FILE}"
+          if [ ! -f "$SRC" ]; then
+            echo "❌ ${CONFIG_FILE} not found in the public repo at ${SRC}"
+            echo "   Either add it there, or pass a config that exists in the private repo instead."
+            exit 1
+          fi
+          cp "$SRC" "./${CONFIG_FILE}"
+          echo "✅ Using ${CONFIG_FILE} from the public repo"
+          rm -rf _public-configs
+
       # Cache the downloaded .deb files (not the install itself) — this keeps
       # a REAL `apt-get install` (full dependency resolution + postinst
       # scripts, incl. ldconfig) while still avoiding a full network
