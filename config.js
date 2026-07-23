@@ -1,312 +1,182 @@
-// ============================================================
-//  APEX VIDEO ENGINE — DROP 14 — MP5 (LEAN CUT)
-//  Target: ~45-50 seconds | 4 scenes | no bgMusic | no list-reveal
-// ============================================================
-const config = {
+/**
+ * config.test-video.js — Video layer QA config
+ *
+ * Usage: VIDEO_CONFIG=config.test-video.js node engine-ci.js
+ * Or in workflow inputs: config = config.test-video.js
+ *
+ * Sources used (both are long-standing, widely-used public test assets —
+ * not niche/likely-to-vanish links):
+ *   - Google's official public test video bucket (Big Buck Bunny, CC-BY
+ *     3.0, Blender Foundation) — used in Google's own Shaka Player/Chromecast
+ *     sample docs, still live as of writing.
+ *   - archive.org — the direct test URL Internet Archive's own Help Center
+ *     gives for confirming an mp4 streams/downloads correctly
+ *     (https://help.archive.org/help/movies-and-videos-a-basic-guide/).
+ *     Same URL pattern (archive.org/download/<item>/<file>.mp4) NARA/DVIDS-
+ *     style archive links use, so this also sanity-checks that shape.
+ *
+ * What each scene is checking:
+ *   1. url + SHORT scene   — maxDuration should auto-resolve to ~2-3s, not 6s
+ *   2. url + LONGER scene  — maxDuration should auto-resolve to the longer
+ *                            narration length, more frames, no premature loop
+ *   3. path                — local file, zero download, confirms that branch
+ *   4. explicit maxDuration + loop — deliberately shorter than the scene, so
+ *                            you should SEE it visibly loop/repeat
+ *   5. broken url          — confirms graceful degradation to dark background,
+ *                            no crash, warning logged
+ *
+ * After running, check the console for [VideoSource] log lines — each scene
+ * logs the extracted frame count, fps, and the maxDuration it actually used.
+ * Compare that number against the scene's actual TTS audio length to confirm
+ * it matches (that's the whole point of this test — see the durations
+ * conversation before this config existed).
+ *
+ * For scene 3 (path), download a test file locally first:
+ *   mkdir -p assets/test && curl -L -o assets/test/sample.mp4 \
+ *     https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4
+ */
+
+module.exports = {
     output: {
-        title:      'drop-14-mp5',
-        format:     'portrait',
-        fps:        30,
-        crf:        24,
-        preset:     'ultrafast',
-        cleanup:    true,
-        postProcess: {
-            grain:            true,
-            grainStrength:    0.028,
-            vignette:         true,
-            vignetteStrength: 0.58,
-        },
+        title:  'Video Layer QA',
+        format: 'portrait',
+        fps:    30,
+        crf:    23,
+        preset: 'fast',
     },
     defaults: {
-        voice:              'bm_george',
-        transition:         'fade',
-        transitionDuration: 0.34,
+        voice:      'af_heart',
+        emotion:    'neutral',
+        transition: 'fade',
     },
     scenes: [
 
-        // ── SCENE 1 — HOOK (~10 sec) — NEVER CHANGE ──────────────
+        // ── 1. url source, SHORT scene ─────────────────────────────────────
+        // Expect: [VideoSource] logs maxDuration close to this scene's TTS
+        // length (a few seconds), not the old flat default.
         {
             tts: {
-                text:       'One weapon has been used in more conflicts than any other firearm in human history. Over one hundred million units exist today. It was designed by a man who was never formally trained as an engineer.',
-                speed:      0.87,
-                emotion:    'dramatic',
-                pauseAfter: 0.5,
-            },
-            transition:         'zoom-cut',
-            transitionDuration: 0.2,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
+                text:    'Testing a short scene.',
+                voice:   'af_heart',
+                emotion: 'neutral',
             },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'MP5 submachine gun black',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
+                    type:  'video',
+                    url:   'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
                     x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'zoom-in',
-                    kenBurnsAmount: 0.13,
+                    fit: 'cover',
                 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
-                {
-                    type:       'text',
-                    text:       'THE GUN THAT\nCHANGED\nTHE WORLD',
-                    x:          540,
-                    y:          700,
-                    fontSize:   92,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    fontWeight: 'bold',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   940,
-                    lineHeight: 1.1,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 6,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   36,
-                    animation:  'pop',
-                    animDur:    0.4,
-                    startT:     0.2,
-                    hookLayer:  true,
-                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
+                { type: 'text', text: 'TEST 1 — url, short scene', x: 540, y: 1700, fontSize: 50, align: 'center', maxWidth: 960 },
             ],
         },
 
-        // ── SCENE 2 — THE PERSON (~8 sec) — name + struggle, nothing else ──
+        // ── 2. url source, LONGER scene ─────────────────────────────────────
+        // Expect: noticeably more frames extracted than scene 1, matching this
+        // longer narration's actual length.
         {
             tts: {
-                text:       'Ludwig Vorgrimler. A German engineer whose own country banned him from building weapons after the war — so he fled to Spain, then France, perfecting his design in exile before he could ever bring it home.',
-                speed:      0.87,
-                emotion:    'dramatic',
-                pauseAfter: 0.4,
-            },
-            transition:         'wipe-left',
-            transitionDuration: 0.30,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
+                text:    'This scene has a much longer narration line, specifically so the engine has to extract more seconds of source video than it did for the previous, much shorter scene.',
+                voice:   'af_heart',
+                emotion: 'neutral',
             },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'post war German engineer',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
+                    type:  'video',
+                    url:   'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
                     x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'pan-up',
-                    kenBurnsAmount: 0.24,
+                    fit: 'cover',
                 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.55)' },
-                {
-                    type:       'split-reveal',
-                    text:       'BANNED\nFROM BUILDING.',
-                    x:          540,
-                    y:          420,
-                    fontSize:   80,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    splitGap:   8,
-                    animDur:    0.5,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   30,
-                    startT:     0.2,
-                },
-                {
-                    type:       'text',
-                    text:       'Perfected it in exile\nbefore he ever\ncame home.',
-                    x:          540,
-                    y:          640,
-                    fontSize:   48,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   860,
-                    lineHeight: 1.3,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 4,
-                    animation:  'fade',
-                    animDur:    0.4,
-                    startT:     0.6,
-                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
+                { type: 'text', text: 'TEST 2 — url, long scene', x: 540, y: 1700, fontSize: 50, align: 'center', maxWidth: 960 },
             ],
         },
 
-        // ── SCENE 3 — DESIGN PHILOSOPHY (~15 sec) — why it was good ──
+        // ── 3. path source (local file, no download) ─────────────────────────
+        // Requires the curl step in the header comment above. Confirms the
+        // path branch entirely skips downloadFile().
         {
             tts: {
-                text:       'His philosophy was accuracy over chaos. Most submachine guns of the era fired from an open bolt, jerking wildly with every shot. He scaled down a battle rifle\'s locking system instead — giving a compact weapon rifle-like precision, shot after shot.',
-                speed:      0.87,
-                emotion:    'dramatic',
-                pauseAfter: 0.5,
-            },
-            transition:         'glitch',
-            transitionDuration: 0.26,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
+                text:    'This clip is loaded from a local file path, not a URL.',
+                voice:   'af_heart',
+                emotion: 'neutral',
             },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'MP5 disassembled mechanism',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
+                    type:  'video',
+                    path:  './assets/test/sample.mp4',
                     x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'drift',
-                    kenBurnsAmount: 0.13,
+                    fit: 'cover',
                 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.52)' },
-                {
-                    type:       'text',
-                    text:       'RIFLE PRECISION.\nPISTOL SIZE.',
-                    x:          540,
-                    y:          650,
-                    fontSize:   78,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   880,
-                    lineHeight: 1.15,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   24,
-                    animation:  'pop',
-                    animDur:    0.4,
-                    startT:     0.3,
-                },
-                {
-                    type:       'text',
-                    text:       'The first submachine gun\nbuilt for real accuracy.',
-                    x:          540,
-                    y:          980,
-                    fontSize:   48,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   900,
-                    lineHeight: 1.25,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 4,
-                    animation:  'fade',
-                    animDur:    0.4,
-                    startT:     1.2,
-                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
+                { type: 'text', text: 'TEST 3 — local path', x: 540, y: 1700, fontSize: 50, align: 'center', maxWidth: 960 },
             ],
         },
 
-        // ── SCENE 4 — PUNCH + CTA (~12 sec) — loops back to hook frame ──
+        // ── 4. explicit maxDuration override, forced visible loop ───────────
+        // maxDuration is deliberately much shorter than this scene's narration,
+        // so you should SEE the clip repeat mid-scene.
         {
             tts: {
-                text:       'It became the gold standard for special forces in over forty countries — the weapon of choice for the world\'s most elite counter-terrorism units. But to most people, it\'s just the gun from every video game they\'ve ever played. There\'s a stranger detail about this gun most people never hear.',
-                speed:      0.87,
-                emotion:    'dramatic',
-                pauseAfter: 0.7,
-            },
-            transition:         'zoom-cut',
-            transitionDuration: 0.2,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
+                text:    'This clip is deliberately trimmed short and set to loop, so you should see it repeat while this longer narration line keeps playing.',
+                voice:   'af_heart',
+                emotion: 'neutral',
             },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'MP5 submachine gun black',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
+                    type:        'video',
+                    url:         'https://storage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+                    maxDuration: 2,        // explicit override — should win over the scene's real duration
+                    loop:        true,
                     x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'zoom-in',
-                    kenBurnsAmount: 0.18,
+                    fit: 'cover',
                 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
-                {
-                    type:       'text',
-                    text:       '40+ COUNTRIES.\nA VIDEO GAME PROP\nTO MOST PEOPLE.',
-                    x:          540,
-                    y:          420,
-                    fontSize:   62,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   940,
-                    lineHeight: 1.2,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   26,
-                    animation:  'slide-up',
-                    animDur:    0.36,
-                    startT:     0.3,
-                },
-                {
-                    type:        'notification-card',
-                    x:           540,
-                    y:           1370,
-                    width:       860,
-                    title:       '🔎 Stranger than fiction.',
-                    body:        'The real story behind the gun most people only know from games.',
-                    bgColor:     'rgba(245,197,24,0.14)',
-                    borderColor: '#f5c518',
-                    titleColor:  '#f5c518',
-                    bodyColor:   '#ffffff',
-                    fontSize:    34,
-                    bodySize:    26,
-                    borderRadius:18,
-                    animation:   'slide-up',
-                    animDur:     0.4,
-                    startT:      1.6,
-                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
+                { type: 'text', text: 'TEST 4 — forced 2s loop', x: 540, y: 1700, fontSize: 50, align: 'center', maxWidth: 960 },
             ],
         },
+
+        // ── 5. archive.org source ──────────────────────────────────────────
+        // Same URL pattern NARA/DVIDS results resolve to — validates the
+        // "any archive, any host" claim, not just Google's bucket.
+        {
+            tts: {
+                text:    'This clip comes directly from the Internet Archive, the same way a NARA or DVIDS result would.',
+                voice:   'af_heart',
+                emotion: 'neutral',
+            },
+            layers: [
+                {
+                    type:  'video',
+                    url:   'https://archive.org/download/ArcherProductionsInc/DuckandC1951.mp4',
+                    x: 0, y: 0, width: 1080, height: 1920,
+                    fit: 'cover',
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
+                { type: 'text', text: 'TEST 5 — archive.org', x: 540, y: 1700, fontSize: 50, align: 'center', maxWidth: 960 },
+            ],
+        },
+
+        // ── 6. broken url — degradation path ─────────────────────────────────
+        // Expect: [VideoSource] warns "Download failed", layer becomes a plain
+        // #111111 background, render completes with no crash.
+        {
+            tts: {
+                text:    'This scene intentionally uses a broken video link, to confirm the engine falls back safely.',
+                voice:   'af_heart',
+                emotion: 'neutral',
+            },
+            layers: [
+                {
+                    type: 'video',
+                    url:  'https://example.invalid/does-not-exist.mp4',
+                    x: 0, y: 0, width: 1080, height: 1920,
+                    fit: 'cover',
+                },
+                { type: 'text', text: 'TEST 6 — broken url (should degrade, not crash)', x: 540, y: 960, fontSize: 46, align: 'center', maxWidth: 900 },
+            ],
+        },
+
     ],
 };
-
-module.exports = config;
