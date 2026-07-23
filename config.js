@@ -1,41 +1,49 @@
-// drop-XX-f22-raptor.js  — rename XX to your next sequential drop number
-// "The F-22 Raptor" — locked 4-scene formula: Hook → Creator → Design
-// Philosophy → CTA. bm_george voice, SerpAPI stills w/ Ken Burns 0.30-0.36,
+// drop-XX-ah1-cobra.js  — rename XX to your next sequential drop number
+// "The AH-1 Cobra" — locked 4-scene formula: Hook → Creator → Design
+// Philosophy → CTA. bm_george voice, SerpAPI stills w/ Ken Burns 0.30-0.34,
 // no bg music, highlight captions (#f5c518, 60px, 3 words/chunk).
 //
-// NEW: Scene 3 (Design Philosophy) uses the new `video` layer with real
-// NARA footage instead of a still image — resolved live via an async IIFE
-// that hits the Catalog API's public search endpoint (no key required for
-// read-only search). Falls back to a still SerpAPI image automatically if
-// NARA has no usable video asset for the query, so a render never breaks.
+// FIX FROM LAST DROP: resolveNaraClip() was using field names that don't
+// exist in the real NARA v2 response (`objectType`, `resultTypes=video`).
+// Corrected below to match the actual schema — a record's video/image
+// files live under `record.digitalObjects[]`, each with `objectUrl` and
+// `objectFilename` (there is no `objectType` field), and the correct
+// query param for filtering by media type is `typeOfMaterials`, not
+// `resultTypes`. Added console logging so a silent fallback is visible
+// in your render logs instead of looking identical to a real miss.
 //
-// Run with:  VIDEO_CONFIG=drop-XX-f22-raptor.js node engine-ci.js
+// Run with:  VIDEO_CONFIG=drop-XX-ah1-cobra.js node engine-ci.js
 
 const NARA_SEARCH = 'https://catalog.archives.gov/api/v2/records/search';
 
-// Pulls the first NARA record that has an actual playable video file
-// attached (not just a metadata/photo record), or returns null so the
-// scene can fall back to a still image instead of failing the render.
 async function resolveNaraClip(query) {
+    const url = `${NARA_SEARCH}?q=${encodeURIComponent(query)}` +
+                `&typeOfMaterials=Moving%20Images&limit=20`;
     try {
-        const res = await fetch(
-            `${NARA_SEARCH}?q=${encodeURIComponent(query)}&limit=20&resultTypes=video`
-        );
-        if (!res.ok) return null;
+        const res = await fetch(url);
+        if (!res.ok) {
+            console.warn(`[NARA] HTTP ${res.status} for "${query}"`);
+            return null;
+        }
         const data = await res.json();
         const hits = data?.body?.hits?.hits || [];
+        console.log(`[NARA] "${query}" → ${hits.length} hits`);
 
         for (const hit of hits) {
-            const record = hit?._source?.record;
+            // Correct path: digitalObjects lives on the record itself,
+            // not under a `record` wrapper key — and there is no
+            // `objectType` field, so filter by filename extension.
+            const record = hit?._source?.record || hit?._source;
             const objects = record?.digitalObjects || [];
             const videoObj = objects.find(o =>
-                (o.objectType || '').toLowerCase().includes('video') ||
-                (o.objectFilename || '').match(/\.(mp4|mov|mpg|mpeg)$/i)
+                (o.objectFilename || '').match(/\.(mp4|mov|mpg|mpeg|avi)$/i)
             );
             if (videoObj?.objectUrl) {
+                console.log(`[NARA] using clip: ${videoObj.objectUrl}`);
                 return videoObj.objectUrl;
             }
         }
+        console.warn(`[NARA] no usable video file among ${hits.length} hits for "${query}"`);
         return null;
     } catch (err) {
         console.warn(`[NARA] lookup failed for "${query}":`, err.message);
@@ -44,11 +52,10 @@ async function resolveNaraClip(query) {
 }
 
 module.exports = (async () => {
-    // Try a couple of query variants — NARA's tagging is inconsistent,
-    // so a narrower miss should still fall through to a broader one.
     const naraUrl =
-        (await resolveNaraClip('F-22 Raptor flight demonstration')) ||
-        (await resolveNaraClip('F-22 Raptor Air Force'));
+        (await resolveNaraClip('AH-1 Cobra attack helicopter')) ||
+        (await resolveNaraClip('AH-1 Cobra Vietnam')) ||
+        (await resolveNaraClip('Cobra helicopter gunship'));
 
     const designPhilosophyVisual = naraUrl
         ? {
@@ -61,7 +68,7 @@ module.exports = (async () => {
           }
         : {
               type: 'stock-image',
-              query: 'F-22 Raptor stealth fighter jet',
+              query: 'AH-1 Cobra attack helicopter',
               source: 'serpapi',
               fit: 'cover',
               kenBurns: 'zoom-in',
@@ -70,7 +77,7 @@ module.exports = (async () => {
 
     return {
         output: {
-            title: 'f22-raptor',
+            title: 'ah1-cobra',
             format: 'portrait',
             fps: 30,
             crf: 23,
@@ -87,7 +94,7 @@ module.exports = (async () => {
             // ── Scene 1 — Hook ──────────────────────────────────────
             {
                 tts: {
-                    text: "This is the F-22 Raptor, the fighter jet the US Air Force has never let another country buy. Not allies, not partners, nobody. Here's why they guard it so closely.",
+                    text: "This is the AH-1 Cobra, the first helicopter ever built from scratch to hunt and kill. Before this, helicopters were just trucks with rotors. This one changed that forever.",
                     voice: 'bm_george',
                     pauseAfter: 0.4,
                 },
@@ -98,14 +105,14 @@ module.exports = (async () => {
                 },
                 layers: [
                     {
-                        type: 'stock-image', query: 'F-22 Raptor fighter jet',
+                        type: 'stock-image', query: 'AH-1 Cobra attack helicopter',
                         source: 'serpapi', fit: 'cover',
                         kenBurns: 'zoom-in', kenBurnsAmount: 0.34,
                     },
                     { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
                     {
-                        type: 'text', text: 'THE JET NO ONE\nELSE IS ALLOWED\nTO FLY', x: 540, y: 260,
-                        fontSize: 66, fontFamily: 'Arial Black, sans-serif',
+                        type: 'text', text: 'THE FIRST TRUE\nATTACK\nHELICOPTER', x: 540, y: 260,
+                        fontSize: 62, fontFamily: 'Arial Black, sans-serif',
                         color: '#f5c518', align: 'center', hookLayer: true,
                         stroke: true, strokeColor: '#000', strokeWidth: 5,
                     },
@@ -115,7 +122,7 @@ module.exports = (async () => {
             // ── Scene 2 — Creator ───────────────────────────────────
             {
                 tts: {
-                    text: "Lockheed Martin built the Raptor with Boeing in the nineteen nineties, beating out Northrop's design in a fly-off competition. It was engineered from day one for one job: win air superiority before the enemy even sees you coming.",
+                    text: "Bell Helicopter built the Cobra in nineteen sixty five, rushing it out for Vietnam after commanders realized armed Hueys just weren't fast or lethal enough to escort troops into a hot landing zone.",
                     voice: 'bm_george',
                     pauseAfter: 0.4,
                 },
@@ -126,13 +133,13 @@ module.exports = (async () => {
                 },
                 layers: [
                     {
-                        type: 'stock-image', query: 'Lockheed Martin F-22 factory production',
+                        type: 'stock-image', query: 'Bell Helicopter factory 1960s',
                         source: 'serpapi', fit: 'cover',
                         kenBurns: 'pan-up', kenBurnsAmount: 0.3,
                     },
                     { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
                     {
-                        type: 'text', text: 'LOCKHEED MARTIN\n& BOEING', x: 540, y: 1500,
+                        type: 'text', text: 'BELL HELICOPTER\n1965', x: 540, y: 1500,
                         fontSize: 52, fontFamily: 'Arial Black, sans-serif',
                         color: '#ffffff', align: 'center',
                         stroke: true, strokeColor: '#000', strokeWidth: 4,
@@ -143,7 +150,7 @@ module.exports = (async () => {
             // ── Scene 3 — Design Philosophy (NARA footage) ──────────
             {
                 tts: {
-                    text: "Every inch of the Raptor is built around stealth and speed. Radar-absorbing skin, internal weapons bays so nothing breaks its shape, and thrust-vectoring engines that let it out-turn jets that should out-turn it. It doesn't win by being seen first. It wins by never being seen at all.",
+                    text: "The Cobra's whole body is built around one idea: be a small target. A narrow two-foot-wide fuselage, pilot and gunner stacked front to back instead of side by side, and stub wings just to carry rockets. Every inch that could get you killed was cut away.",
                     voice: 'bm_george',
                     pauseAfter: 0.4,
                 },
@@ -156,8 +163,8 @@ module.exports = (async () => {
                     designPhilosophyVisual,
                     { type: 'overlay', color: 'rgba(0,0,0,0.25)' },
                     {
-                        type: 'text', text: 'STEALTH FIRST.\nSPEED SECOND.\nSEEN NEVER.', x: 540, y: 1560,
-                        fontSize: 50, fontFamily: 'Arial Black, sans-serif',
+                        type: 'text', text: 'NARROW BODY.\nSTACKED CREW.\nSMALLER TARGET.', x: 540, y: 1560,
+                        fontSize: 46, fontFamily: 'Arial Black, sans-serif',
                         color: '#f5c518', align: 'center',
                         stroke: true, strokeColor: '#000', strokeWidth: 4,
                     },
@@ -167,7 +174,7 @@ module.exports = (async () => {
             // ── Scene 4 — CTA (provocative, comment-bait framing) ───
             {
                 tts: {
-                    text: "So here's the question. In a straight one-on-one dogfight, would you trust the Raptor over a modern Eagle? Comment your pick below.",
+                    text: "So here's the question. Would the Cobra still survive on a modern battlefield with today's air defenses, or is it strictly a museum piece now? Comment your answer.",
                     voice: 'bm_george',
                     pauseAfter: 0.3,
                 },
@@ -178,13 +185,13 @@ module.exports = (async () => {
                 },
                 layers: [
                     {
-                        type: 'stock-image', query: 'F-22 Raptor vs F-15 Eagle',
+                        type: 'stock-image', query: 'AH-1 Cobra helicopter modern',
                         source: 'serpapi', fit: 'cover',
                         kenBurns: 'zoom-out', kenBurnsAmount: 0.3,
                     },
                     { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
                     {
-                        type: 'text', text: 'RAPTOR OR EAGLE?\nCOMMENT YOUR PICK', x: 540, y: 900,
+                        type: 'text', text: 'STILL DEADLY OR\nMUSEUM PIECE?', x: 540, y: 900,
                         fontSize: 58, fontFamily: 'Arial Black, sans-serif',
                         color: '#ffffff', align: 'center',
                         stroke: true, strokeColor: '#000', strokeWidth: 5,
