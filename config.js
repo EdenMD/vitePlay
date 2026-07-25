@@ -19,7 +19,7 @@ module.exports = {
     scenes: [
         {
             tts: {
-                text: "Here's how to multiply any two digit number by eleven, in your head, instantly. Take thirty four. Split it: three, and four. Add them together: three plus four is seven. Slide that seven right between the two digits: three, seven, four. Three hundred seventy four. That's thirty four times eleven...., Here is One more, this one's got a twist on it : fifty seven. Five, and seven. Add them: five plus seven is twelve. Only the two fits in the middle, so drop the two, and add the one onto the five: five becomes six. Six, two, seven. Six hundred twenty seven. Any two digit number, times eleven, done in one second.",
+                text: "Here's how to multiply any two digit number by eleven, in your head, instantly. Take thirty four. Split it: three, and four. Add them together: three plus four is seven. Slide that seven right between the two digits: three, seven, four. Three hundred seventy four. That's thirty four times eleven. One more, this one's got a twist: fifty seven. Five, and seven. Add them: five plus seven is twelve. Only the two fits in the middle, so drop the two, and add the one onto the five: five becomes six. Six, two, seven. Six hundred twenty seven. Any two digit number, times eleven, done in one second.",
                 voice: 'am_michael',
                 pauseAfter: 0.6,
             },
