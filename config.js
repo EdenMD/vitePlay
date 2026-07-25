@@ -80,7 +80,7 @@ module.exports = {
                         ],
                     },
                     waitFor: '[data-ready="1"]',
-                    duration: 19,
+                    
                     fps: 30,
                     viewport: { width: 1080, height: 1920 },
                     x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
@@ -188,8 +188,7 @@ module.exports = {
                         ],
                     },
                     waitFor: '[data-ready="1"]',
-                    duration: 34,
-                    fps: 30,
+                                     fps: 30,
                     viewport: { width: 1080, height: 1920 },
                     x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
                 },
@@ -244,7 +243,7 @@ module.exports = {
                         ],
                     },
                     waitFor: '[data-ready="1"]',
-                    duration: 41,
+                    
                     fps: 30,
                     viewport: { width: 1080, height: 1920 },
                     x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
@@ -300,7 +299,7 @@ module.exports = {
                         ],
                     },
                     waitFor: '[data-ready="1"]',
-                    duration: 24,
+                    
                     fps: 30,
                     viewport: { width: 1080, height: 1920 },
                     x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
@@ -365,7 +364,7 @@ module.exports = {
                         ],
                     },
                     waitFor: '[data-ready="1"]',
-                    duration: 33,
+                    
                     fps: 30,
                     viewport: { width: 1080, height: 1920 },
                     x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
