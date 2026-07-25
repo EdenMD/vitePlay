@@ -1,13 +1,15 @@
-// config.test-geometry-graph.js
-// Feature-coverage smoke test for ApexCasing/geometry-graph-explainer.html —
-// NOT publish content. Every command type the casing supports gets fired
-// at least once so you can eyeball the render and catch anything broken
-// before building a real script around it. Coordinates are first-guess;
-// expect to nudge x/y after the first render.
+// config.test-geometry-graph-full.js
+// Full feature-coverage smoke test for ApexCasing/geometry-graph-explainer.html —
+// NOT publish content. Every command type and shapeType the casing supports
+// fires at least once so you can eyeball the render before building a real
+// script around it. Coordinates are first-guess; expect to nudge x/y after
+// the first render.
 //
-// Scene 1 — 2D core: rect, triangle, circle, polygon, point, vector,
-//           arc(wedge + non-wedge), progress, write/replace/moveTo/erase/
-//           highlight/circle-fx/line-fx/fadeGroup/clearAll.
+// Scene 1 — 2D core: rect, triangle, circle(fillAfter), polygon, point,
+//           vector, arc(wedge + non-wedge), segment, rightAngle,
+//           tick(mode:'segment'), tick(mode:'angle'), progress, plus
+//           write/replace/moveTo/erase/highlight/circle-fx/line-fx/
+//           fadeGroup/clearAll.
 // Scene 2 — 2D graphing: axes, plot (fn), plot (raw points), graphPoint.
 // Scene 3 — 3D: box/sphere/cylinder/cone/pyramid/plane, spin, label3d,
 //           camera move, erase on a 3D mesh, fadeGroup on 3D meshes,
@@ -17,11 +19,11 @@
 // wordText triggers (one per narrated scene) so all three trigger paths
 // get exercised, not just the deterministic ones.
 //
-// Run with:  VIDEO_CONFIG=config.test-geometry-graph.js node engine-ci.js
+// Run with:  VIDEO_CONFIG=config.test-geometry-graph-full.js node engine-ci.js
 
 module.exports = {
     output: {
-        title:  'test-geometry-graph-casing',
+        title:  'test-geometry-graph-casing-full',
         format: 'portrait',
         fps:    30,
         crf:    23,
@@ -34,7 +36,7 @@ module.exports = {
         // ── Scene 1 — 2D shape primitives + core engine verbs ───────────
         {
             tts: {
-                text: "Picture a triangular garden plot. One side runs eighty feet along the ground, the other climbs sixty feet straight up, meeting at a corner. Mark each vertex, sketch the wind direction along the base, and look at that corner angle, it's exactly ninety degrees. Drop in a circular flower bed, a pentagon stepping stone, and a little progress bar for how much fencing you've got left. That's the whole plot, labeled, angled, and fenced.",
+                text: "Picture a triangular garden plot. One side runs eighty feet along the ground, the other climbs sixty feet straight up, meeting at a corner. Mark each vertex, sketch the wind direction along the base, and look at that corner angle, it's exactly ninety degrees. Extend a line up from the base, mark the right angle properly, tick the sides that don't match, and match up the equal angles. Drop in a circular flower bed, a pentagon stepping stone, and a little progress bar for how much fencing you've got left. That's the whole plot, labeled, angled, and fenced.",
                 voice: 'am_michael',
                 pauseAfter: 0.6,
             },
@@ -43,7 +45,7 @@ module.exports = {
                 { type: 'background', color: '#0a0a12', noise: true, noiseOpacity: 0.03 },
                 {
                     type:      'html-record',
-                    src:       './ApexCasing/geometry-graph-explainer.html?tag=test-2d',
+                    src:       './ApexCasing/geometry-graph-explainer.html?tag=test-2d-full',
                     audioSync: true,
                     data: {
                         title: 'Garden Plot',
@@ -80,7 +82,7 @@ module.exports = {
                               points: [[300, 1060], [820, 1060]], stroke: '#7dff8a', strokeWidth: 7,
                               trigger: { afterId: 'labelC', offset: 0.5 } },
 
-                            // arc (wedge) — the right angle at A
+                            // arc (wedge) — the right angle at A, drawn as a filled wedge
                             { id: 'ang1', type: 'shape', shapeType: 'arc', cx: 240, cy: 980, r: 60,
                               startAngle: 0, endAngle: 90, wedge: true, stroke: '#ff9d4d', fillAfter: true,
                               trigger: { afterId: 'vec1', offset: 0.5 } },
@@ -104,6 +106,35 @@ module.exports = {
                               points: [[700, 700], [740, 660], [780, 700], [764, 750], [716, 750]],
                               stroke: '#4dd0ff', strokeWidth: 5,
                               trigger: { afterId: 'circleBed', offset: 0.4 } },
+
+                            // segment — plain line, no arrowhead: extend a reference line up from the base
+                            { id: 'seg1', type: 'shape', shapeType: 'segment',
+                              points: [[560, 980], [560, 700]], stroke: '#ffffff', strokeWidth: 4,
+                              trigger: { afterId: 'polyBed', offset: 0.4 } },
+
+                            // rightAngle — the proper corner-square marker at vertex A, alongside the wedge
+                            { id: 'rightAngleA', type: 'shape', shapeType: 'rightAngle',
+                              vertex: [240, 980], dir1: [640, 0], dir2: [0, -460], size: 30,
+                              stroke: '#ffffff', strokeWidth: 5,
+                              trigger: { afterId: 'seg1', offset: 0.4 } },
+
+                            // tick (mode:'segment') — single mark on side AB
+                            { id: 'tickAB', type: 'shape', shapeType: 'tick', mode: 'segment',
+                              points: [[240, 980], [880, 980]], count: 1, length: 26, stroke: '#ff5555', strokeWidth: 6,
+                              trigger: { afterId: 'rightAngleA', offset: 0.4 } },
+
+                            // tick (mode:'segment') — double mark on the reference segment, showing it's a
+                            // different length than AB (single vs double tick is the standard convention)
+                            { id: 'tickSeg1', type: 'shape', shapeType: 'tick', mode: 'segment',
+                              points: [[560, 980], [560, 700]], count: 2, length: 24, spacing: 14,
+                              stroke: '#ff5555', strokeWidth: 6,
+                              trigger: { afterId: 'tickAB', offset: 0.3 } },
+
+                            // tick (mode:'angle') — double-arc equal-angle mark at vertex B
+                            { id: 'tickAngleB', type: 'shape', shapeType: 'tick', mode: 'angle',
+                              cx: 880, cy: 980, angle: 235, radius: 55, count: 2, length: 26, spacing: 14,
+                              stroke: '#ff9d4d', strokeWidth: 6,
+                              trigger: { afterId: 'tickSeg1', offset: 0.4 } },
 
                             // replace — swap labelA's text (fires on the wordText trigger, tests that channel)
                             { id: 'replaceA', type: 'replace', target: 'labelA', latex: '\\text{A (start)}',
@@ -130,17 +161,24 @@ module.exports = {
                             { id: 'lineFx1', type: 'line', target: 'labelB',
                               trigger: { afterId: 'circFx1', offset: 0.4 } },
 
-                            // fadeGroup — dim the vertex markers + vector together
-                            { id: 'fade1', type: 'fadeGroup', targets: ['ptA', 'ptB', 'ptC', 'vec1'], opacity: 0.15,
+                            // fadeGroup — dim the vertex markers, vector, and both tick sets together
+                            { id: 'fade1', type: 'fadeGroup',
+                              targets: ['ptA', 'ptB', 'ptC', 'vec1', 'tickAB', 'tickSeg1', 'tickAngleB'], opacity: 0.15,
                               trigger: { afterId: 'lineFx1', offset: 0.4 } },
+
+                            // erase — remove the reference segment + its right-angle marker on the way out
+                            { id: 'eraseSeg', type: 'erase', target: 'seg1', duration: 0.4,
+                              trigger: { afterId: 'fade1', offset: 0.4 } },
+                            { id: 'eraseRA', type: 'erase', target: 'rightAngleA', duration: 0.4,
+                              trigger: { afterId: 'eraseSeg', offset: 0.2 } },
 
                             // clearAll — wipe the whole scene before the transition
                             { id: 'clr1', type: 'clearAll',
-                              trigger: { afterId: 'fade1', offset: 1.0 } },
+                              trigger: { afterId: 'eraseRA', offset: 1.0 } },
                         ],
                     },
                     waitFor: '[data-ready="1"]',
-                    duration: 18,
+                    duration: 22,
                     fps: 30,
                     viewport: { width: 1080, height: 1920 },
                     x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
