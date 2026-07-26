@@ -103,9 +103,57 @@ module.exports = {
             },
             layers: [
                 {
-                    type: 'stock-image', query: 'X-37B spaceplane Boeing Falcon 9 launch',
-                    source: 'serpapi', fit: 'cover',
-                    kenBurns: 'pan-up', kenBurnsAmount: 0.34,
+                    type: 'stock-image-sequence',
+                    queries: [
+                        'X-37B space plane full view',
+                        'X-37B on runway Vandenberg',
+                        'X-37B payload bay doors open',
+                        'X-37B solar panel array deployed',
+                        'Falcon 9 rocket launch Kennedy Space Center',
+                        'X-37B heat shield tiles closeup',
+                        'Boeing Space Force engineers X-37B',
+                        'X-37B wing landing gear',
+                        'Atlas V rocket launch X-37B',
+                        'X-37B nose cone closeup',
+                        'Space Force spaceplane hangar',
+                        'X-37B landing sonic boom',
+                        'X-37B orbital test vehicle illustration',
+                        'Falcon Heavy rocket launch pad',
+                        'X-37B spaceplane technicians inspection',
+                    ],
+                    source: 'serpapi',
+                    fit: 'cover',
+                    // cutEvery deliberately omitted — image-sequence defaults
+                    // it to (real scene duration) / (slide count), so this
+                    // divides evenly across however long the scene actually
+                    // ends up being once TTS is generated, same as every
+                    // other duration fix earlier in this build.
+                    //
+                    // Ken Burns alternates through every type on purpose —
+                    // 'rotate-cw'/'rotate-ccw' are the two NEW ones (added
+                    // for this request; images had never supported rotation
+                    // before, only pan/zoom/drift), mixed in on roughly 1 in
+                    // 3 slides rather than every slide, so the spin reads as
+                    // a deliberate accent instead of the whole sequence
+                    // spinning uniformly.
+                    kenBurnsSequence: [
+                        { kenBurns: 'zoom-in',       kenBurnsAmount: 0.32 },
+                        { kenBurns: 'rotate-cw',     kenBurnsAmount: 0.3, rotateDeg: 10 },
+                        { kenBurns: 'pan-left',      kenBurnsAmount: 0.3 },
+                        { kenBurns: 'rotate-ccw',    kenBurnsAmount: 0.3, rotateDeg: 10 },
+                        { kenBurns: 'zoom-out',      kenBurnsAmount: 0.32 },
+                        { kenBurns: 'pan-right',     kenBurnsAmount: 0.3 },
+                        { kenBurns: 'rotate-cw',     kenBurnsAmount: 0.34, rotateDeg: 12 },
+                        { kenBurns: 'zoom-in',       kenBurnsAmount: 0.3 },
+                        { kenBurns: 'pan-up',        kenBurnsAmount: 0.3 },
+                        { kenBurns: 'rotate-ccw',    kenBurnsAmount: 0.34, rotateDeg: 12 },
+                        { kenBurns: 'drift',         kenBurnsAmount: 0.3 },
+                        { kenBurns: 'zoom-out',      kenBurnsAmount: 0.3 },
+                        { kenBurns: 'rotate-cw',     kenBurnsAmount: 0.3, rotateDeg: 10 },
+                        { kenBurns: 'pan-down',      kenBurnsAmount: 0.3 },
+                        { kenBurns: 'drift-reverse', kenBurnsAmount: 0.3 },
+                    ],
+                    x: 0, y: 0, width: 1080, height: 1920,
                 },
                 { type: 'overlay', color: 'rgba(0,0,0,0.3)' },
                 {
