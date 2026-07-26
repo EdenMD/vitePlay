@@ -1,274 +1,229 @@
-// config.puckle-gun.js
-// "The 1718 machine gun that fired different bullets depending on your
-// enemy's religion." Long-form (~3min) documentary, hybrid architecture:
-// native layers (stock-image/giphy/pexels-video + stat-counter/quote-card/
-// comparison) carry almost the whole video — cheap, fast, no Puppeteer
-// screenshots — with ONE html-record segment (scene 4) reserved for the
-// mechanism reveal, the only place that actually needs word-synced build.
+// drop-XX-nb36h-nuclear-bomber.js  — rename XX to your next sequential drop number
+// "The Convair NB-36H" — same locked 4-scene formula as the F-22 benchmark:
+// Hook → Creator → Design Philosophy → CTA. bm_george voice, SerpAPI stills
+// w/ Ken Burns 0.30-0.36, no bg music, highlight captions (#f5c518, 60px,
+// 3 words/chunk).
 //
-// Per instructions: no kinetic-text anywhere (plain 'text' + native accent
-// layers only), no dissolve/fade transitions (zoom-cut throughout), and
-// positioning goes through the layout system (type:'anchor' containers)
-// instead of hand-picked x/y wherever there's more than a full-frame
-// background/overlay to place — manual pixel coordinates are reserved for
-// the html-record scene's internal canvas, where the casing's own trigger
-// engine needs exact placement anyway.
+// Why this one: a real Cold War bomber flew 47 test flights with a live,
+// fully operational nuclear reactor behind the cockpit. Most people have
+// never heard of it, the hook writes itself ("a plane flew with a nuclear
+// reactor onboard"), and every fact below is checked against multiple
+// sources (This Day in Aviation, USAF historical records, Wikipedia,
+// Grokipedia) rather than assumed — the contested details (exact reactor
+// wattage: sources split 1MW/3MW; exact program-cancellation year: sources
+// split 1957/1958/1961) are deliberately left out of the narration rather
+// than picking one and asserting it as fact.
 //
-// Requires the patched html-record.js (audioData.duration fallback) —
-// the html-record layer below intentionally omits `duration` so it runs
-// the real length of its narration rather than defaulting to 3s.
+// Same NARA-footage pattern as the F-22 benchmark's Scene 3, same
+// fallback-to-still-image safety net if NARA has nothing usable for the
+// query — copied structure, not reinvented, so it behaves identically to
+// the proven benchmark.
 //
-// All facts verified: James Puckle, 1718 patent (UK patent No. 418),
-// tripod-mounted hand-cranked revolving-cylinder flintlock, demonstrated
-// firing 63 shots in 7 minutes in 1722, patented with a round-bullet
-// cylinder for Christian enemies and a square-bullet cylinder for Ottoman
-// Turks ("would convince the Turks of the benefits of Christian
-// civilization" — direct patent language), only ~2 units ever built
-// (iron prototype + brass production model), never used in combat.
-// Historians debate whether the square-bullet cylinder was ever actually
-// manufactured versus only ever described on paper.
+// Run with:  VIDEO_CONFIG=drop-XX-nb36h-nuclear-bomber.js node engine-ci.js
 
-module.exports = {
-    output: {
-        title:  'puckle-gun-documentary',
-        format: 'portrait',
-        fps:    30,
-        crf:    23,
-        preset: 'fast',
-        beat: {
-            bpm:    88,
-            bars:   16,
-            genre:  'military',
-            key:    'Dmin',
-            layers: ['kick', 'snare', 'bass', 'pad'],
-            swing:  0.08,
-            reverb: 0.25,
-            loop:   true,
-            vol:    0.10,   // kept low — narration carries the video, beat is texture only
+const NARA_SEARCH = 'https://catalog.archives.gov/api/v2/records/search';
+
+// Pulls the first NARA record that has an actual playable video file
+// attached (not just a metadata/photo record), or returns null so the
+// scene can fall back to a still image instead of failing the render.
+async function resolveNaraClip(query) {
+    try {
+        const res = await fetch(
+            `${NARA_SEARCH}?q=${encodeURIComponent(query)}&limit=20&resultTypes=video`
+        );
+        if (!res.ok) return null;
+        const data = await res.json();
+        const hits = data?.body?.hits?.hits || [];
+
+        for (const hit of hits) {
+            const record = hit?._source?.record;
+            const objects = record?.digitalObjects || [];
+            const videoObj = objects.find(o =>
+                (o.objectType || '').toLowerCase().includes('video') ||
+                (o.objectFilename || '').match(/\.(mp4|mov|mpg|mpeg)$/i)
+            );
+            if (videoObj?.objectUrl) {
+                return videoObj.objectUrl;
+            }
+        }
+        return null;
+    } catch (err) {
+        console.warn(`[NARA] lookup failed for "${query}":`, err.message);
+        return null;
+    }
+}
+
+module.exports = (async () => {
+    // Try a couple of query variants — NARA's tagging is inconsistent,
+    // so a narrower miss should still fall through to a broader one.
+    const naraUrl =
+        (await resolveNaraClip('NB-36H nuclear test aircraft')) ||
+        (await resolveNaraClip('Convair B-36 nuclear reactor Carswell'));
+
+    const designPhilosophyVisual = naraUrl
+        ? {
+              type: 'video',
+              url: naraUrl,
+              maxDuration: 6,
+              fps: 30,
+              loop: true,
+              x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+          }
+        : {
+              type: 'stock-image',
+              query: 'Convair NB-36H nuclear reactor shielded cockpit',
+              source: 'serpapi',
+              fit: 'cover',
+              kenBurns: 'zoom-in',
+              kenBurnsAmount: 0.32,
+          };
+
+    return {
+        output: {
+            title: 'nb36h-nuclear-bomber',
+            format: 'portrait',
+            fps: 30,
+            crf: 23,
+            preset: 'medium',
         },
-    },
 
-    defaults: {
-        voice: 'am_michael',              // documentary/emotional register, per house convention
-        transition: 'zoom-cut',           // no dissolve/fade anywhere in this video
-        transitionDuration: 0.45,
-    },
-
-    scenes: [
-        // ══════════════════════════════════════════════════════════════
-        // SCENE 1 — HOOK
-        // ══════════════════════════════════════════════════════════════
-        {
-            tts: {
-                text: "In seventeen eighteen, a British lawyer patented a machine gun that loaded two completely different kinds of bullets. One was round. One was square. And which one you used depended entirely on your enemy's religion. If you think that's strange, wait until you hear why he thought that would actually work.",
-                voice: 'am_michael',
-                pauseAfter: 0.5,
-            },
-            captions: { style: 'highlight', fontSize: 60, highlightColor: '#f5c518', wordsPerChunk: 3 },
-            layers: [
-                { type: 'stock-image', query: 'flintlock cannon', imageIndex: 0,
-                  x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                  kenBurns: 'zoom-in', kenBurnsAmount: 0.32 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.50)' },
-            ],
+        defaults: {
+            voice: 'bm_george',
+            transition: 'fade',
+            transitionDuration: 0.3,
         },
 
-        // ══════════════════════════════════════════════════════════════
-        // SCENE 2 — THE INVENTOR
-        // ══════════════════════════════════════════════════════════════
-        {
-            tts: {
-                text: "His name was James Puckle. Not a soldier, not an engineer — a London lawyer, inventor, and part-time writer, with a patent office and, apparently, some very strong opinions about naval warfare and the Ottoman Turks.",
-                voice: 'am_michael',
-                pauseAfter: 0.5,
-            },
-            captions: { style: 'highlight', fontSize: 60, highlightColor: '#f5c518', wordsPerChunk: 3 },
-            layers: [
-                { type: 'stock-image', query: 'georgian era portrait', imageIndex: 0,
-                  x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                  kenBurns: 'pan-right', kenBurnsAmount: 0.30 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.45)' },
-                {
-                    layout: { type: 'anchor', padding: [90, 60] },
-                    layers: [
-                        { type: 'text', text: 'JAMES PUCKLE', anchorPoint: 'bottom-left',
-                          fontSize: 46, fontWeight: '900', color: '#f5c518',
-                          animation: 'slide-up', startT: 0.6, animDur: 0.5 },
-                    ],
+        scenes: [
+            // ── Scene 1 — Hook ──────────────────────────────────────
+            {
+                tts: {
+                    text: "This plane flew forty seven real test flights with a live, fully operational nuclear reactor sitting right behind the cockpit. Not a mockup. Not a model. A working reactor, running, mid-air, over American soil.",
+                    voice: 'bm_george',
+                    pauseAfter: 0.4,
                 },
-            ],
-        },
-
-        // ══════════════════════════════════════════════════════════════
-        // SCENE 3 — THE THREAT
-        // ══════════════════════════════════════════════════════════════
-        {
-            tts: {
-                text: "By the early seventeen hundreds, the Ottoman Empire controlled huge stretches of southeast Europe, North Africa, and the Mediterranean. Their fast raiding ships were tearing through British merchant shipping almost unchallenged, and a standard musket of the day could barely fire three shots a minute — nowhere near enough to fight off a boarding party.",
-                voice: 'am_michael',
-                pauseAfter: 0.5,
-            },
-            captions: { style: 'highlight', fontSize: 60, highlightColor: '#f5c518', wordsPerChunk: 3 },
-            layers: [
-                { type: 'stock-image', query: 'ottoman warship', imageIndex: 0,
-                  x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                  kenBurns: 'drift', kenBurnsAmount: 0.30 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.50)' },
-                {
-                    layout: { type: 'anchor', padding: [90, 60] },
-                    layers: [
-                        { id: 'musketStat', type: 'stat-counter', anchorPoint: 'bottom',
-                          value: 3, suffix: '/min', label: 'STANDARD MUSKET',
-                          fontSize: 100, labelFontSize: 32, color: '#ffffff',
-                          startT: 6.5, animDur: 1.2 },
-                    ],
+                captions: {
+                    style: 'highlight', fontSize: 60, color: '#ffffff',
+                    highlightColor: '#f5c518', wordsPerChunk: 3,
+                    strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
                 },
-            ],
-        },
-
-        // ══════════════════════════════════════════════════════════════
-        // SCENE 4 — THE MACHINE (html-record: the one segment that needs
-        // word-synced build — round vs. square cylinder reveal + the
-        // actual patent language)
-        // ══════════════════════════════════════════════════════════════
-        {
-            tts: {
-                text: "So Puckle built something completely different — a tripod mounted, hand cranked gun with a revolving cylinder. Load it, crank it, and it fires again and again: sixty three shots in seven minutes, at a real demonstration in seventeen twenty two. That's over twenty times faster than a musket. But here's the actual twist. Load the round cylinder, and it's set for use against fellow Christians. Swap in the second one, and it fires square bullets instead, reserved specifically for Ottoman Turks. His own patent claims the wounds from square bullets would, quote, convince the Turks of the benefits of Christian civilization.",
-                voice: 'am_michael',
-                pauseAfter: 0.6,
-            },
-            captions: { style: 'highlight', fontSize: 60, highlightColor: '#f5c518', wordsPerChunk: 3 },
-            layers: [
-                { type: 'background', color: '#0a0a12', noise: true, noiseOpacity: 0.03 },
-                {
-                    type:      'html-record',
-                    src:       './ApexCasing/geometry-graph-explainer.html?tag=puckle-mechanism',
-                    audioSync: true,
-                    cursor:    false,
-                    data: {
-                        title: 'One Gun. Two Cylinders.',
-                        theme: { accent: '#f5c518', text: '#ffffff' },
-                        commands: [
-                            // the stat — how fast this thing actually fired
-                            { id: 'statLabel', type: 'write', latex: '\\text{63 shots / 7 min}',
-                              x: 540, y: 300, size: 62, color: '#f5c518',
-                              trigger: { wordText: 'seven', occurrence: 1 } },
-
-                            // round bullet cylinder — for Christian enemies
-                            { id: 'roundShape', type: 'shape', shapeType: 'circle',
-                              cx: 380, cy: 700, r: 90, stroke: '#ffffff', strokeWidth: 6,
-                              trigger: { wordText: 'cylinder', occurrence: 2 } },
-                            { id: 'roundLabel', type: 'write', latex: '\\text{round} \\rightarrow \\text{Christians}',
-                              x: 380, y: 850, size: 40,
-                              trigger: { wordText: 'christians', occurrence: 1 } },
-
-                            // square bullet cylinder — for the Ottoman Turks
-                            { id: 'squareShape', type: 'shape', shapeType: 'polygon',
-                              points: [[620, 620], [780, 620], [780, 780], [620, 780]],
-                              stroke: '#ff5555', strokeWidth: 6,
-                              trigger: { wordText: 'square', occurrence: 1 } },
-                            { id: 'squareLabel', type: 'write', latex: '\\text{square} \\rightarrow \\text{Ottoman Turks}',
-                              x: 700, y: 850, size: 40, color: '#ff5555',
-                              trigger: { wordText: 'turks', occurrence: 1 } },
-
-                            // the actual patent language
-                            { id: 'quoteLabel', type: 'write',
-                              latex: '\\text{``convince the Turks of the benefits}',
-                              x: 540, y: 1080, size: 34,
-                              trigger: { wordText: 'quote', occurrence: 1 } },
-                            { id: 'quoteLabel2', type: 'write',
-                              latex: '\\text{of Christian civilization."}',
-                              x: 540, y: 1150, size: 34,
-                              trigger: { wordText: 'quote', occurrence: 1 } },
-
-                            { id: 'hlQuote', type: 'highlight', target: 'quoteLabel2', holdSec: 0.8,
-                              trigger: { wordText: 'civilization', occurrence: 1 } },
-                        ],
+                layers: [
+                    {
+                        type: 'stock-image', query: 'Convair NB-36H nuclear bomber',
+                        source: 'serpapi', fit: 'cover',
+                        kenBurns: 'zoom-in', kenBurnsAmount: 0.34,
                     },
-                    waitFor: '[data-ready="1"]',
-                    fps: 30,
-                    viewport: { width: 1080, height: 1920 },
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                },
-            ],
-        },
-
-        // ══════════════════════════════════════════════════════════════
-        // SCENE 5 — NEVER BUILT PROPERLY
-        // ══════════════════════════════════════════════════════════════
-        {
-            tts: {
-                text: "And if you're picturing this thing winning battles, it didn't. Historians believe only two were ever actually built: one rough iron prototype, and a single brass production model. It never fired a single shot in anger — it just sat in museums instead.",
-                voice: 'am_michael',
-                pauseAfter: 0.5,
+                    { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
+                    {
+                        type: 'text', text: 'THE BOMBER THAT\nFLEW WITH A LIVE\nNUCLEAR REACTOR', x: 540, y: 260,
+                        fontSize: 62, fontFamily: 'Arial Black, sans-serif',
+                        color: '#f5c518', align: 'center', hookLayer: true,
+                        stroke: true, strokeColor: '#000', strokeWidth: 5,
+                    },
+                ],
             },
-            captions: { style: 'highlight', fontSize: 60, highlightColor: '#f5c518', wordsPerChunk: 3 },
-            layers: [
-                { type: 'stock-image', query: 'flintlock mechanism', imageIndex: 0,
-                  x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                  kenBurns: 'zoom-out', kenBurnsAmount: 0.30 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.50)' },
-                {
-                    layout: { type: 'stack', x: 540, y: 1550, align: 'center' },
-                    layers: [
-                        { type: 'shape', shapeType: 'diamond',
-                          width: 260, height: 260, color: 'rgba(245,197,24,0.10)',
-                          animation: 'spin', speed: 0.12 },
-                        { id: 'builtStat', type: 'stat-counter',
-                          value: 2, label: 'EVER BUILT', fontSize: 120, labelFontSize: 34,
-                          color: '#f5c518', startT: 5.5, animDur: 1.2 },
-                    ],
-                },
-            ],
-        },
 
-        // ══════════════════════════════════════════════════════════════
-        // SCENE 6 — THE TWIST
-        // ══════════════════════════════════════════════════════════════
-        {
-            tts: {
-                text: "And here's the part that makes it even stranger. Some historians aren't even convinced the square bullet version was ever physically manufactured, only ever written into the patent. One observer at the time summed it up perfectly: its only real fault was being, quote, a weapon contrived to do too much.",
-                voice: 'am_michael',
-                pauseAfter: 0.5,
-            },
-            captions: { style: 'highlight', fontSize: 60, highlightColor: '#f5c518', wordsPerChunk: 3 },
-            layers: [
-                { type: 'stock-image', query: 'antique patent document', imageIndex: 0,
-                  x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                  kenBurns: 'pan-left', kenBurnsAmount: 0.30 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.52)' },
-                { type: 'quote-card', text: 'a weapon contrived to do too much',
-                  x: 540, y: 1250, width: 880, fontSize: 46,
-                  cardColor: 'rgba(0,0,0,0.45)', accentColor: '#f5c518',
-                  startT: 13.5, animDur: 0.6 },
-            ],
-        },
-
-        // ══════════════════════════════════════════════════════════════
-        // SCENE 7 — CTA
-        // ══════════════════════════════════════════════════════════════
-        {
-            tts: {
-                text: "This is exactly the kind of forgotten weapon nobody's covering, which is exactly why we do. If this blew your mind, hit subscribe, drop a like, and I'll dig up the next one nobody's ever told you about.",
-                voice: 'am_michael',
-                pauseAfter: 0.6,
-            },
-            captions: { style: 'highlight', fontSize: 60, highlightColor: '#f5c518', wordsPerChunk: 3 },
-            layers: [
-                { type: 'background', color: '#0a0a12' },
-                { type: 'stock-image', query: 'flintlock cannon', imageIndex: 1,
-                  x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                  kenBurns: 'drift-reverse', kenBurnsAmount: 0.24 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.62)' },
-                {
-                    layout: { type: 'anchor', padding: [70, 60] },
-                    layers: [
-                        { id: 'ctaText', type: 'text', text: 'SUBSCRIBE FOR THE NEXT ONE',
-                          anchorPoint: 'center', fontSize: 78, fontWeight: '900',
-                          color: '#f5c518', animation: 'pop', startT: 0.4, animDur: 0.5 },
-                    ],
+            // ── Scene 2 — Creator ───────────────────────────────────
+            {
+                tts: {
+                    text: "Convair converted a tornado-damaged B-36 bomber into the NB-36H for the Air Force's Nuclear Aircraft Propulsion program in the nineteen fifties, installing a thirty five thousand pound reactor built by Oak Ridge National Laboratory into its bomb bay, to find out if a plane could one day fly on atomic power alone.",
+                    voice: 'bm_george',
+                    pauseAfter: 0.4,
                 },
-            ],
-        },
-    ],
-};
+                captions: {
+                    style: 'highlight', fontSize: 60, color: '#ffffff',
+                    highlightColor: '#f5c518', wordsPerChunk: 3,
+                    strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
+                },
+                layers: [
+                    {
+                        type: 'stock-image', query: 'B-36 Peacemaker bomber Carswell Air Force Base 1950s',
+                        source: 'serpapi', fit: 'cover',
+                        kenBurns: 'pan-up', kenBurnsAmount: 0.3,
+                    },
+                    { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
+                    {
+                        type: 'text', text: 'CONVAIR &\nOAK RIDGE NATIONAL LAB', x: 540, y: 1500,
+                        fontSize: 50, fontFamily: 'Arial Black, sans-serif',
+                        color: '#ffffff', align: 'center',
+                        stroke: true, strokeColor: '#000', strokeWidth: 4,
+                    },
+                ],
+            },
+
+            // ── Scene 3 — Design Philosophy (NARA footage) ──────────
+            {
+                tts: {
+                    text: "Every inch of the crew compartment was rebuilt around one problem: radiation. Eleven tons of lead and rubber wrapped a brand new nose section, with windows over ten inches thick just so the pilots could see out. And on every single flight, a chase plane followed close behind, tracking radiation levels in case the unthinkable happened.",
+                    voice: 'bm_george',
+                    pauseAfter: 0.4,
+                },
+                captions: {
+                    style: 'highlight', fontSize: 60, color: '#ffffff',
+                    highlightColor: '#f5c518', wordsPerChunk: 3,
+                    strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
+                },
+                layers: [
+                    designPhilosophyVisual,
+                    { type: 'overlay', color: 'rgba(0,0,0,0.25)' },
+                    {
+                        type: 'text', text: 'SHIELDED FIRST.\nPOWERED NEVER.', x: 540, y: 1560,
+                        fontSize: 52, fontFamily: 'Arial Black, sans-serif',
+                        color: '#f5c518', align: 'center',
+                        stroke: true, strokeColor: '#000', strokeWidth: 4,
+                    },
+                ],
+            },
+
+            // ── Scene 4 — CTA (provocative, comment-bait framing) ───
+            {
+                tts: {
+                    text: "So here's the twist. In two hundred fifteen hours of flight, that reactor never once powered the plane. It was only ever there to prove a crew could survive flying next to it. Would you fly on a nuclear powered plane if one existed today? Comment your answer below, and like and subscribe for more stories like this one.",
+                    voice: 'bm_george',
+                    pauseAfter: 0.3,
+                },
+                captions: {
+                    style: 'highlight', fontSize: 60, color: '#ffffff',
+                    highlightColor: '#f5c518', wordsPerChunk: 3,
+                    strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
+                },
+                layers: [
+                    {
+                        type: 'stock-image', query: 'NB-36H B-36 bomber nuclear test flight chase plane',
+                        source: 'serpapi', fit: 'cover',
+                        kenBurns: 'zoom-out', kenBurnsAmount: 0.3,
+                    },
+                    { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
+                    {
+                        type: 'text', text: 'NUCLEAR PLANES:\nWOULD YOU FLY ONE?', x: 540, y: 900,
+                        fontSize: 56, fontFamily: 'Arial Black, sans-serif',
+                        color: '#ffffff', align: 'center',
+                        stroke: true, strokeColor: '#000', strokeWidth: 5,
+                    },
+                    // Subscribe sticker — `sticker: true` for a transparent
+                    // background instead of a filled square sitting over the
+                    // footage. Uses `query` + `resultIndex: 0` (top search hit)
+                    // rather than a specific `id`: I can't fetch giphy.com from
+                    // here to confirm a specific asset ID is real and looks
+                    // right, so asserting one would've been a guess dressed up
+                    // as a lookup. `query` is honest about that — it resolves
+                    // to whatever Giphy actually returns at render time. Bump
+                    // resultIndex (0-9) if the top hit isn't the right one once
+                    // you see it render; switch to a specific `id` once you've
+                    // picked a favorite from giphy.com, for a locked, repeatable
+                    // result (see documentations/Giphy.md, "Query vs ID").
+                    // Corner-badge size/position (top-right, y 90-390) is clear
+                    // of both the headline (y:900) and the default highlight-
+                    // caption band (baseY = H*0.83 ≈ y:1594 — see src/captions.js).
+                    {
+                        type: 'giphy',
+                        query: 'like and subscribe',
+                        sticker: true,
+                        resultIndex: 0,
+                        x: 740, y: 90, width: 300, height: 300,
+                        fit: 'contain',
+                    },
+                ],
+            },
+        ],
+    };
+})();
