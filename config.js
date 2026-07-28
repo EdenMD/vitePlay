@@ -1,11 +1,12 @@
 // ============================================================
-//  APEX VIDEO ENGINE — TOP5 SERIES — DROP T1
-//  "5 GUNS THAT ALMOST NEVER EXISTED"
+//  APEX VIDEO ENGINE — TOP5 SERIES — DROP T2
+//  "5 GUN ENGINEERING SECRETS THAT SHOULDN'T HAVE WORKED"
+//  Voice test: bm_daniel | Feature test: stock-image-sequence + rotate
 //  Target: ~60 seconds | 7 scenes | no bgMusic
 // ============================================================
 const config = {
     output: {
-        title:      'top5-01-almost-never-existed',
+        title:      'top5-02-engineering-secrets',
         format:     'portrait',
         fps:        30,
         crf:        24,
@@ -19,7 +20,7 @@ const config = {
         },
     },
     defaults: {
-        voice:              'bm_george',
+        voice:              'bm_daniel',
         transition:         'fade',
         transitionDuration: 0.28,
     },
@@ -28,8 +29,8 @@ const config = {
         // ── SCENE 1 — HOOK (~8 sec) ───────────────────────────────
         {
             tts: {
-                text:       'Five legendary guns almost never made it into your hands. Number one is the one nobody saw coming.',
-                speed:      0.9,
+                text:       'Five engineering decisions so extreme, experts said they were physically unworkable. Number one broke a rule nobody thought could be broken.',
+                speed:      0.88,
                 emotion:    'dramatic',
                 pauseAfter: 0.4,
             },
@@ -48,7 +49,7 @@ const config = {
             layers: [
                 {
                     type:           'stock-image',
-                    query:          'vintage firearms collection',
+                    query:          'firearms engineering blueprint',
                     source:         'serpapi',
                     orientation:    'portrait',
                     imageIndex:     0,
@@ -60,10 +61,10 @@ const config = {
                 { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
                 {
                     type:       'text',
-                    text:       '5 GUNS THAT\nALMOST NEVER\nEXISTED',
+                    text:       '5 ENGINEERING\nSECRETS THAT\nSHOULDN\'T WORK',
                     x:          540,
                     y:          700,
-                    fontSize:   82,
+                    fontSize:   72,
                     fontFamily: 'Arial Black, Impact, sans-serif',
                     fontWeight: 'bold',
                     color:      '#ffffff',
@@ -85,11 +86,11 @@ const config = {
             ],
         },
 
-        // ── SCENE 2 — #5 UZI (~9 sec) ─────────────────────────────
+        // ── SCENE 2 — #5 DESERT EAGLE (~9 sec) ────────────────────
         {
             tts: {
-                text:       'Number five — the Uzi. Its designer fled Nazi Germany as a child refugee and taught himself weapons design out of pure survival. But this one barely cracks the list.',
-                speed:      0.9,
+                text:       'Number five — the Desert Eagle. Engineers took the gas system from a rifle and forced it into a handgun frame — something nobody had done before. But number four pushes the idea even further.',
+                speed:      0.88,
                 emotion:    'dramatic',
                 pauseAfter: 0.3,
             },
@@ -108,7 +109,7 @@ const config = {
             layers: [
                 {
                     type:           'stock-image',
-                    query:          'Uzi submachine gun black',
+                    query:          'Desert Eagle pistol chrome',
                     source:         'serpapi',
                     orientation:    'portrait',
                     imageIndex:     0,
@@ -139,10 +140,10 @@ const config = {
                 },
                 {
                     type:       'text',
-                    text:       'THE UZI',
+                    text:       'DESERT EAGLE',
                     x:          540,
                     y:          700,
-                    fontSize:   80,
+                    fontSize:   62,
                     fontFamily: 'Arial Black, Impact, sans-serif',
                     color:      '#ffffff',
                     align:      'center',
@@ -156,10 +157,10 @@ const config = {
                 },
                 {
                     type:       'text',
-                    text:       'A child refugee\nbuilt this.',
+                    text:       'A rifle\'s engine.\nA pistol\'s body.',
                     x:          540,
                     y:          860,
-                    fontSize:   46,
+                    fontSize:   44,
                     fontFamily: 'Arial Black, Impact, sans-serif',
                     color:      '#ffffff',
                     align:      'center',
@@ -175,11 +176,11 @@ const config = {
             ],
         },
 
-        // ── SCENE 3 — #4 M1 GARAND (~9 sec) ───────────────────────
+        // ── SCENE 3 — #4 AA-12 (~9 sec) ───────────────────────────
         {
             tts: {
-                text:       'Number four — the M1 Garand. An immigrant mill worker with no engineering degree designed it, and never took a cent beyond his government salary. But number three gets stranger.',
-                speed:      0.9,
+                text:       'Number four — the AA-12. Its designer built a floating recoil system that let a fully automatic twelve gauge shotgun fire with one hand. Number three trades brute force for pure precision.',
+                speed:      0.88,
                 emotion:    'dramatic',
                 pauseAfter: 0.3,
             },
@@ -198,7 +199,7 @@ const config = {
             layers: [
                 {
                     type:           'stock-image',
-                    query:          'M1 Garand rifle historical',
+                    query:          'AA-12 automatic shotgun black',
                     source:         'serpapi',
                     orientation:    'portrait',
                     imageIndex:     0,
@@ -229,10 +230,10 @@ const config = {
                 },
                 {
                     type:       'text',
-                    text:       'M1 GARAND',
+                    text:       'THE AA-12',
                     x:          540,
                     y:          700,
-                    fontSize:   72,
+                    fontSize:   78,
                     fontFamily: 'Arial Black, Impact, sans-serif',
                     color:      '#ffffff',
                     align:      'center',
@@ -246,7 +247,7 @@ const config = {
                 },
                 {
                     type:       'text',
-                    text:       'Six dollars a day.\nWon the war.',
+                    text:       'Full auto.\nOne hand.',
                     x:          540,
                     y:          860,
                     fontSize:   46,
@@ -265,16 +266,16 @@ const config = {
             ],
         },
 
-        // ── SCENE 4 — #3 MP5 (~9 sec) ─────────────────────────────
+        // ── SCENE 4 — #3 MP5 (~9 sec) — feature test: sequence + rotate ──
         {
             tts: {
-                text:       'Number three — the MP5. Its designer was banned from building weapons in his own country and had to perfect it in exile before he could bring it home. But number two never should have existed at all.',
-                speed:      0.9,
+                text:       'Number three — the MP5. Its designer scaled down a battle rifle\'s locking system to solve a problem nobody else had cracked — a submachine gun accurate enough to trust. Number two weaponized something as simple as shape.',
+                speed:      0.88,
                 emotion:    'dramatic',
                 pauseAfter: 0.3,
             },
-            transition:         'wipe-left',
-            transitionDuration: 0.28,
+            transition:         'glitch',
+            transitionDuration: 0.24,
             captions: {
                 style:          'highlight',
                 position:       'bottom',
@@ -287,17 +288,22 @@ const config = {
             },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'MP5 submachine gun black',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
+                    type:     'stock-image-sequence',
+                    queries: [
+                        'MP5 submachine gun black',
+                        'MP5 bolt mechanism closeup',
+                        'MP5 roller locking system',
+                    ],
+                    source:   'serpapi',
+                    fit:      'cover',
+                    kenBurnsSequence: [
+                        { kenBurns: 'zoom-in',   kenBurnsAmount: 0.28 },
+                        { kenBurns: 'rotate-cw', kenBurnsAmount: 0.26, rotateDeg: 8 },
+                        { kenBurns: 'pan-left',  kenBurnsAmount: 0.26 },
+                    ],
                     x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'pan-up',
-                    kenBurnsAmount: 0.16,
                 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
+                { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
                 {
                     type:       'text',
                     text:       '#3',
@@ -336,7 +342,7 @@ const config = {
                 },
                 {
                     type:       'text',
-                    text:       'Banned from\nbuilding weapons.',
+                    text:       'Rifle precision.\nPistol size.',
                     x:          540,
                     y:          860,
                     fontSize:   46,
@@ -355,11 +361,11 @@ const config = {
             ],
         },
 
-        // ── SCENE 5 — #2 PUCKLE GUN (~9 sec) ──────────────────────
+        // ── SCENE 5 — #2 PUCKLE GUN (~9 sec) — feature test: sequence + rotate ──
         {
             tts: {
-                text:       'Number two — the Puckle Gun. A London lawyer with zero engineering training patented a working machine gun in 1718 — over a century before anyone thought it was possible. But number one broke every rule to exist.',
-                speed:      0.9,
+                text:       'Number two — the Puckle Gun. Its inventor loaded two different bullet shapes into the same weapon, one round, one square, engineered specifically to wound differently depending on the enemy. Number one made the impossible fit in a garage.',
+                speed:      0.88,
                 emotion:    'dramatic',
                 pauseAfter: 0.3,
             },
@@ -377,17 +383,22 @@ const config = {
             },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'Puckle gun flintlock',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
+                    type:     'stock-image-sequence',
+                    queries: [
+                        'Puckle gun flintlock',
+                        'Puckle gun cylinder mechanism',
+                        '1700s musket ball ammunition',
+                    ],
+                    source:   'serpapi',
+                    fit:      'cover',
+                    kenBurnsSequence: [
+                        { kenBurns: 'zoom-in',    kenBurnsAmount: 0.28 },
+                        { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.26, rotateDeg: 8 },
+                        { kenBurns: 'drift',      kenBurnsAmount: 0.24 },
+                    ],
                     x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'pan-up',
-                    kenBurnsAmount: 0.16,
                 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
+                { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
                 {
                     type:       'text',
                     text:       '#2',
@@ -426,7 +437,7 @@ const config = {
                 },
                 {
                     type:       'text',
-                    text:       'A lawyer built the\nfirst machine gun.',
+                    text:       'Round bullets.\nSquare bullets.',
                     x:          540,
                     y:          860,
                     fontSize:   46,
@@ -445,11 +456,11 @@ const config = {
             ],
         },
 
-        // ── SCENE 6 — #1 STG44 (~11 sec) ──────────────────────────
+        // ── SCENE 6 — #1 BARRETT M82 (~12 sec) — biggest payoff ──
         {
             tts: {
-                text:       'Number one — the StG44. Its designer built it in total secrecy, disguised as a submachine gun, specifically to defy Hitler\'s own direct orders. It became the blueprint for nearly every modern rifle on earth.',
-                speed:      0.9,
+                text:       'Number one — the Barrett M82. A photographer with no gunsmith training hand-built the recoil system in his own garage, taming a round designed for a vehicle-mounted machine gun until one man could fire it alone.',
+                speed:      0.88,
                 emotion:    'dramatic',
                 pauseAfter: 0.4,
             },
@@ -468,7 +479,7 @@ const config = {
             layers: [
                 {
                     type:           'stock-image',
-                    query:          'StG44 assault rifle',
+                    query:          'Barrett M82 rifle',
                     source:         'serpapi',
                     orientation:    'portrait',
                     imageIndex:     0,
@@ -499,10 +510,10 @@ const config = {
                 },
                 {
                     type:       'text',
-                    text:       'THE STG44',
+                    text:       'BARRETT M82',
                     x:          540,
                     y:          700,
-                    fontSize:   82,
+                    fontSize:   68,
                     fontFamily: 'Arial Black, Impact, sans-serif',
                     color:      '#ffffff',
                     align:      'center',
@@ -520,10 +531,10 @@ const config = {
                 },
                 {
                     type:       'text',
-                    text:       'Built in secret\nto defy Hitler himself.',
+                    text:       'Built on a dining table.\nNow used by 60+ countries.',
                     x:          540,
                     y:          870,
-                    fontSize:   48,
+                    fontSize:   46,
                     fontFamily: 'Arial Black, Impact, sans-serif',
                     color:      '#ffffff',
                     align:      'center',
@@ -542,8 +553,8 @@ const config = {
         // ── SCENE 7 — CTA (~5 sec) ────────────────────────────────
         {
             tts: {
-                text:       'Which one surprised you most? Subscribe for the next 5.',
-                speed:      0.9,
+                text:       'Which engineering secret shocked you most? Subscribe for the next 5.',
+                speed:      0.88,
                 emotion:    'dramatic',
                 pauseAfter: 0.4,
             },
@@ -562,7 +573,7 @@ const config = {
             layers: [
                 {
                     type:           'stock-image',
-                    query:          'vintage firearms collection',
+                    query:          'firearms engineering blueprint',
                     source:         'serpapi',
                     orientation:    'portrait',
                     imageIndex:     0,
@@ -574,10 +585,10 @@ const config = {
                 { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
                 {
                     type:       'text',
-                    text:       'WHICH ONE\nSURPRISED YOU MOST?',
+                    text:       'WHICH SECRET\nSHOCKED YOU MOST?',
                     x:          540,
                     y:          500,
-                    fontSize:   62,
+                    fontSize:   60,
                     fontFamily: 'Arial Black, Impact, sans-serif',
                     color:      '#ffffff',
                     align:      'center',
@@ -596,7 +607,7 @@ const config = {
                     y:           1370,
                     width:       860,
                     title:       '🔔 Subscribe for the next 5',
-                    body:        'New rankings every week',
+                    body:        'New engineering secrets every week',
                     bgColor:     'rgba(245,197,24,0.14)',
                     borderColor: '#f5c518',
                     titleColor:  '#f5c518',
