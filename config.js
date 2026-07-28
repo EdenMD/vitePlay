@@ -20,7 +20,7 @@ const config = {
         },
     },
     defaults: {
-        voice:              'bm_daniel',
+        voice:              'bm_adam',
         transition:         'fade',
         transitionDuration: 0.28,
     },
