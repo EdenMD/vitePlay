@@ -1,627 +1,613 @@
-// ============================================================
-//  APEX VIDEO ENGINE — TOP5 SERIES — DROP T2
-//  "5 GUN ENGINEERING SECRETS THAT SHOULDN'T HAVE WORKED"
-//  Voice test: bm_daniel | Feature test: stock-image-sequence + rotate
-//  Target: ~60 seconds | 7 scenes | no bgMusic
-// ============================================================
-const config = {
-    output: {
-        title:      'top5-02-engineering-secrets',
-        format:     'portrait',
-        fps:        30,
-        crf:        24,
-        preset:     'ultrafast',
-        cleanup:    true,
-        postProcess: {
-            grain:            true,
-            grainStrength:    0.028,
-            vignette:         true,
-            vignetteStrength: 0.58,
-        },
+// =============================================================================
+// "The Machine That Flies It" — Fighter jet flight-computer documentary
+// APEX Engine config — plain module.exports object, all values hardcoded
+// (per this project's config convention: no JS variables, no async exports)
+// =============================================================================
+//
+// STRUCTURE NOTES — read before swapping placeholder URLs
+// -----------------------------------------------------------------------------
+// You have 4 AI-generated video clips:
+//   • hook-part-1  (4s)  → used in scene "1a"
+//   • hook-part-2  (4s)  → used in scene "1b"
+//   • scene4-clip  (8s)  → used in scene "4a"
+//   • scene7-clip  (8s)  → used in scene "7a"
+//
+// Original Scene 1 / 4 / 7 (from the outline) have each been SPLIT into two
+// scenes apiece:
+//   - a short "video" sub-scene sized to the clip's real length, carrying
+//     only the opening line(s) of that scene's narration as its own tts
+//   - a "continuation" sub-scene carrying the REST of that scene's narration,
+//     backed by a stock-image-sequence (multiple SerpAPI photos cutting
+//     through the scene with rotate/pan/zoom Ken Burns) instead of the video
+//
+// This is the fix for the "video loops the whole scene = boring" problem:
+// each video now only ever has to cover ITS OWN short scene, so any loop it
+// does is brief and inside a clip that's already moving — it never has to
+// stretch a 4-8s clip across 45+ seconds of narration. Scenes 2, 3, 5, 6, 8
+// (no AI video was scoped for these per the visual-placement plan) are pure
+// stock-image-sequence scenes.
+//
+// No manual per-image URL picking anywhere — every still is resolved by
+// SerpAPI at build time from a text query (Serpapi.md / New_Features_
+// documentation.md's stock-image-sequence). All Ken Burns uses rotate-cw /
+// rotate-ccw at amount 0.3 (mixed with zoom/pan, one rotate per ~4 slides —
+// per the "mix, don't uniform-ize" guidance) and there is no beat/bpm music
+// — bgMusic uses a downloaded mood track, output.beat is intentionally
+// omitted entirely.
+// =============================================================================
+
+module.exports = {
+
+  output: {
+    title:      'fighter-jet-flight-computers',
+    format:     'portrait',
+    fps:        30,
+    crf:        18,
+    preset:     'medium',
+    bgMusicVol: 0.18,
+    bgMusic:    { mood: 'cinematic' },   // downloaded mood track — NOT output.beat (no beat, as requested)
+    postProcess: {
+      grain:              true,
+      grainStrength:      0.03,
+      vignette:           true,
+      vignetteStrength:   0.35,
+      scanlines:          false,
+      colorGrade:         '#1a2f3f',
+      colorGradeStrength: 0.08,
     },
-    defaults: {
-        voice:              'am_adam',
-        transition:         'fade',
-        transitionDuration: 0.28,
+  },
+
+  defaults: {
+    voice:          'bm_george',   // deep/commanding — documentary/dark-content default per Voices.md
+    speed:          1.0,
+    transition:     'fade',
+    effectStrength: 1.0,
+  },
+
+  scenes: [
+
+    // =========================================================================
+    // SCENE 1a — Hook, part 1 — AI VIDEO #1 (4s) — its own small scene
+    // =========================================================================
+    {
+      transition:         'zoom-in',
+      transitionDuration: 0.5,
+      tts: {
+        text:  'Take a look at this fighter jet.',
+        voice: 'bm_george',
+        emotion: 'serious',
+        pauseAfter: 0.2,
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 64,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
+        {
+          type: 'video',
+          // PLACEHOLDER — AI video 1 of 4 — 4 second hook clip
+          url:'https://files.catbox.moe/k9hznr.mp4',
+          maxDuration: 4,
+          loop:  true,
+          x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+        },
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)'], angle: 180,
+        },
+      ],
     },
-    scenes: [
 
-        // ── SCENE 1 — HOOK (~8 sec) ───────────────────────────────
+    // =========================================================================
+    // SCENE 1b — Hook, part 2 — AI VIDEO #2 (4s) — its own small scene
+    // =========================================================================
+    {
+      transition:         'zoom-cut',
+      transitionDuration: 0.3,
+      tts: {
+        text:  "It slices through the sky with incredible precision.",
+        voice: 'bm_george',
+        emotion: 'serious',
+        pauseAfter: 0.2,
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 64,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
         {
-            tts: {
-                text:       'Five engineering decisions so extreme, experts said they were physically unworkable. Number one broke a rule nobody thought could be broken.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.4,
-            },
-            transition:         'zoom-cut',
-            transitionDuration: 0.2,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       58,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:           'stock-image',
-                    query:          'firearms engineering blueprint',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
-                    x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'zoom-in',
-                    kenBurnsAmount: 0.13,
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
-                {
-                    type:       'text',
-                    text:       '5 ENGINEERING\nSECRETS THAT\nSHOULDN\'T WORK',
-                    x:          540,
-                    y:          700,
-                    fontSize:   72,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    fontWeight: 'bold',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   940,
-                    lineHeight: 1.1,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 6,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   36,
-                    animation:  'pop',
-                    animDur:    0.4,
-                    startT:     0.2,
-                    hookLayer:  true,
-                },
-            ],
+          type: 'video',
+          // PLACEHOLDER — AI video 2 of 4 — 4 second hook clip
+          url:  'https://files.catbox.moe/kff6id.mp4',
+          maxDuration: 4,
+          loop:  true,
+          x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
         },
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)'], angle: 180,
+        },
+      ],
+    },
 
-        // ── SCENE 2 — #5 DESERT EAGLE (~9 sec) ────────────────────
+    // =========================================================================
+    // SCENE 1c — Hook, continuation — stock images, no video (rest of Scene 1 script)
+    // =========================================================================
+    {
+      transition:         'fade',
+      transitionDuration: 0.5,
+      tts: {
+        text: "pulling off turns that seem to defy physics. But here's the strange part. "
+            + "Many modern fighter jets aren't designed to be naturally stable. If their flight "
+            + "computers suddenly stopped working, some would become extremely difficult for a "
+            + "pilot to control as intended. Why would engineers build an aircraft that doesn't "
+            + "want to fly on its own? The answer is surprisingly simple. Stability makes an "
+            + "aircraft easier to fly—but instability makes it far more agile. And in the world "
+            + "of fighter jets, agility can make all the difference. So if these aircraft are "
+            + "intentionally unstable, what's really keeping them in the sky? The answer isn't "
+            + "just the pilot... it's an invisible computer making constant corrections every second.",
+        voice: 'bm_george',
+        emotion: 'serious',
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 60,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
         {
-            tts: {
-                text:       'Number five — the Desert Eagle. Engineers took the gas system from a rifle and forced it into a handgun frame — something nobody had done before. But number four pushes the idea even further.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.3,
-            },
-            transition:         'wipe-left',
-            transitionDuration: 0.28,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       58,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:           'stock-image',
-                    query:          'Desert Eagle pistol chrome',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
-                    x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'pan-up',
-                    kenBurnsAmount: 0.16,
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
-                {
-                    type:       'text',
-                    text:       '#5',
-                    x:          200,
-                    y:          260,
-                    fontSize:   140,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#f5c518',
-                    align:      'center',
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 6,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   30,
-                    animation:  'pop',
-                    animDur:    0.3,
-                    startT:     0.1,
-                },
-                {
-                    type:       'text',
-                    text:       'DESERT EAGLE',
-                    x:          540,
-                    y:          700,
-                    fontSize:   62,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   900,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    animation:  'slide-up',
-                    animDur:    0.32,
-                    startT:     0.4,
-                },
-                {
-                    type:       'text',
-                    text:       'A rifle\'s engine.\nA pistol\'s body.',
-                    x:          540,
-                    y:          860,
-                    fontSize:   44,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   860,
-                    lineHeight: 1.25,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 4,
-                    animation:  'fade',
-                    animDur:    0.3,
-                    startT:     0.9,
-                },
-            ],
+          type: 'stock-image-sequence',
+          queries: [
+            'fighter jet sharp banking turn sky',
+            'fighter jet unstable aerodynamics design diagram',
+            'aircraft engineer designing blueprint',
+            'fighter jet flight control computer panel',
+          ],
+          source: 'serpapi',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-left',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-cw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-right', kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1080, height: 1920,
         },
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.60)'], angle: 180,
+        },
+      ],
+    },
 
-        // ── SCENE 3 — #4 AA-12 (~9 sec) ───────────────────────────
+    // =========================================================================
+    // SCENE 2 — The Fighter That Wants to Crash — stock images only
+    // =========================================================================
+    {
+      transition:         'fade',
+      transitionDuration: 0.6,
+      tts: {
+        text: "To understand why modern fighter jets need computers, we first need to "
+            + "understand stability. Think about throwing a dart. It naturally points forward "
+            + "and corrects itself as it flies. That's what engineers call a stable design. "
+            + "Now imagine trying to balance a pencil on your fingertip. The slightest movement "
+            + "sends it falling unless you make constant corrections. Many modern fighter jets "
+            + "are designed to behave more like that pencil than the dart. Why? Because an "
+            + "unstable aircraft can change direction much faster. It doesn't resist turning—it "
+            + "almost wants to turn. That gives pilots incredible maneuverability, but it also "
+            + "creates a problem. A human simply can't react fast enough to keep an unstable "
+            + "aircraft under control. That's why every movement of a modern fighter jet depends "
+            + "on something working silently in the background... a flight computer that never "
+            + "stops thinking.",
+        voice: 'bm_george',
+        emotion: 'serious',
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 60,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
         {
-            tts: {
-                text:       'Number four — the AA-12. Its designer built a floating recoil system that let a fully automatic twelve gauge shotgun fire with one hand. Number three trades brute force for pure precision.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.3,
-            },
-            transition:         'wipe-right',
-            transitionDuration: 0.28,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       58,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:           'stock-image',
-                    query:          'AA-12 automatic shotgun black',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
-                    x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'pan-up',
-                    kenBurnsAmount: 0.16,
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
-                {
-                    type:       'text',
-                    text:       '#4',
-                    x:          200,
-                    y:          260,
-                    fontSize:   140,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#f5c518',
-                    align:      'center',
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 6,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   30,
-                    animation:  'pop',
-                    animDur:    0.3,
-                    startT:     0.1,
-                },
-                {
-                    type:       'text',
-                    text:       'THE AA-12',
-                    x:          540,
-                    y:          700,
-                    fontSize:   78,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   900,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    animation:  'slide-up',
-                    animDur:    0.32,
-                    startT:     0.4,
-                },
-                {
-                    type:       'text',
-                    text:       'Full auto.\nOne hand.',
-                    x:          540,
-                    y:          860,
-                    fontSize:   46,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   860,
-                    lineHeight: 1.25,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 4,
-                    animation:  'fade',
-                    animDur:    0.3,
-                    startT:     0.9,
-                },
-            ],
+          type: 'stock-image-sequence',
+          queries: [
+            'dart throwing macro photo',
+            'pencil balancing on fingertip',
+            'fighter jet sharp high-g turn',
+            'fighter jet unstable design engineering',
+          ],
+          source: 'serpapi',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',    kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-right',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-left',   kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1080, height: 1920,
         },
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.60)'], angle: 180,
+        },
+      ],
+    },
 
-        // ── SCENE 4 — #3 MP5 (~9 sec) — feature test: sequence + rotate ──
+    // =========================================================================
+    // SCENE 3 — The Four Forces of Flight — stock images only
+    // =========================================================================
+    {
+      transition:         'fade',
+      transitionDuration: 0.6,
+      tts: {
+        text: "So, what actually keeps a fighter jet in the air? Like every aircraft, it "
+            + "relies on four fundamental forces: lift, weight, thrust, and drag. Lift pushes "
+            + "the aircraft upward. Weight pulls it back toward Earth. Thrust from the engines "
+            + "drives it forward, while drag constantly tries to slow it down. For steady "
+            + "flight, these forces must remain in balance. But in a modern fighter jet, that "
+            + "balance is constantly changing. Every turn, every climb, every gust of wind "
+            + "shifts the forces acting on the aircraft. The pilot can't calculate those changes "
+            + "in real time. Instead, onboard computers monitor the aircraft continuously, "
+            + "making tiny adjustments to the control surfaces to keep everything balanced—often "
+            + "before the pilot even notices anything has changed. Without those invisible "
+            + "corrections, flying a modern fighter jet would be far more difficult than it appears.",
+        voice: 'bm_george',
+        emotion: 'serious',
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 60,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
         {
-            tts: {
-                text:       'Number three — the MP5. Its designer scaled down a battle rifle\'s locking system to solve a problem nobody else had cracked — a submachine gun accurate enough to trust. Number two weaponized something as simple as shape.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.3,
-            },
-            transition:         'glitch',
-            transitionDuration: 0.24,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       58,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:     'stock-image-sequence',
-                    queries: [
-                        'MP5 submachine gun black',
-                        'MP5 bolt mechanism closeup',
-                        'MP5 roller locking system',
-                    ],
-                    source:   'serpapi',
-                    fit:      'cover',
-                    kenBurnsSequence: [
-                        { kenBurns: 'zoom-in',   kenBurnsAmount: 0.28 },
-                        { kenBurns: 'rotate-cw', kenBurnsAmount: 0.26, rotateDeg: 8 },
-                        { kenBurns: 'pan-left',  kenBurnsAmount: 0.26 },
-                    ],
-                    x: 0, y: 0, width: 1080, height: 1920,
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
-                {
-                    type:       'text',
-                    text:       '#3',
-                    x:          200,
-                    y:          260,
-                    fontSize:   140,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#f5c518',
-                    align:      'center',
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 6,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   30,
-                    animation:  'pop',
-                    animDur:    0.3,
-                    startT:     0.1,
-                },
-                {
-                    type:       'text',
-                    text:       'THE MP5',
-                    x:          540,
-                    y:          700,
-                    fontSize:   80,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   900,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    animation:  'slide-up',
-                    animDur:    0.32,
-                    startT:     0.4,
-                },
-                {
-                    type:       'text',
-                    text:       'Rifle precision.\nPistol size.',
-                    x:          540,
-                    y:          860,
-                    fontSize:   46,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   860,
-                    lineHeight: 1.25,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 4,
-                    animation:  'fade',
-                    animDur:    0.3,
-                    startT:     0.9,
-                },
-            ],
+          type: 'stock-image-sequence',
+          queries: [
+            'lift thrust drag weight forces diagram aircraft',
+            'fighter jet climbing steep angle',
+            'fighter jet flying through clouds turbulence',
+            'aircraft control surfaces wing flaps closeup',
+          ],
+          source: 'serpapi',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-left',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-cw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-right', kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1080, height: 1920,
         },
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.60)'], angle: 180,
+        },
+      ],
+    },
 
-        // ── SCENE 5 — #2 PUCKLE GUN (~9 sec) — feature test: sequence + rotate ──
+    // =========================================================================
+    // SCENE 4a — The Invisible Hands, opening — AI VIDEO #3 (8s) — its own small scene
+    // =========================================================================
+    {
+      transition:         'fade',
+      transitionDuration: 0.5,
+      tts: {
+        text:  "Imagine trying to balance that pencil again—but this time, it's traveling "
+             + "at hundreds of kilometers per hour.",
+        voice: 'bm_george',
+        emotion: 'serious',
+        pauseAfter: 0.2,
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 60,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
         {
-            tts: {
-                text:       'Number two — the Puckle Gun. Its inventor loaded two different bullet shapes into the same weapon, one round, one square, engineered specifically to wound differently depending on the enemy. Number one made the impossible fit in a garage.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.3,
-            },
-            transition:         'wipe-right',
-            transitionDuration: 0.28,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       58,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:     'stock-image-sequence',
-                    queries: [
-                        'Puckle gun flintlock',
-                        'Puckle gun cylinder mechanism',
-                        '1700s musket ball ammunition',
-                    ],
-                    source:   'serpapi',
-                    fit:      'cover',
-                    kenBurnsSequence: [
-                        { kenBurns: 'zoom-in',    kenBurnsAmount: 0.28 },
-                        { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.26, rotateDeg: 8 },
-                        { kenBurns: 'drift',      kenBurnsAmount: 0.24 },
-                    ],
-                    x: 0, y: 0, width: 1080, height: 1920,
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
-                {
-                    type:       'text',
-                    text:       '#2',
-                    x:          200,
-                    y:          260,
-                    fontSize:   140,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#f5c518',
-                    align:      'center',
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 6,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   30,
-                    animation:  'pop',
-                    animDur:    0.3,
-                    startT:     0.1,
-                },
-                {
-                    type:       'text',
-                    text:       'PUCKLE GUN',
-                    x:          540,
-                    y:          700,
-                    fontSize:   68,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   900,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    animation:  'slide-up',
-                    animDur:    0.32,
-                    startT:     0.4,
-                },
-                {
-                    type:       'text',
-                    text:       'Round bullets.\nSquare bullets.',
-                    x:          540,
-                    y:          860,
-                    fontSize:   46,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   860,
-                    lineHeight: 1.25,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 4,
-                    animation:  'fade',
-                    animDur:    0.3,
-                    startT:     0.9,
-                },
-            ],
+          type: 'video',
+          // PLACEHOLDER — AI video 3 of 4 — 8 second clip (Scene 4: "The Invisible Hands")
+          url: 'https://files.catbox.moe/7aus2m.mp4',
+          maxDuration: 8,
+          loop:  true,
+          x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
         },
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)'], angle: 180,
+        },
+      ],
+    },
 
-        // ── SCENE 6 — #1 BARRETT M82 (~12 sec) — biggest payoff ──
+    // =========================================================================
+    // SCENE 4b — The Invisible Hands, continuation — stock images, no video
+    // =========================================================================
+    {
+      transition:         'zoom-cut',
+      transitionDuration: 0.3,
+      tts: {
+        text: "through constantly changing air. That's the challenge a modern fighter jet "
+            + "faces every second. Even when the aircraft appears perfectly smooth from the "
+            + "outside, its control surfaces are making tiny, rapid movements almost "
+            + "continuously. They're responding to changing airflow, turbulence, speed, and the "
+            + "pilot's commands. These adjustments happen far faster than any human could react. "
+            + "In reality, the aircraft is never sitting perfectly still. It's being gently and "
+            + "continuously corrected by an invisible digital system working in the background. "
+            + "The jet may look effortless, but behind every perfectly controlled turn is a "
+            + "computer making thousands of tiny decisions to keep the aircraft exactly where it "
+            + "should be.",
+        voice: 'bm_george',
+        emotion: 'serious',
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 60,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
         {
-            tts: {
-                text:       'Number one — the Barrett M82. A photographer with no gunsmith training hand-built the recoil system in his own garage, taming a round designed for a vehicle-mounted machine gun until one man could fire it alone.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.4,
-            },
-            transition:         'glitch',
-            transitionDuration: 0.24,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       58,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:           'stock-image',
-                    query:          'Barrett M82 rifle',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
-                    x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'zoom-in',
-                    kenBurnsAmount: 0.18,
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.52)' },
-                {
-                    type:       'text',
-                    text:       '#1',
-                    x:          200,
-                    y:          260,
-                    fontSize:   160,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#f5c518',
-                    align:      'center',
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 7,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   40,
-                    animation:  'pop',
-                    animDur:    0.35,
-                    startT:     0.1,
-                },
-                {
-                    type:       'text',
-                    text:       'BARRETT M82',
-                    x:          540,
-                    y:          700,
-                    fontSize:   68,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   900,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   24,
-                    animation:  'slide-up',
-                    animDur:    0.35,
-                    startT:     0.4,
-                },
-                {
-                    type:       'text',
-                    text:       'Built on a dining table.\nNow used by 60+ countries.',
-                    x:          540,
-                    y:          870,
-                    fontSize:   46,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   880,
-                    lineHeight: 1.3,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 4,
-                    animation:  'fade',
-                    animDur:    0.32,
-                    startT:     1.0,
-                },
-            ],
+          type: 'stock-image-sequence',
+          queries: [
+            'aircraft control surface actuator closeup',
+            'fighter jet wing flap movement flight',
+            'fighter jet flying through turbulence',
+            'flight control computer circuit board',
+          ],
+          source: 'serpapi',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',    kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-right',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-left',   kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1080, height: 1920,
         },
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.60)'], angle: 180,
+        },
+      ],
+    },
 
-        // ── SCENE 7 — CTA (~5 sec) ────────────────────────────────
+    // =========================================================================
+    // SCENE 5 — The Digital Pilot — stock images only
+    // =========================================================================
+    {
+      transition:         'fade',
+      transitionDuration: 0.6,
+      tts: {
+        text: "So what is this invisible system? It's called fly-by-wire. In older aircraft, "
+            + "moving the control stick was connected directly to the control surfaces through "
+            + "mechanical cables and hydraulic systems. In a modern fighter jet, the pilot's "
+            + "input is first sent to powerful flight-control computers. These computers "
+            + "receive information from dozens of sensors measuring speed, altitude, "
+            + "acceleration, angle of attack, and the aircraft's position in space. In just "
+            + "fractions of a second, they calculate the safest and most effective response, "
+            + "then command multiple control surfaces to move together with incredible "
+            + "precision. The pilot decides where the aircraft should go. The flight computer "
+            + "decides how to get it there.",
+        voice: 'bm_george',
+        emotion: 'serious',
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 60,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
         {
-            tts: {
-                text:       'Which engineering secret shocked you most? Subscribe for the next 5.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.4,
-            },
-            transition:         'zoom-cut',
-            transitionDuration: 0.2,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       58,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:           'stock-image',
-                    query:          'firearms engineering blueprint',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
-                    x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'zoom-out',
-                    kenBurnsAmount: 0.13,
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
-                {
-                    type:       'text',
-                    text:       'WHICH SECRET\nSHOCKED YOU MOST?',
-                    x:          540,
-                    y:          500,
-                    fontSize:   60,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   920,
-                    lineHeight: 1.2,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    animation:  'pop',
-                    animDur:    0.32,
-                    startT:     0.2,
-                },
-                {
-                    type:        'notification-card',
-                    x:           540,
-                    y:           1370,
-                    width:       860,
-                    title:       '🔔 Subscribe for the next 5',
-                    body:        'New engineering secrets every week',
-                    bgColor:     'rgba(245,197,24,0.14)',
-                    borderColor: '#f5c518',
-                    titleColor:  '#f5c518',
-                    bodyColor:   '#ffffff',
-                    fontSize:    32,
-                    bodySize:    26,
-                    borderRadius:18,
-                    animation:   'slide-up',
-                    animDur:     0.35,
-                    startT:      1.2,
-                },
-            ],
+          type: 'stock-image-sequence',
+          queries: [
+            'fighter jet cockpit flight control stick',
+            'fighter jet sensors avionics closeup',
+            'fly-by-wire flight control computer diagram',
+            'fighter jet control surfaces wing closeup',
+          ],
+          source: 'serpapi',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-left',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-cw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-right', kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1080, height: 1920,
         },
-    ],
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.60)'], angle: 180,
+        },
+      ],
+    },
+
+    // =========================================================================
+    // SCENE 6 — The Engine That Thinks — stock images only
+    // =========================================================================
+    {
+      transition:         'fade',
+      transitionDuration: 0.6,
+      tts: {
+        text: "The flight computer isn't the only intelligent system onboard. Even the "
+            + "engines have their own digital brain. Modern fighter jets use advanced "
+            + "engine-control computers that constantly monitor fuel flow, air pressure, "
+            + "temperature, and engine speed. Every second, they make tiny adjustments to keep "
+            + "the engine producing maximum performance while preventing damage. Push the "
+            + "throttle forward, and the engine doesn't simply respond with more power. The "
+            + "computer calculates exactly how much fuel and airflow are needed, ensuring the "
+            + "engine delivers smooth, reliable thrust. While one computer keeps the aircraft "
+            + "stable, another keeps its engines operating at peak performance. Together, they "
+            + "transform raw power into controlled flight.",
+        voice: 'bm_george',
+        emotion: 'serious',
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 60,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
+        {
+          type: 'stock-image-sequence',
+          queries: [
+            'jet engine afterburner closeup night',
+            'jet engine turbine blades cutaway',
+            'FADEC engine control computer diagram',
+            'fighter jet engine nozzle thrust closeup',
+          ],
+          source: 'serpapi',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',    kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-right',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-left',   kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1080, height: 1920,
+        },
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.60)'], angle: 180,
+        },
+      ],
+    },
+
+    // =========================================================================
+    // SCENE 7a — Pilot and Machine, opening — AI VIDEO #4 (8s) — its own small scene
+    // =========================================================================
+    {
+      transition:         'fade',
+      transitionDuration: 0.5,
+      tts: {
+        text:  "With all this automation, you might wonder... is the computer flying the "
+             + "jet instead of the pilot? Not quite.",
+        voice: 'bm_george',
+        emotion: 'serious',
+        pauseAfter: 0.2,
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 60,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
+        {
+          type: 'video',
+          // PLACEHOLDER — AI video 4 of 4 — 8 second clip (Scene 7: "Pilot and Machine")
+          url:  'https://files.catbox.moe/v0y351.mp4',
+          maxDuration: 8,
+          loop:  true,
+          x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+        },
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)'], angle: 180,
+        },
+      ],
+    },
+
+    // =========================================================================
+    // SCENE 7b — Pilot and Machine, continuation — stock images, no video
+    // =========================================================================
+    {
+      transition:         'zoom-cut',
+      transitionDuration: 0.3,
+      tts: {
+        text: "The pilot still makes every important decision—when to climb, turn, dive, or "
+            + "avoid danger. But instead of moving the control surfaces directly, those "
+            + "commands are interpreted by the flight-control computer. In an instant, it "
+            + "calculates the best way to perform the maneuver, coordinating the wings, tail, "
+            + "engine, and other control surfaces at the same time. The result is a "
+            + "partnership. The pilot provides the judgment, experience, and mission goals. "
+            + "The computer provides the speed, precision, and constant corrections that no "
+            + "human could ever make alone. Together, they become one of the most capable "
+            + "flying systems ever created.",
+        voice: 'bm_george',
+        emotion: 'serious',
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 60,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
+        {
+          type: 'stock-image-sequence',
+          queries: [
+            'fighter pilot cockpit instruments view',
+            'fighter pilot flying jet portrait',
+            'flight control computer server hardware',
+            'fighter jets formation flight sky',
+          ],
+          source: 'serpapi',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-left',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-cw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-right', kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1080, height: 1920,
+        },
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.60)'], angle: 180,
+        },
+      ],
+    },
+
+    // =========================================================================
+    // SCENE 8 — The Future of Flight — stock images only (closing montage)
+    // =========================================================================
+    {
+      transition:         'fade',
+      transitionDuration: 0.7,
+      tts: {
+        text: "The next time you watch a fighter jet soar across the sky, remember—you're "
+            + "not just seeing powerful engines or advanced aerodynamics. You're witnessing "
+            + "millions of engineering decisions working together in perfect harmony. Modern "
+            + "fighter jets push the limits of what humans can control. Without their flight "
+            + "computers, many would lose the precision and agility that define them. The "
+            + "pilot may sit in the cockpit, but every second, invisible computers are working "
+            + "alongside them, making continuous corrections that keep the aircraft stable. In "
+            + "the end, the greatest breakthrough wasn't just building a faster fighter jet. It "
+            + "was teaching a machine how to fly it.",
+        voice: 'bm_george',
+        emotion: 'serious',
+        pauseAfter: 0.6,
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 60,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 3, maxWidth: 0.88,
+      },
+      layers: [
+        {
+          type: 'stock-image-sequence',
+          queries: [
+            'fighter jet flying sunset silhouette cinematic',
+            'fighter jets formation flight sky',
+            'fighter jet cockpit pilot view sunset',
+            'advanced stealth fighter jet flying',
+          ],
+          source: 'serpapi',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',    kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-right',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'zoom-out',   kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1080, height: 1920,
+        },
+        {
+          type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.65)'], angle: 180,
+        },
+      ],
+    },
+
+  ],
 };
-
-module.exports = config;
