@@ -61,10 +61,10 @@ module.exports = {
             ],
         },
 
-        // ── Scene 2 — Teaser fact (why it's unstable) ───────────────
+        // ── Scene 2 — Raise the stakes, withhold the mechanism ──────
         {
             tts: {
-                text: "Modern fighter jets are built aerodynamically unstable. Without a flight computer correcting them dozens of times per second, they'd tumble out of control.",
+                text: "It's not a flaw. It's not a malfunction. It's on purpose — and there's only one thing standing between this jet and a crash.",
                 voice: 'bm_george',
                 pauseAfter: 0.2,
             },
@@ -81,7 +81,7 @@ module.exports = {
                 },
                 { type: 'overlay', color: 'rgba(0,0,0,0.2)' },
                 {
-                    type: 'text', text: 'UNSTABLE ON\nPURPOSE', x: 540, y: 1550,
+                    type: 'text', text: 'ONE THING KEEPS\nIT IN THE AIR', x: 540, y: 1550,
                     fontSize: 54, fontFamily: 'Arial Black, sans-serif',
                     color: '#ffffff', align: 'center',
                     stroke: true, strokeColor: '#000', strokeWidth: 4,
@@ -89,10 +89,10 @@ module.exports = {
             ],
         },
 
-        // ── Scene 3 — Payoff tease (cockpit → computer → correction) ─
+        // ── Scene 3 — Deepen the cliffhanger, still no resolution ───
         {
             tts: {
-                text: "Every second, the flight computer makes tiny corrections a human pilot never could. That's the only reason this thing stays in the air.",
+                text: "Look inside the cockpit and you'll see it happening in real time. What's actually keeping this jet from tumbling out of the sky? Most pilots don't even fully explain it.",
                 voice: 'bm_george',
                 pauseAfter: 0.2,
             },
@@ -109,8 +109,8 @@ module.exports = {
                 },
                 { type: 'overlay', color: 'rgba(0,0,0,0.2)' },
                 {
-                    type: 'text', text: 'THE COMPUTER\nSAVES IT\nEVERY SECOND', x: 540, y: 1520,
-                    fontSize: 48, fontFamily: 'Arial Black, sans-serif',
+                    type: 'text', text: 'WATCH WHAT\nHAPPENS INSIDE', x: 540, y: 1520,
+                    fontSize: 52, fontFamily: 'Arial Black, sans-serif',
                     color: '#f5c518', align: 'center',
                     stroke: true, strokeColor: '#000', strokeWidth: 4,
                 },
