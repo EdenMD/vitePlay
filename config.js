@@ -1,342 +1,400 @@
-// ============================================================
-//  APEX VIDEO ENGINE — DROP 17B — WHY JETS SHOULDN'T FLY (PEXELS)
-//  Pexels-only sourcing (video + image sequences), fresh hook
-//  Target: ~48-52 seconds | 4 scenes | no bgMusic
-// ============================================================
-const config = {
-    output: {
-        title:      'drop-17b-jets-pexels',
-        format:     'portrait',
-        fps:        30,
-        crf:        24,
-        preset:     'ultrafast',
-        cleanup:    true,
-        postProcess: {
-            grain:            true,
-            grainStrength:    0.028,
-            vignette:         true,
-            vignetteStrength: 0.58,
-        },
+// =============================================================================
+// "The Shell That Could Think" — WWII proximity (VT) fuze documentary
+// APEX Engine config — plain module.exports object, all values hardcoded
+// =============================================================================
+//
+// FORMAT NOTES
+// -----------------------------------------------------------------------------
+// - Long-form again, per your call: landscape 1920x1080, 8 scenes, ~700 words
+//   of narration (matches your own 5-minute pacing formula from earlier).
+// - Learned from the short's render failure: kept video count deliberately
+//   LOW. Only 2 `pexels-video` layers in the whole file (the opening hook and
+//   the mid-video payoff beat) — everything else is `stock-image-sequence`
+//   stills. Stills carry zero per-frame-extraction cost regardless of scene
+//   length, so this keeps total render weight far lower than the short that
+//   choked on 5-6 video clips.
+// - No AI-generated clips this time — none exist yet for this topic. If you
+//   want 1-2 custom AI shots for the hook or the launch-forces scene later,
+//   say the word and I'll slot them in the same way as the fighter jet file.
+// - bgMusic mood set to 'documentary' (measured/educational) rather than
+//   'epic' — this is a slower, unfold-the-mystery story, not a trailer.
+// =============================================================================
+
+module.exports = {
+
+  output: {
+    title:      'proximity-fuze-documentary',
+    format:     'landscape',
+    width:      1920,
+    height:     1080,
+    fps:        30,
+    crf:        18,
+    preset:     'medium',
+    bgMusicVol: 0.16,
+    bgMusic:    { mood: 'documentary' },
+    postProcess: {
+      grain:              true,
+      grainStrength:      0.03,
+      vignette:           true,
+      vignetteStrength:   0.35,
+      scanlines:          false,
+      colorGrade:         '#2a2318',
+      colorGradeStrength: 0.08,
     },
-    defaults: {
-        voice:              'bm_george',
-        transition:         'fade',
-        transitionDuration: 0.3,
+  },
+
+  defaults: {
+    voice:              'bm_george',
+    speed:              1.0,
+    transition:         'fade',
+    transitionDuration:  0.6,
+    effectStrength:      1.0,
+  },
+
+  scenes: [
+
+    // =========================================================================
+    // SCENE 1 — The Shell That Could Think — pexels-video (hook, one of only 2)
+    // =========================================================================
+    {
+      transition:         'zoom-in',
+      transitionDuration: 0.5,
+      tts: {
+        text: "In 1943, artillery crews fired thousands of shells into the sky and hit "
+            + "almost nothing. Enemy aircraft were fast, and timing a shell to explode at "
+            + "the right instant was nearly impossible to calculate in the middle of a "
+            + "battle. Then engineers built something strange: a shell that didn't need a "
+            + "human to time it at all. Inside its nose sat a tiny radio system, built to "
+            + "sense when it was close to a target—and explode at exactly the right moment, "
+            + "on its own. Decades before the transistor existed, a piece of artillery had "
+            + "learned to make its own decision.",
+        emotion: 'serious',
+        pauseAfter: 0.4,
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 58,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 4, maxWidth: 0.82,
+      },
+      layers: [
+        {
+          type: 'pexels-video',
+          query: 'artillery gun firing smoke',
+          orientation: 'landscape',
+          loop: true,
+          x: 0, y: 0, width: 1920, height: 1080, fit: 'cover',
+        },
+        { type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.55)'], angle: 180 },
+      ],
     },
-    scenes: [
 
-        // ── SCENE 1 — HOOK (~10 sec) — pexels-video ───────────────
+    // =========================================================================
+    // SCENE 2 — Why Shells Kept Missing — stills
+    // =========================================================================
+    {
+      tts: {
+        text: "Most anti-aircraft shells worked on timers. Gunners calculated a target's "
+            + "speed and distance, then set a fuse to detonate after a fixed number of "
+            + "seconds. But aircraft changed speed and direction constantly, and wind "
+            + "shifted the math further. A shell only a few meters off in timing would "
+            + "explode in empty air while the aircraft flew through untouched. Even "
+            + "skilled crews were, in effect, guessing—and against fast-moving targets, "
+            + "guessing rarely worked. What the military needed was a fuse that didn't "
+            + "predict where a target would be, but could sense it directly, in real time.",
+        emotion: 'serious',
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 56,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 4, maxWidth: 0.82,
+      },
+      layers: [
         {
-            tts: {
-                text:       'This fighter jet is built so unstable that without a computer fighting its own controls every second, it would tumble out of the sky the moment a pilot tried to fly it alone.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.5,
-            },
-            transition:         'zoom-cut',
-            transitionDuration: 0.2,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:        'pexels-video',
-                    query:       'fighter jet sharp turn sky',
-                    orientation: 'portrait',
-                    loop:        true,
-                    x: 0, y: 0, width: 1080, height: 1920,
-                    fit:         'cover',
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
-                {
-                    type:       'text',
-                    text:       'BUILT TO\nFALL OUT\nOF THE SKY',
-                    x:          540,
-                    y:          700,
-                    fontSize:   80,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    fontWeight: 'bold',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   940,
-                    lineHeight: 1.1,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 6,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   36,
-                    animation:  'pop',
-                    animDur:    0.4,
-                    startT:     0.2,
-                    hookLayer:  true,
-                },
-            ],
+          type: 'stock-image-sequence',
+          queries: [
+            'WWII anti-aircraft gun crew',
+            'artillery shell explosion sky',
+            'WWII fighter plane flying',
+            'anti-aircraft artillery firing',
+          ],
+          source: 'pexels',
+          orientation: 'landscape',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-left',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-cw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-right', kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1920, height: 1080,
         },
+        { type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.55)'], angle: 180 },
+      ],
+    },
 
-        // ── SCENE 2a — WHY IT'S DESIGNED THIS WAY, opener (~5 sec) — pexels-video ──
+    // =========================================================================
+    // SCENE 3 — A Radio Inside a Bullet — stills
+    // =========================================================================
+    {
+      tts: {
+        text: "The solution sounds almost impossible for its time: shrink a working radio "
+            + "transmitter and receiver small enough to fit inside an artillery shell. This "
+            + "tiny radio sent a continuous signal as the shell flew. When that signal "
+            + "reflected off a nearby aircraft and bounced back, the shell sensed the change "
+            + "and knew a target was close. No calculation, no timer—just a shell "
+            + "constantly asking one question as it flew: how close am I right now? The "
+            + "moment the answer crossed a threshold, the shell detonated itself, precisely "
+            + "when it had the best chance of doing damage.",
+        emotion: 'serious',
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 56,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 4, maxWidth: 0.82,
+      },
+      layers: [
         {
-            tts: {
-                text:       'Engineers made this trade on purpose.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.2,
-            },
-            transition:         'wipe-left',
-            transitionDuration: 0.28,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:        'pexels-video',
-                    query:       'fighter jet banking turn',
-                    orientation: 'portrait',
-                    loop:        true,
-                    x: 0, y: 0, width: 1080, height: 1920,
-                    fit:         'cover',
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.42)' },
-                {
-                    type:       'split-reveal',
-                    text:       'UNSTABLE\nON PURPOSE.',
-                    x:          540,
-                    y:          650,
-                    fontSize:   78,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    splitGap:   8,
-                    animDur:    0.4,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   30,
-                    startT:     0.2,
-                },
-            ],
+          type: 'stock-image-sequence',
+          queries: [
+            'vacuum tube radio closeup',
+            'vintage electronics soldering',
+            'radio antenna technology closeup',
+            'artillery shell cutaway',
+          ],
+          source: 'pexels',
+          orientation: 'landscape',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',    kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-right',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-left',   kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1920, height: 1080,
         },
+        { type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.55)'], angle: 180 },
+      ],
+    },
 
-        // ── SCENE 2b — WHY IT'S DESIGNED THIS WAY, continuation (~9 sec) — serpapi stills ──
+    // =========================================================================
+    // SCENE 4 — Surviving Its Own Launch — stills
+    // =========================================================================
+    {
+      tts: {
+        text: "Building the radio was only half the problem. Surviving the shot was "
+            + "almost as hard. When a shell fires from an artillery gun, it experiences "
+            + "forces of nearly twenty thousand times gravity in a fraction of a "
+            + "second—enough to crush ordinary electronics instantly. Engineers had to "
+            + "design vacuum tubes, batteries, and wiring that could survive that violence, "
+            + "then keep working while spinning through the air at high speed. They "
+            + "succeeded. Inside a shell no larger than a bottle, a fragile radio endured a "
+            + "launch that would destroy almost anything else, and kept working.",
+        emotion: 'serious',
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 56,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 4, maxWidth: 0.82,
+      },
+      layers: [
         {
-            tts: {
-                text:       'A stable jet flies safely but turns slowly. An unstable jet fights its own balance constantly — and that instability is exactly what lets it snap into turns no stable aircraft could match.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.4,
-            },
-            transition:         'zoom-cut',
-            transitionDuration: 0.2,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:     'stock-image-sequence',
-                    queries: [
-                        'fighter jet cockpit closeup',
-                        'military jet flying fast',
-                        'fighter jet control panel',
-                    ],
-                    source:   'serpapi',
-                    fit:      'cover',
-                    kenBurnsSequence: [
-                        { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
-                        { kenBurns: 'rotate-cw', kenBurnsAmount: 0.28, rotateDeg: 9 },
-                        { kenBurns: 'pan-left',  kenBurnsAmount: 0.28 },
-                    ],
-                    x: 0, y: 0, width: 1080, height: 1920,
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.42)' },
-                {
-                    type:       'text',
-                    text:       'Traded stability\nfor speed of turn.',
-                    x:          540,
-                    y:          650,
-                    fontSize:   46,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   860,
-                    lineHeight: 1.3,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 4,
-                    animation:  'fade',
-                    animDur:    0.35,
-                    startT:     0.3,
-                },
-            ],
+          type: 'stock-image-sequence',
+          queries: [
+            'artillery cannon firing',
+            'artillery shell casing closeup',
+            'military ammunition factory',
+            'artillery gun barrel closeup',
+          ],
+          source: 'pexels',
+          orientation: 'landscape',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-left',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-cw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-right', kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1920, height: 1080,
         },
+        { type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.55)'], angle: 180 },
+      ],
+    },
 
-        // ── SCENE 3 — THE FIX (~14 sec) — pexels-video ────────────
+    // =========================================================================
+    // SCENE 5 — Fewer Shells, More Hits — pexels-video (2nd and last video)
+    // =========================================================================
+    {
+      transition:         'zoom-cut',
+      transitionDuration: 0.3,
+      tts: {
+        text: "Once deployed, the results were immediate. Anti-aircraft units needed far "
+            + "fewer shells to bring down a single enemy aircraft. Later in the war, "
+            + "against artillery shells fired at ground troops, the same fuse proved just "
+            + "as effective—detonating directly above enemy formations at the exact height "
+            + "that caused the most damage. For the first time, a weapon wasn't just aimed "
+            + "by a person. It was making its own final decision about exactly when to act.",
+        emotion: 'serious',
+        pauseAfter: 0.2,
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 56,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 4, maxWidth: 0.82,
+      },
+      layers: [
         {
-            tts: {
-                text:       'This is called fly-by-wire. A flight computer reads the jet\'s position hundreds of times per second and corrects it before a human pilot could ever react. If that computer fails mid-flight, the aircraft becomes uncontrollable in seconds.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.4,
-            },
-            transition:         'glitch',
-            transitionDuration: 0.24,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:        'pexels-video',
-                    query:       'server hardware technology closeup',
-                    orientation: 'portrait',
-                    loop:        true,
-                    x: 0, y: 0, width: 1080, height: 1920,
-                    fit:         'cover',
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.52)' },
-                {
-                    type:       'text',
-                    text:       'HUNDREDS OF\nCORRECTIONS.\nEVERY SECOND.',
-                    x:          540,
-                    y:          650,
-                    fontSize:   66,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   880,
-                    lineHeight: 1.15,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   24,
-                    animation:  'pop',
-                    animDur:    0.35,
-                    startT:     0.3,
-                },
-                {
-                    type:       'text',
-                    text:       'No human pilot\ncould react that fast.',
-                    x:          540,
-                    y:          1000,
-                    fontSize:   46,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   900,
-                    lineHeight: 1.25,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 4,
-                    animation:  'fade',
-                    animDur:    0.35,
-                    startT:     1.3,
-                },
-            ],
+          type: 'pexels-video',
+          query: 'artillery firing night explosion',
+          orientation: 'landscape',
+          loop: true,
+          x: 0, y: 0, width: 1920, height: 1080, fit: 'cover',
         },
+        { type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.55)'], angle: 180 },
+      ],
+    },
 
-        // ── SCENE 4 — PUNCH + CTA (~11 sec) — pexels-video ────────
+    // =========================================================================
+    // SCENE 6 — A Closely Guarded Secret — stills
+    // =========================================================================
+    {
+      transition:         'fade',
+      transitionDuration: 0.6,
+      tts: {
+        text: "For most of the war, this fuse was treated as one of the most closely "
+            + "guarded secrets on either side. Military leaders worried that if a single "
+            + "dud shell was recovered intact, enemy engineers could study it and copy the "
+            + "design. For years, it was used almost exclusively over water and "
+            + "unpopulated areas, specifically so that any shell that failed to detonate "
+            + "would sink or vanish rather than fall into enemy hands. Only later was it "
+            + "cleared for full battlefield use, once the risk of losing the secret "
+            + "mattered less than winning with it.",
+        emotion: 'serious',
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 56,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 4, maxWidth: 0.82,
+      },
+      layers: [
         {
-            tts: {
-                text:       'The most advanced fighter jets on earth are built to fail on their own — kept alive purely by computers correcting them faster than any pilot could. Subscribe for more machines that shouldn\'t work.',
-                speed:      0.88,
-                emotion:    'dramatic',
-                pauseAfter: 0.6,
-            },
-            transition:         'zoom-cut',
-            transitionDuration: 0.2,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
-            layers: [
-                {
-                    type:        'pexels-video',
-                    query:       'fighter jet flying sunset',
-                    orientation: 'portrait',
-                    loop:        true,
-                    x: 0, y: 0, width: 1080, height: 1920,
-                    fit:         'cover',
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
-                {
-                    type:       'text',
-                    text:       'BUILT TO FAIL.\nKEPT ALIVE\nBY CODE.',
-                    x:          540,
-                    y:          420,
-                    fontSize:   62,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   940,
-                    lineHeight: 1.2,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   26,
-                    animation:  'slide-up',
-                    animDur:    0.34,
-                    startT:     0.3,
-                },
-                {
-                    type:        'notification-card',
-                    x:           540,
-                    y:           1370,
-                    width:       860,
-                    title:       '🔔 Subscribe for more',
-                    body:        'Machines that shouldn\'t work — but do',
-                    bgColor:     'rgba(245,197,24,0.14)',
-                    borderColor: '#f5c518',
-                    titleColor:  '#f5c518',
-                    bodyColor:   '#ffffff',
-                    fontSize:    34,
-                    bodySize:    26,
-                    borderRadius:18,
-                    animation:   'slide-up',
-                    animDur:     0.35,
-                    startT:      1.5,
-                },
-            ],
+          type: 'stock-image-sequence',
+          queries: [
+            'WWII classified documents',
+            'military intelligence briefing room',
+            'naval ship ocean WWII',
+            'vintage top secret stamp',
+          ],
+          source: 'pexels',
+          orientation: 'landscape',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',    kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-right',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-left',   kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1920, height: 1080,
         },
-    ],
+        { type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.55)'], angle: 180 },
+      ],
+    },
+
+    // =========================================================================
+    // SCENE 7 — The Blueprint for Every Smart Weapon After It — stills
+    // =========================================================================
+    {
+      tts: {
+        text: "The proximity fuse didn't just win battles. It introduced an idea that "
+            + "never left weapons design again: sensing instead of calculating. Every "
+            + "guided missile that adjusts its course mid-flight, every smart bomb that "
+            + "corrects itself seconds before impact, traces back to the same principle "
+            + "proven in that shell—letting a weapon sense its environment and react, "
+            + "instead of simply following a fixed plan.",
+        emotion: 'serious',
+        pauseAfter: 0.3,
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 56,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 4, maxWidth: 0.82,
+      },
+      layers: [
+        {
+          type: 'stock-image-sequence',
+          queries: [
+            'guided missile launch',
+            'modern missile flying sky',
+            'precision guided bomb',
+            'military control room technology',
+          ],
+          source: 'pexels',
+          orientation: 'landscape',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-left',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-cw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'pan-right', kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1920, height: 1080,
+        },
+        { type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.55)'], angle: 180 },
+      ],
+    },
+
+    // =========================================================================
+    // SCENE 8 — The Machine That Learned to Notice — stills (closer)
+    // =========================================================================
+    {
+      transition:         'fade',
+      transitionDuration: 0.7,
+      tts: {
+        text: "The next time you see a guided missile adjust its path in the final "
+            + "second before impact, remember where that idea started. Not with a "
+            + "computer chip, and not with artificial intelligence—but with a shell small "
+            + "enough to hold in one hand, built to sense the world around it and act "
+            + "without waiting for instructions. The greatest leap wasn't making weapons "
+            + "more powerful. It was giving them the ability to notice what was happening "
+            + "around them, and decide for themselves.",
+        emotion: 'serious',
+        pauseAfter: 0.6,
+      },
+      captions: {
+        style: 'highlight', position: 'bottom', fontSize: 56,
+        color: '#ffffff', highlightColor: '#ffdd00',
+        bgColor: 'rgba(0,0,0,0.60)', wordsPerChunk: 4, maxWidth: 0.82,
+      },
+      layers: [
+        {
+          type: 'stock-image-sequence',
+          queries: [
+            'missile flying sky sunset',
+            'modern military technology',
+            'advanced weapon system closeup',
+            'military aircraft sunset silhouette',
+          ],
+          source: 'pexels',
+          orientation: 'landscape',
+          fit: 'cover',
+          kenBurnsSequence: [
+            { kenBurns: 'zoom-in',    kenBurnsAmount: 0.3 },
+            { kenBurns: 'pan-right',  kenBurnsAmount: 0.3 },
+            { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+            { kenBurns: 'zoom-out',   kenBurnsAmount: 0.3 },
+          ],
+          x: 0, y: 0, width: 1920, height: 1080,
+        },
+        { type: 'gradient', gradientType: 'linear',
+          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.65)'], angle: 180 },
+      ],
+    },
+
+  ],
 };
-
-module.exports = config;
