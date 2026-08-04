@@ -1,312 +1,127 @@
-// =============================================================================
-// "The Shell That Could Think" — SHORT (50s target)
-// APEX Engine config — plain module.exports object, all values hardcoded
-// =============================================================================
+// config.gun-suppressor-irony.js
+// Same exact blueprint/story-intent as the Gatling/Tommy Gun cuts, different
+// weapon: the firearm suppressor ("silencer"). Real, documented: Hiram
+// Percy Maxim — the same inventor behind the automobile muffler — patented
+// it in 1909 as a hearing-safety device for hunters and sport shooters,
+// sold openly through hardware stores and mail-order catalogs for decades.
+// Then came the 1934 National Firearms Act, passed in the panic following
+// Capone-era gangster violence — and suppressors got regulated exactly
+// like machine guns, taxed at $200 (a huge sum at the time), despite real
+// criminals almost never actually using them. Same irony arc as Gatling/
+// Tommy Gun — a device meant to protect people got legally treated as one
+// of the most dangerous things you could own.
 //
-// - 9:16 vertical, 1080x1920 — Shorts/Reels/TikTok dimensions.
-// - Only 2 `pexels-video` layers in the whole file (hook + payoff beat) —
-//   same lesson as the fixed fighter-jet short: keep real video clips few,
-//   let `stock-image-sequence` stills carry most of the runtime since they
-//   don't cost per-frame extraction the way video does.
-// - No beat/bpm — bgMusic uses a mood track only, output.beat isn't set.
-// - Closes with "the full story is on my channel" since the long-form cut
-//   of this one hasn't been posted yet.
-// =============================================================================
+// Rotate Ken Burns actually used this time (2 spots) — the old template's
+// "image roll... pan + rotate combo" comment never matched its real
+// kenBurns value (it was still 'zoom-out'). Fixed here for real.
+//
+// Run with:  VIDEO_CONFIG=config.gun-suppressor-irony.js node engine-ci.js
 
 module.exports = {
-
-  output: {
-    title:      'proximity-fuze-short',
-    format:     'portrait',
-    width:      1080,
-    height:     1920,
-    fps:        30,
-    crf:        18,
-    preset:     'medium',
-    bgMusicVol: 0.20,
-    bgMusic:    { mood: 'epic' },   // valid mood, no beat/bpm anywhere
-    postProcess: {
-      grain:              true,
-      grainStrength:      0.035,
-      vignette:           true,
-      vignetteStrength:   0.45,
-      scanlines:          false,
-      colorGrade:         '#2a2318',
-      colorGradeStrength: 0.08,
-    },
-  },
-
-  defaults: {
-    voice:              'bm_george',
-    speed:              1.05,
-    transition:         'zoom-cut',
-    transitionDuration:  0.25,
-    effectStrength:      1.0,
-  },
-
-  scenes: [
-
-    // =========================================================================
-    // SCENE 1 — HOOK — pexels-video (1 of 2 videos total)
-    // =========================================================================
-    {
-      transition:         'zoom-in',
-      transitionDuration: 0.4,
-      tts: {
-        text: "In 1943, artillery crews were firing thousands of shells and hitting almost "
-            + "nothing—until a shell learned to make its own decision, decades before the "
-            + "transistor even existed.",
-        emotion: 'dramatic',
-        pauseAfter: 0.25,
-      },
-      captions: {
-        style: 'highlight', position: 'bottom', fontSize: 60,
-        color: '#ffffff', highlightColor: '#f5c518',
-        wordsPerChunk: 3, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 7,
-      },
-      layers: [
-        {
-          type: 'pexels-video',
-          query: 'artillery gun firing smoke',
-          orientation: 'portrait',
-          loop: true,
-          x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-        },
-        { type: 'overlay', color: 'rgba(0,0,0,0.45)' },
-        {
-          type: 'text',
-          text: 'A SHELL THAT\nLEARNED TO\nTHINK.',
-          x: 540, y: 650,
-          fontSize: 80, fontFamily: 'Arial Black, Impact, sans-serif',
-          fontWeight: 'bold', color: '#ffffff', align: 'center',
-          maxWidth: 940, lineHeight: 1.1,
-          gradient: ['#f5c518', '#ff8c00'],
-          stroke: true, strokeColor: '#000000', strokeWidth: 6,
-          glow: true, glowColor: '#f5c518', glowBlur: 32,
-          animation: 'pop', animDur: 0.4, startT: 0.15,
-          hookLayer: true,
-        },
-      ],
+    output: {
+        title:  'the-safety-device-that-got-banned-like-a-machine-gun',
+        format: 'portrait',
+        fps:    30,
+        crf:    23,
+        preset: 'fast',
+        postProcess: { grain: true, grainStrength: 0.02, vignette: true, vignetteStrength: 0.35 },
     },
 
-    // =========================================================================
-    // SCENE 2 — stills
-    // =========================================================================
-    {
-      tts: {
-        text: "No timer. No calculation. Just a tiny radio, sensing exactly how close "
-            + "it was to a target.",
-        emotion: 'dramatic',
-        pauseAfter: 0.15,
-      },
-      captions: {
-        style: 'highlight', position: 'bottom', fontSize: 60,
-        color: '#ffffff', highlightColor: '#f5c518',
-        wordsPerChunk: 3, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 7,
-      },
-      layers: [
-        {
-          type: 'stock-image-sequence',
-          queries: [
-            'vacuum tube radio closeup',
-            'WWII anti-aircraft gun crew',
-          ],
-          source: 'serpapi',
-          orientation: 'portrait',
-          fit: 'cover',
-          kenBurnsSequence: [
-            { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
-            { kenBurns: 'rotate-cw', kenBurnsAmount: 0.3, rotateDeg: 10 },
-          ],
-          x: 0, y: 0, width: 1080, height: 1920,
-        },
-        { type: 'gradient', gradientType: 'linear',
-          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.5)'], angle: 180 },
-      ],
-    },
+    defaults: { voice: 'bm_george', transitionDuration: 0.35 },
 
-    // =========================================================================
-    // SCENE 3 — stills
-    // =========================================================================
-    {
-      tts: {
-        text: "It had to survive twenty thousand times gravity at launch—then keep "
-            + "working while spinning through the air.",
-        emotion: 'dramatic',
-        pauseAfter: 0.15,
-      },
-      captions: {
-        style: 'highlight', position: 'bottom', fontSize: 60,
-        color: '#ffffff', highlightColor: '#f5c518',
-        wordsPerChunk: 3, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 7,
-      },
-      layers: [
+    scenes: [
+        // ══ OPEN — in medias res, no wind-up ══════════════════════════════
         {
-          type: 'stock-image-sequence',
-          queries: [
-            'artillery cannon firing',
-            'artillery shell casing closeup',
-          ],
-          source: 'serpapi',
-          orientation: 'portrait',
-          fit: 'cover',
-          kenBurnsSequence: [
-            { kenBurns: 'zoom-in',    kenBurnsAmount: 0.3 },
-            { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10 },
-          ],
-          x: 0, y: 0, width: 1080, height: 1920,
+            tts: { text: "So Hiram Percy Maxim had an idea. If baffles could quiet a car engine, the same trick could quiet a gunshot — and finally protect a hunter's hearing.", voice: 'bm_george', pauseAfter: 0.5 },
+            transition: 'zoom-out',
+            captions: true,
+            layers: [
+                { type: 'stock-image', query: 'gun inventor workshop tools sketching', source: 'serpapi', orientation: 'portrait', kenBurns: 'zoom-out', kenBurnsAmount: 0.52, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover' },
+                { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
+            ],
         },
-        { type: 'gradient', gradientType: 'linear',
-          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.5)'], angle: 180 },
-      ],
-    },
+        {
+            tts: { text: "He called it common sense: sportsmen were going deaf one shot at a time, and a simple tube of baffles could stop it.", voice: 'bm_george', pauseAfter: 0.6 },
+            transition: 'fade',
+            captions: true,
+            layers: [
+                { type: 'gradient', gradientType: 'radial', colors: ['#1a0000', '#000000'], vignette: true, vignetteStrength: 0.45 },
+                { type: 'quote-card', text: 'He believed a simple tube of steel could save a hunter\u2019s hearing.', x: 540, y: 860, width: 900, fontSize: 40, accentColor: '#ff3b5c', showCard: true, showLines: true, animDur: 0.6 },
+            ],
+        },
+        {
+            tts: { text: "By 1909 his patent was ready: a small steel cylinder that screwed onto the barrel and quieted a gunshot almost completely. He called it the Maxim Silencer.", voice: 'bm_george', pauseAfter: 0.4 },
+            transition: 'iris',
+            captions: true,
+            layers: [
+                { type: 'stock-image', query: 'vintage gun silencer patent device closeup', source: 'serpapi', orientation: 'portrait', kenBurns: 'zoom-in', kenBurnsAmount: 0.56, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover' },
+                { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
+            ],
+        },
 
-    // =========================================================================
-    // SCENE 4 — pexels-video (2nd and last video)
-    // =========================================================================
-    {
-      transition:         'glitch',
-      transitionDuration: 0.26,
-      tts: {
-        text: "Once deployed, anti-aircraft units needed far fewer shells to hit a "
-            + "single target.",
-        emotion: 'dramatic',
-        pauseAfter: 0.15,
-      },
-      captions: {
-        style: 'highlight', position: 'bottom', fontSize: 60,
-        color: '#ffffff', highlightColor: '#f5c518',
-        wordsPerChunk: 3, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 7,
-      },
-      layers: [
+        // ══ NEW — added emotional beat ════════════════════════════════════
         {
-          type: 'pexels-video',
-          query: 'artillery firing night explosion',
-          orientation: 'portrait',
-          loop: true,
-          x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+            tts: { text: "Somewhere in hunting camps and shooting ranges across the country were sportsmen who had already spent years slowly losing their hearing, one unprotected shot at a time.", voice: 'bm_george', pauseAfter: 0.6 },
+            transition: 'split-v',
+            captions: true,
+            layers: [
+                { type: 'stock-image', query: 'vintage hunter shooting rifle range 1900s', source: 'serpapi', orientation: 'portrait', kenBurns: 'rotate-ccw', kenBurnsAmount: 0.5, rotateDeg: 9, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover' },
+                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
+            ],
         },
-        { type: 'gradient', gradientType: 'linear',
-          colors: ['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.5)'], angle: 180 },
-      ],
-    },
 
-    // =========================================================================
-    // SCENE 5 — stills
-    // =========================================================================
-    {
-      transition:         'zoom-cut',
-      transitionDuration: 0.2,
-      tts: {
-        text: "It was one of the most closely guarded secrets of the entire war.",
-        emotion: 'dramatic',
-        pauseAfter: 0.15,
-      },
-      captions: {
-        style: 'highlight', position: 'bottom', fontSize: 60,
-        color: '#ffffff', highlightColor: '#f5c518',
-        wordsPerChunk: 3, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 7,
-      },
-      layers: [
+        // ══ THE IRONY / TURN ══════════════════════════════════════════════
         {
-          type: 'stock-image-sequence',
-          queries: [
-            'WWII classified documents',
-            'vintage top secret stamp',
-          ],
-          source: 'serpapi',
-          orientation: 'portrait',
-          fit: 'cover',
-          kenBurnsSequence: [
-            { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
-            { kenBurns: 'pan-left',  kenBurnsAmount: 0.3 },
-          ],
-          x: 0, y: 0, width: 1080, height: 1920,
+            tts: { text: "Then came 1934 — a wave of gangster panic swept through Washington after Capone and the St. Valentine's Day Massacre. Congress decided to regulate his quiet little safety device exactly like a machine gun.", voice: 'bm_george', pauseAfter: 0.5 },
+            transition: 'zoom-cut',
+            captions: true,
+            layers: [
+                { type: 'stock-image', query: '1930s congress capitol building historic', source: 'serpapi', orientation: 'portrait', kenBurns: 'pan-left', kenBurnsAmount: 0.5, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover' },
+                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
+            ],
         },
-        { type: 'gradient', gradientType: 'linear',
-          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.5)'], angle: 180 },
-      ],
-    },
+        {
+            // the "image roll" beat — now genuinely using the rotate Ken Burns, not just the transition name
+            tts: { text: "Newspapers and pulp novels had spent a decade turning the silencer into the assassin's favorite tool — even though real criminals almost never actually used one.", voice: 'bm_george', pauseAfter: 0.5 },
+            transition: 'rotate',
+            captions: true,
+            layers: [
+                { type: 'stock-image', query: 'vintage pulp crime novel gangster illustration', source: 'serpapi', orientation: 'portrait', kenBurns: 'rotate-cw', kenBurnsAmount: 0.55, rotateDeg: 9, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover' },
+                { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
+            ],
+        },
+        {
+            tts: { text: "A device built purely to protect hearing now required a two hundred dollar federal tax stamp — the exact same tax charged for owning a fully automatic machine gun.", voice: 'bm_george', pauseAfter: 0.6 },
+            transition: 'split-h',
+            captions: true,
+            layers: [
+                { type: 'gradient', gradientType: 'linear', colors: ['#12060a', '#050505'], angle: 150 },
+                { type: 'stat-counter', value: 200, suffix: ' TAX', label: 'FEDERAL TAX ON A HEARING-SAFETY DEVICE',
+                  x: 540, y: 900, fontSize: 130, labelFontSize: 30, color: '#ff3b5c', gradient: ['#ff3b5c', '#ffb703'],
+                  glow: true, glowColor: '#ff3b5c', glowBlur: 28, animDur: 1.2 },
+            ],
+        },
 
-    // =========================================================================
-    // SCENE 6 — stills, the payoff line
-    // =========================================================================
-    {
-      transition:         'zoom-cut',
-      transitionDuration: 0.2,
-      tts: {
-        text: "Every guided missile flying today, every smart bomb that corrects itself "
-            + "mid-flight, still uses the same idea first proven inside that shell.",
-        emotion: 'dramatic',
-        pauseAfter: 0.3,
-      },
-      captions: {
-        style: 'highlight', position: 'bottom', fontSize: 60,
-        color: '#ffffff', highlightColor: '#f5c518',
-        wordsPerChunk: 3, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 7,
-      },
-      layers: [
+        // ══ CLOSE — the emotional turn ════════════════════════════════════
         {
-          type: 'stock-image-sequence',
-          queries: [
-            'guided missile launch',
-            'modern missile flying sky',
-          ],
-          source: 'serpapi',
-          orientation: 'portrait',
-          fit: 'cover',
-          kenBurnsSequence: [
-            { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
-            { kenBurns: 'rotate-cw', kenBurnsAmount: 0.3, rotateDeg: 10 },
-          ],
-          x: 0, y: 0, width: 1080, height: 1920,
+            tts: { text: "He spent his life trying to make a gunshot safer to hear. The law ended up treating his invention like the deadliest weapon in the room.", voice: 'bm_george', pauseAfter: 0.7 },
+            transition: 'zoom-in',
+            captions: true,
+            layers: [
+                { type: 'gradient', gradientType: 'radial', colors: ['#1a0000', '#000000'], vignette: true, vignetteStrength: 0.5 },
+                { type: 'quote-card', text: 'He tried to invent a quieter gunshot. He invented one of the most heavily regulated objects in America instead.', x: 540, y: 860, width: 920, fontSize: 42, accentColor: '#ff3b5c', showCard: true, showLines: true, animDur: 0.6 },
+            ],
         },
-        { type: 'gradient', gradientType: 'linear',
-          colors: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.55)'], angle: 180 },
-      ],
-    },
 
-    // =========================================================================
-    // CTA — single still, simple closer
-    // =========================================================================
-    {
-      transition:         'zoom-cut',
-      transitionDuration: 0.3,
-      tts: {
-        text: "The full story is dropping on my channel soon.",
-        emotion: 'dramatic',
-      },
-      captions: {
-        style: 'highlight', position: 'bottom', fontSize: 60,
-        color: '#ffffff', highlightColor: '#f5c518',
-        wordsPerChunk: 3, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 7,
-      },
-      layers: [
+        // ══ SUBSCRIBE — big, centered Giphy sticker ══════════════════════
         {
-          type: 'stock-image',
-          query: 'missile flying sky sunset',
-          source: 'serpapi',
-          orientation: 'portrait',
-          imageIndex: 0,
-          x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-          kenBurns: 'zoom-in',
-          kenBurnsAmount: 0.15,
+            tts: { text: "Subscribe now — the next one might be even harder to believe.", voice: 'bm_george', pauseAfter: 0.4 },
+            transition: 'zoom-cut',
+            captions: true,
+            layers: [
+                { type: 'gradient', gradientType: 'radial', colors: ['#1a0000', '#0a0000', '#000000'], vignette: true, vignetteStrength: 0.5 },
+                { type: 'giphy', query: 'subscribe button animated', sticker: true, x: 260, y: 680, width: 560, height: 560 },
+            ],
         },
-        { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
-        {
-          type: 'text',
-          text: 'FULL STORY\nON MY CHANNEL',
-          x: 540, y: 500,
-          fontSize: 68, fontFamily: 'Arial Black, Impact, sans-serif',
-          fontWeight: 'bold', color: '#ffffff', align: 'center',
-          maxWidth: 900, lineHeight: 1.15,
-          gradient: ['#f5c518', '#ff8c00'],
-          stroke: true, strokeColor: '#000000', strokeWidth: 5,
-          glow: true, glowColor: '#f5c518', glowBlur: 26,
-          animation: 'pop', animDur: 0.4, startT: 0.1,
-        },
-      ],
-    },
-
-  ],
+    ],
 };
