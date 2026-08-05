@@ -1,5 +1,5 @@
-// config.project-pluto.js
-// "Project Pluto" — the nuclear-powered cruise missile that irradiated everything underneath it.
+// config.sr71-blackbird.js
+// "SR-71 Blackbird" — the fastest air-breathing aircraft ever built.
 // 3 scenes, bm_george voice, paper-sticker-detective-board style.
 //
 // HOW THE IMAGES WORK:
@@ -13,12 +13,12 @@
 // commands are omitted — stickers, icons, arrows, and strings still render.
 //
 // OPTIMIZED SEARCH QUERIES (short + visual, under 125 chars):
-//   - "SLAM missile concept 1960s"
-//   - "Tory-II reactor test stand"
-//   - "SLAM missile test cart"
-//   - "SLAM supersonic missile"
+//   - "SR-71 Blackbird flight"
+//   - "SR-71 Blackbird cockpit"
+//   - "SR-71 Blackbird refueling"
+//   - "SR-71 Blackbird afterburner"
 //
-// Run with:  VIDEO_CONFIG=config.project-pluto.js node engine-ci.js
+// Run with:  VIDEO_CONFIG=config.sr71-blackbird.js node engine-ci.js
 
 const https = require('https');
 const http = require('http');
@@ -27,7 +27,7 @@ const http = require('http');
 async function fetchImage(query, index = 0) {
     const key = process.env.SERPAPI_API_KEY;
     if (!key) {
-        console.warn('[PlutoConfig] SERPAPI_API_KEY not set — skipping photo:', query);
+        console.warn('[SR71Config] SERPAPI_API_KEY not set — skipping photo:', query);
         return null;
     }
 
@@ -46,14 +46,14 @@ async function fetchImage(query, index = 0) {
         const pick = results[index % results.length];
         if (!pick?.original) return null;
 
-        console.log(`[PlutoConfig] Downloading: ${pick.original.slice(0, 70)}`);
+        console.log(`[SR71Config] Downloading: ${pick.original.slice(0, 70)}`);
         const b64 = await urlToBase64(pick.original);
         if (!b64) return null;
 
         const mime = b64.startsWith('/9j/') || b64.startsWith('iVBOR') ? 'image/jpeg' : 'image/jpeg';
         return `data:${mime};base64,${b64}`;
     } catch (e) {
-        console.warn(`[PlutoConfig] fetchImage failed for "${query}":`, e.message?.slice(0, 80));
+        console.warn(`[SR71Config] fetchImage failed for "${query}":`, e.message?.slice(0, 80));
         return null;
     }
 }
@@ -90,30 +90,24 @@ function urlToBase64(imageUrl) {
     });
 }
 
-// ── Helper: add a photo command only if src resolved ──
-function addPhoto(commands, src, cmd) {
-    if (!src) return;
-    commands.push({ ...cmd, src });
-}
-
 // ── Main async config ────────────────────────────────────────────────────
 module.exports = (async () => {
 
-    console.log('[PlutoConfig] Pre-fetching images from SerpAPI...');
+    console.log('[SR71Config] Pre-fetching images from SerpAPI...');
 
     // ── OPTIMIZED QUERIES ── short, visual, under 125 chars ──────────────
-    const [imgMissile, imgReactor, imgTest, imgConcept] = await Promise.all([
-        fetchImage('SLAM missile concept 1960s', 0),
-        fetchImage('Tory-II reactor test stand', 0),
-        fetchImage('SLAM missile test cart', 0),
-        fetchImage('SLAM supersonic missile', 0),
+    const [imgFlight, imgCockpit, imgRefuel, imgAfterburner] = await Promise.all([
+        fetchImage('SR-71 Blackbird flight', 0),
+        fetchImage('SR-71 Blackbird cockpit', 0),
+        fetchImage('SR-71 Blackbird refueling', 0),
+        fetchImage('SR-71 Blackbird afterburner', 0),
     ]);
 
-    console.log('[PlutoConfig] Images ready. Building config...');
+    console.log('[SR71Config] Images ready. Building config...');
 
     return {
         output: {
-            title: 'project-pluto-documentary',
+            title: 'sr71-blackbird-documentary',
             format: 'portrait',
             fps: 30,
             crf: 23,
@@ -121,17 +115,17 @@ module.exports = (async () => {
         },
 
         defaults: {
-            voice: 'am_puck',
+            voice: 'bm_george',
             transition: 'fade',
             transitionDuration: 0.35,
         },
 
         scenes: [
 
-            // ── Scene 1 — Hook: what WAS Project Pluto ─────────────────────
+            // ── Scene 1 — Hook: the fastest aircraft ever ───────────────────
             {
                 tts: {
-                    text: "In the 1950s, the US built a nuclear-powered cruise missile. It was called Project Pluto. It could fly at Mach three, for days, skimming the treetops. It left a trail of radiation everywhere it went. The Air Force called it an 'unmanned nuclear bomber.' The rest of the world called it insane.",
+                    text: "The SR-71 Blackbird is the fastest air-breathing aircraft ever built. It flies at Mach three point two. It leaks fuel on the ground because the skin expands six inches at speed. The titanium was bought in secret from the Soviet Union.",
                     voice: 'bm_george',
                     pauseAfter: 0.4,
                 },
@@ -140,7 +134,7 @@ module.exports = (async () => {
                     { type: 'background', color: '#e8dfcd' },
                     {
                         type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=pluto-s1',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=sr71-s1',
                         audioSync: true,
                         cursor: false,
                         waitFor: '[data-ready="1"]',
@@ -148,91 +142,75 @@ module.exports = (async () => {
                         viewport: { width: 1080, height: 1920 },
                         x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
                         data: {
-                            title: 'PROJECT PLUTO',
+                            title: 'SR-71 BLACKBIRD',
                             theme: {
                                 paper: '#e8dfcd',
                                 ink: '#1a1a1a',
                                 accent: '#a93226',
-                                accent2: '#2e4053',
+                                accent2: '#1a5276',
                                 shadow: 'rgba(20,16,10,0.38)',
                             },
                             commands: [
-                                // Main missile concept photo — center top
-                                ...(imgMissile ? [{
+                                // Main flight photo — center
+                                ...(imgFlight ? [{
                                     id: 'photo1',
-                                    type: 'photo', src: imgMissile,
+                                    type: 'photo', src: imgFlight,
                                     x: 540, y: 520,
                                     width: 800, height: 440,
-                                    rotate: -3, pinStyle: 'pins',
-                                    caption: 'SLAM — SUPERSONIC LOW-ALTITUDE MISSILE',
+                                    rotate: -2, pinStyle: 'tape',
+                                    caption: 'SR-71 BLACKBIRD — MACH 3.2',
                                     trigger: { atSeconds: 0.2 },
                                 }] : []),
 
-                                // Hook sticker — "NUCLEAR CRUISE MISSILE" top left
+                                // "MACH 3.2" sticker — top left
                                 {
                                     id: 's1',
-                                    type: 'sticker', text: 'NUCLEAR CRUISE MISSILE',
+                                    type: 'sticker', text: 'MACH 3.2',
                                     x: 280, y: 180,
-                                    size: 62,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
+                                    size: 68,
+                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
                                     rotate: -2,
-                                    trigger: { wordText: 'pluto', occurrence: 1 },
-                                },
-
-                                // "MACH 3" sticker — top right
-                                {
-                                    id: 's2',
-                                    type: 'sticker', text: 'MACH 3',
-                                    x: 800, y: 190,
-                                    size: 58,
-                                    color: '#1a1a1a', stroke: '#ffffff',
-                                    rotate: 3,
                                     trigger: { wordText: 'mach', occurrence: 1 },
                                 },
 
-                                // "FLY FOR DAYS" label — below the Mach sticker
+                                // "LEAKS FUEL" sticker — top right
+                                {
+                                    id: 's2',
+                                    type: 'sticker', text: 'LEAKS FUEL',
+                                    x: 800, y: 180,
+                                    size: 58,
+                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    rotate: 3,
+                                    trigger: { wordText: 'leaks', occurrence: 1 },
+                                },
+
+                                // Label: expands 6 inches
                                 {
                                     id: 'l1',
-                                    type: 'label', text: 'flies for days, non-stop',
-                                    size: 38, x: 800, y: 280,
-                                    color: '#2e4053', rotate: 2,
-                                    trigger: { afterId: 's2', offset: 0.3 },
+                                    type: 'label', text: 'skin expands 6 inches at speed',
+                                    size: 38, x: 540, y: 280,
+                                    color: '#a93226', rotate: 1,
+                                    trigger: { wordText: 'expands', occurrence: 1 },
                                 },
 
-                                // Radiation icon — left side, aligned with photo lower edge
+                                // Thermometer icon — left side
                                 {
                                     id: 'i1',
-                                    type: 'icon', icon: 'mdi:radioactive', size: 130,
+                                    type: 'icon', icon: 'mdi:thermometer', size: 110,
                                     x: 160, y: 600,
                                     bg: 'circle', color: '#e67e22',
-                                    trigger: { wordText: 'radiation', occurrence: 1 },
+                                    trigger: { wordText: 'speed', occurrence: 1 },
                                 },
 
-                                // Label beside the radiation icon
-                                {
-                                    id: 'l2',
-                                    type: 'label', text: 'irradiated everything underneath it',
-                                    size: 36, x: 180, y: 740,
-                                    color: '#a93226', rotate: -1,
-                                    trigger: { afterId: 'i1', offset: 0.2 },
-                                },
-
-                                // Underline that label
-                                {
-                                    id: 'ul1',
-                                    type: 'underline', target: 'l2', color: '#a93226',
-                                    trigger: { afterId: 'l2', offset: 0.4 },
-                                },
-
-                                // Bottom sticker — "UNMANNED NUCLEAR BOMBER"
+                                // "TITANIUM FROM THE USSR" sticker — bottom
                                 {
                                     id: 's3',
-                                    type: 'sticker', text: 'UNMANNED NUCLEAR BOMBER',
+                                    type: 'sticker', text: 'TITANIUM FROM THE USSR',
                                     x: 540, y: 1320,
-                                    size: 60,
-                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    size: 62,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
                                     rotate: 1,
-                                    trigger: { wordText: 'unmanned', occurrence: 1 },
+                                    trigger: { wordText: 'titanium', occurrence: 1 },
                                 },
 
                                 // Circle scribble around it
@@ -247,10 +225,10 @@ module.exports = (async () => {
                 ],
             },
 
-            // ── Scene 2 — The Engine (Tory-II Reactor) ─────────────────────
+            // ── Scene 2 — The Engineering (Heat + Pressure) ────────────────
             {
                 tts: {
-                    text: "The engine was a nuclear ramjet. Air passed through a massive unshielded reactor core, was heated to thousands of degrees, and expelled out the back at supersonic speeds. It was tested at the Nevada Test Site. The Tory-II reactor ran successfully — without melting — but the radiation emitted from the exhaust was so lethal it would have killed anything below the flight path.",
+                    text: "The engineers had to design for extreme heat. The cockpit windows reach six hundred degrees. The crew wears pressure suits. It couldn't turn sharply at speed. It just flew straight and fast.",
                     voice: 'bm_george',
                     pauseAfter: 0.4,
                 },
@@ -259,7 +237,7 @@ module.exports = (async () => {
                     { type: 'background', color: '#e8dfcd' },
                     {
                         type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=pluto-s2',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=sr71-s2',
                         audioSync: true,
                         cursor: false,
                         waitFor: '[data-ready="1"]',
@@ -267,86 +245,71 @@ module.exports = (async () => {
                         viewport: { width: 1080, height: 1920 },
                         x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
                         data: {
-                            title: 'THE ENGINE',
+                            title: 'EXTREME ENGINEERING',
                             theme: {
                                 paper: '#e8dfcd',
                                 ink: '#1a1a1a',
                                 accent: '#a93226',
-                                accent2: '#2e4053',
+                                accent2: '#1a5276',
                                 shadow: 'rgba(20,16,10,0.38)',
                             },
                             commands: [
-                                // Main photo: Tory-II reactor test stand
-                                ...(imgReactor ? [{
+                                // Cockpit photo — center
+                                ...(imgCockpit ? [{
                                     id: 'photo2',
-                                    type: 'photo', src: imgReactor,
+                                    type: 'photo', src: imgCockpit,
                                     x: 540, y: 560,
-                                    width: 820, height: 460,
-                                    rotate: 2, pinStyle: 'tape',
-                                    caption: 'TORY-II — NUCLEAR RAMJET TEST STAND (NEVADA)',
+                                    width: 780, height: 460,
+                                    rotate: 2, pinStyle: 'pins',
+                                    caption: 'COCKPIT — 600°F WINDOWS',
                                     trigger: { atSeconds: 0.2 },
                                 }] : []),
 
-                                // Top sticker: "NUCLEAR RAMJET"
+                                // "600°F" sticker — top center
                                 {
                                     id: 's4',
-                                    type: 'sticker', text: 'NUCLEAR RAMJET',
+                                    type: 'sticker', text: '600°F WINDOWS',
                                     x: 540, y: 190,
-                                    size: 72,
-                                    color: '#ffffff', stroke: '#2e4053', bg: '#2e4053',
-                                    rotate: -2,
-                                    trigger: { wordText: 'ramjet', occurrence: 1 },
+                                    size: 60,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
+                                    rotate: -1,
+                                    trigger: { wordText: 'degrees', occurrence: 1 },
                                 },
 
-                                // "UNSHIELDED REACTOR" — side label
+                                // Pressure suit icon + label — left side
                                 {
-                                    id: 'l3',
-                                    type: 'label', text: 'UNSHIELDED CORE',
-                                    size: 44, x: 200, y: 400,
-                                    color: '#a93226', rotate: -4,
-                                    trigger: { wordText: 'unshielded', occurrence: 1 },
+                                    id: 'i2',
+                                    type: 'icon', icon: 'mdi:astronaut', size: 120,
+                                    x: 160, y: 480,
+                                    bg: 'circle', color: '#1a5276',
+                                    trigger: { wordText: 'pressure', occurrence: 1 },
                                 },
+                                {
+                                    id: 'l2',
+                                    type: 'label', text: 'pressure suits',
+                                    size: 38, x: 160, y: 620,
+                                    color: '#1a5276', rotate: -2,
+                                    trigger: { afterId: 'i2', offset: 0.2 },
+                                },
+
+                                // "STRAIGHT AND FAST" sticker — bottom
+                                {
+                                    id: 's5',
+                                    type: 'sticker', text: 'STRAIGHT AND FAST',
+                                    x: 540, y: 1340,
+                                    size: 64,
+                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
+                                    rotate: 1,
+                                    trigger: { wordText: 'straight', occurrence: 1 },
+                                },
+
+                                // Arrow pointing from sticker to cockpit photo
                                 {
                                     id: 'arr1',
                                     type: 'arrow',
-                                    x1: 240, y1: 440, x2: 460, y2: 520,
-                                    color: '#a93226', curve: 30,
-                                    trigger: { afterId: 'l3', offset: 0.2 },
-                                },
-
-                                // "AIR IN → HEATED → EXHAUST" label chain
-                                {
-                                    id: 'l4',
-                                    type: 'label', text: 'air in → heated to 2,000°C → supersonic exhaust',
-                                    size: 34, x: 540, y: 1050,
-                                    color: '#2e4053', rotate: 0,
-                                    trigger: { wordText: 'heated', occurrence: 1 },
-                                },
-
-                                // Skull icon — indicating lethal exhaust
-                                {
-                                    id: 'i2',
-                                    type: 'icon', icon: 'mdi:skull', size: 100,
-                                    x: 880, y: 1050,
-                                    bg: 'circle', color: '#a93226',
-                                    trigger: { afterId: 'l4', offset: 0.1 },
-                                },
-
-                                // Bottom sticker — "LETHAL RADIATION WAKE"
-                                {
-                                    id: 's5',
-                                    type: 'sticker', text: 'LETHAL RADIATION WAKE',
-                                    x: 540, y: 1360,
-                                    size: 60,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: 1,
-                                    trigger: { wordText: 'lethal', occurrence: 1 },
-                                },
-                                // Circle it
-                                {
-                                    id: 'sc2',
-                                    type: 'circle', target: 's5', color: '#a93226',
-                                    trigger: { afterId: 's5', offset: 0.4 },
+                                    x1: 540, y1: 1280, x2: 540, y2: 1020,
+                                    color: '#a93226', curve: 20,
+                                    trigger: { afterId: 's5', offset: 0.2 },
                                 },
                             ],
                         },
@@ -354,10 +317,10 @@ module.exports = (async () => {
                 ],
             },
 
-            // ── Scene 3 — The Mission / Cancellation ──────────────────────
+            // ── Scene 3 — The Mission / Legacy ─────────────────────────────
             {
                 tts: {
-                    text: "The plan was insane. The missile would fly over the Soviet Union at low altitude, dropping hydrogen bombs as it went. When it ran out of bombs, it would crash into Moscow — still radioactive — and contaminate the rubble. The program was canceled in 1964. Intercontinental ballistic missiles made it obsolete. But also: it was just too horrifying to use.",
+                    text: "It flew over North Vietnam, the Korean DMZ, and the Soviet coast. Not a single one was ever shot down. It retired in nineteen ninety-eight. But its legacy lives on.",
                     voice: 'bm_george',
                     pauseAfter: 0.4,
                 },
@@ -366,7 +329,7 @@ module.exports = (async () => {
                     { type: 'background', color: '#e8dfcd' },
                     {
                         type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=pluto-s3',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=sr71-s3',
                         audioSync: true,
                         cursor: false,
                         waitFor: '[data-ready="1"]',
@@ -379,97 +342,74 @@ module.exports = (async () => {
                                 paper: '#e8dfcd',
                                 ink: '#1a1a1a',
                                 accent: '#a93226',
-                                accent2: '#2e4053',
+                                accent2: '#1a5276',
                                 shadow: 'rgba(20,16,10,0.38)',
                             },
                             commands: [
-                                // Main photo: missile on test cart or concept
-                                ...(imgTest ? [{
+                                // Refueling photo — center top
+                                ...(imgRefuel ? [{
                                     id: 'photo3',
-                                    type: 'photo', src: imgTest,
+                                    type: 'photo', src: imgRefuel,
                                     x: 540, y: 540,
-                                    width: 760, height: 440,
-                                    rotate: -3, pinStyle: 'pins',
-                                    caption: 'SLAM PROTOTYPE ON GROUND CART',
+                                    width: 780, height: 440,
+                                    rotate: -3, pinStyle: 'tape',
+                                    caption: 'AIR-TO-AIR REFUELING',
                                     trigger: { atSeconds: 0.2 },
                                 }] : []),
 
-                                // secondary concept photo — bottom right, smaller
-                                ...(imgConcept ? [{
+                                // Afterburner photo — bottom right, smaller
+                                ...(imgAfterburner ? [{
                                     id: 'photo4',
-                                    type: 'photo', src: imgConcept,
-                                    x: 740, y: 1100,
-                                    width: 400, height: 260,
-                                    rotate: 4, pinStyle: 'tape',
-                                    caption: 'CONCEPT: DROPPING BOMBS EN ROUTE',
-                                    trigger: { wordText: 'hydrogen', occurrence: 1 },
+                                    type: 'photo', src: imgAfterburner,
+                                    x: 740, y: 1080,
+                                    width: 420, height: 280,
+                                    rotate: 4, pinStyle: 'pins',
+                                    caption: 'AFTERBURNER GLOW',
+                                    trigger: { wordText: 'shot', occurrence: 1 },
                                 }] : []),
 
-                                // Top sticker — "DROP BOMBS, THEN CRASH"
+                                // "NEVER SHOT DOWN" sticker — top left
                                 {
                                     id: 's6',
-                                    type: 'sticker', text: 'DROP BOMBS THEN CRASH',
-                                    x: 540, y: 190,
-                                    size: 64,
-                                    color: '#ffffff', stroke: '#1a1a1a', bg: '#1a1a1a',
-                                    rotate: -2,
-                                    trigger: { wordText: 'drop', occurrence: 1 },
-                                },
-
-                                // "CONTAMINATE THE RUBBLE" — label, left side
-                                {
-                                    id: 'l5',
-                                    type: 'label', text: 'crash into Moscow → contaminate rubble',
-                                    size: 36, x: 260, y: 440,
-                                    color: '#a93226', rotate: -2,
-                                    trigger: { wordText: 'contaminate', occurrence: 1 },
-                                },
-
-                                // Arrow from label to the main photo
-                                {
-                                    id: 'arr2',
-                                    type: 'arrow',
-                                    x1: 300, y1: 480, x2: 540, y2: 540,
-                                    color: '#a93226', curve: 50,
-                                    trigger: { afterId: 'l5', offset: 0.2 },
-                                },
-
-                                // "CANCELED 1964" sticker — bottom left
-                                {
-                                    id: 's7',
-                                    type: 'sticker', text: 'CANCELED 1964',
-                                    x: 280, y: 1380,
-                                    size: 66,
+                                    type: 'sticker', text: 'NEVER SHOT DOWN',
+                                    x: 280, y: 180,
+                                    size: 62,
                                     color: '#ffffff', stroke: '#a93226', bg: '#a93226',
                                     rotate: -2,
-                                    trigger: { wordText: 'canceled', occurrence: 1 },
+                                    trigger: { wordText: 'shot', occurrence: 1 },
                                 },
 
-                                // "TOO HORRIFYING" label — bottom right
+                                // "RETIRED 1998" sticker — top right
                                 {
-                                    id: 'l6',
-                                    type: 'label', text: 'too horrifying to use',
-                                    size: 42, x: 800, y: 1390,
-                                    color: '#2e4053', rotate: 2,
-                                    trigger: { afterId: 's7', offset: 0.2 },
-                                },
-                                {
-                                    id: 'ul2',
-                                    type: 'underline', target: 'l6', color: '#2e4053',
-                                    trigger: { afterId: 'l6', offset: 0.4 },
+                                    id: 's7',
+                                    type: 'sticker', text: 'RETIRED 1998',
+                                    x: 820, y: 190,
+                                    size: 54,
+                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    rotate: 3,
+                                    trigger: { wordText: 'retired', occurrence: 1 },
                                 },
 
-                                // Subscribe icon — top right
+                                // Radar icon — left side
                                 {
-                                    id: 'sub',
-                                    type: 'icon', icon: 'mdi:bell-ring', size: 100,
-                                    x: 940, y: 140,
-                                    bg: 'circle', color: '#a93226',
-                                    trigger: { wordText: 'subscribe', occurrence: 1 },
+                                    id: 'i3',
+                                    type: 'icon', icon: 'mdi:radar', size: 110,
+                                    x: 160, y: 600,
+                                    bg: 'circle', color: '#1a5276',
+                                    trigger: { wordText: 'vietnam', occurrence: 1 },
                                 },
 
-                                // Red string connecting the two photos
-                                ...(imgTest && imgConcept ? [{
+                                // Label: "Overflights"
+                                {
+                                    id: 'l3',
+                                    type: 'label', text: 'overflights: Vietnam, DMZ, Soviet coast',
+                                    size: 34, x: 180, y: 730,
+                                    color: '#1a5276', rotate: -1,
+                                    trigger: { afterId: 'i3', offset: 0.2 },
+                                },
+
+                                // String connecting the two photos
+                                ...(imgRefuel && imgAfterburner ? [{
                                     id: 'str1',
                                     type: 'string',
                                     from: { target: 'photo3' },
@@ -477,6 +417,15 @@ module.exports = (async () => {
                                     color: '#a93226', sag: 50,
                                     trigger: { afterId: 'photo4', offset: 0.3 },
                                 }] : []),
+
+                                // Subscribe icon — top right corner
+                                {
+                                    id: 'sub',
+                                    type: 'icon', icon: 'mdi:bell-ring', size: 100,
+                                    x: 940, y: 140,
+                                    bg: 'circle', color: '#a93226',
+                                    trigger: { wordText: 'legacy', occurrence: 1 },
+                                },
                             ],
                         },
                     },
