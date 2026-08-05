@@ -6,7 +6,12 @@
 // PURPOSE: exercise every command type the new template supports in one
 // real render — sticker, label, icon (Iconify), draw (preset + native SVG
 // trace), tape/pin, arrow, circle, underline, highlightSwipe, moveTo,
-// erase, fadeGroup, replace, panZoom — against real am_michael TTS timing.
+// erase, fadeGroup, replace, panZoom — against real TTS timing, PLUS the
+// engine's built-in `avatar` layer as a small corner host: af_heart voice,
+// voiceFX: 'robot' texture (metallic/comb-filtered), continuous 'float'
+// idle movement, and automatic amplitude-driven lip sync (the avatar's
+// mouth follows whatever audio is playing — no extra flag needed, unlike
+// the stickman system's lipSync:true).
 //
 // Trigger words below are matched against the EXACT tts.text string,
 // normalized (lowercased, punctuation stripped). "adenosine" appears 6x,
@@ -16,9 +21,12 @@
 // just check the render log for "[PaperSticker] fallback-fired" — that's
 // the safety net telling you a trigger word never matched.
 //
-// duration: 111 words at ~2.2-2.4 words/sec for am_michael ≈ 46-50s of
-// actual narration; layer.duration set to 56s to comfortably cover it
-// per AUDIOSYNC.md ("a little longer than necessary is harmless").
+// duration: 111 words at ~2.2-2.4 words/sec ≈ 46-50s of actual narration
+// (af_heart's pacing is close to am_michael's); layer.duration set to 56s
+// to comfortably cover it per AUDIOSYNC.md ("a little longer than
+// necessary is harmless"). voiceFX: 'robot' doesn't change word timing —
+// it's an ffmpeg pass applied after synthesis — so the AUDIOSYNC word map
+// underneath is unaffected and every trigger above still lines up.
 //
 // Run with:  VIDEO_CONFIG=config.coffee-vs-sleep.js node engine-ci.js
 
@@ -40,7 +48,8 @@ module.exports = {
   },
 
   defaults: {
-    voice:      'am_michael',   // friendly/mid-range — casual explainer, per Voices.md
+    voice:      'af_heart',    // warm/expressive default female voice, per Voices.md
+    voiceFX:    'robot',       // metallic/comb-filtered texture, per AddOns1.md + tts-kokoro.js
     speed:      1.0,
     transition: 'fade',
   },
@@ -49,7 +58,8 @@ module.exports = {
     {
       tts: {
         text: "Your brain makes a chemical called adenosine all day long. The more adenosine builds up, the sleepier you feel. Adenosine locks onto special receptors in your brain, like a key fitting a lock, and slows everything down. Coffee's real trick is not giving you energy. Caffeine is shaped almost exactly like adenosine. So it rushes in and jams itself into those same receptors first, blocking the sleepy signal from ever landing. Your brain still has just as much adenosine as before. It just cannot feel it anymore. Two hours later, when the caffeine wears off, all that blocked adenosine hits you at once. That crash is not random. It is payback.",
-        voice:   'am_michael',
+        voice:   'af_heart',
+        voiceFX: 'robot',
         emotion: 'neutral',
         pauseAfter: 0.4,
       },
@@ -203,6 +213,26 @@ module.exports = {
                 trigger: { wordText: 'payback', occurrence: 1 } },
             ],
           },
+        },
+
+        // ── Robot avatar host — small corner presence for the whole scene ──
+        // (engine only ever renders one `avatar` layer per scene — this is
+        // the built-in robot-styled host, not the stickman system. Its
+        // mouth auto-syncs to the af_heart+robot-FX audio amplitude every
+        // frame with no extra flag; `motion:'float'` gives it continuous
+        // gentle side-to-side idle movement for the full 56s instead of
+        // sitting frozen.)
+        {
+          type:        'avatar',
+          x: 190, y: 1760,
+          size:        190,
+          bodyColor:   '#d0d2dc',
+          headColor:   '#112c3a',
+          accentColor: '#6deaf8',
+          expression:  'happy',
+          motion:      'float',
+          floatRange:  16,
+          enterDur:    0.6,
         },
       ],
     },
