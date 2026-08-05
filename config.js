@@ -1,7 +1,9 @@
-// config.sr71-blackbird.js
-// "SR-71 Blackbird" — the fastest air-breathing aircraft ever built.
-// 3 scenes, bm_george voice, paper-sticker-detective-board style.
-//
+// config.top3-expensive-guns.js
+// "Top 3 Most Expensive Guns to Fire Per Minute"
+// Countdown format: #3 Phalanx CIWS → #2 M61 Vulcan → #1 GAU-8 Avenger
+// WITH ANALOGIES: Lamborghini, Ferrari, Private Jet.
+// Voice: am_adam (finance/money authority voice).
+// 
 // HOW THE IMAGES WORK:
 // The config runs as an async module BEFORE the engine starts rendering.
 // It calls SerpAPI directly using process.env.SERPAPI_API_KEY, downloads
@@ -13,12 +15,11 @@
 // commands are omitted — stickers, icons, arrows, and strings still render.
 //
 // OPTIMIZED SEARCH QUERIES (short + visual, under 125 chars):
-//   - "SR-71 Blackbird flight"
-//   - "SR-71 Blackbird cockpit"
-//   - "SR-71 Blackbird refueling"
-//   - "SR-71 Blackbird afterburner"
+//   - "Phalanx CIWS firing"
+//   - "M61 Vulcan cannon"
+//   - "A-10 Warthog GAU-8"
 //
-// Run with:  VIDEO_CONFIG=config.sr71-blackbird.js node engine-ci.js
+// Run with:  VIDEO_CONFIG=config.top3-expensive-guns.js node engine-ci.js
 
 const https = require('https');
 const http = require('http');
@@ -27,7 +28,7 @@ const http = require('http');
 async function fetchImage(query, index = 0) {
     const key = process.env.SERPAPI_API_KEY;
     if (!key) {
-        console.warn('[SR71Config] SERPAPI_API_KEY not set — skipping photo:', query);
+        console.warn('[GunsConfig] SERPAPI_API_KEY not set — skipping photo:', query);
         return null;
     }
 
@@ -46,14 +47,14 @@ async function fetchImage(query, index = 0) {
         const pick = results[index % results.length];
         if (!pick?.original) return null;
 
-        console.log(`[SR71Config] Downloading: ${pick.original.slice(0, 70)}`);
+        console.log(`[GunsConfig] Downloading: ${pick.original.slice(0, 70)}`);
         const b64 = await urlToBase64(pick.original);
         if (!b64) return null;
 
         const mime = b64.startsWith('/9j/') || b64.startsWith('iVBOR') ? 'image/jpeg' : 'image/jpeg';
         return `data:${mime};base64,${b64}`;
     } catch (e) {
-        console.warn(`[SR71Config] fetchImage failed for "${query}":`, e.message?.slice(0, 80));
+        console.warn(`[GunsConfig] fetchImage failed for "${query}":`, e.message?.slice(0, 80));
         return null;
     }
 }
@@ -93,21 +94,20 @@ function urlToBase64(imageUrl) {
 // ── Main async config ────────────────────────────────────────────────────
 module.exports = (async () => {
 
-    console.log('[SR71Config] Pre-fetching images from SerpAPI...');
+    console.log('[GunsConfig] Pre-fetching images from SerpAPI...');
 
     // ── OPTIMIZED QUERIES ── short, visual, under 125 chars ──────────────
-    const [imgFlight, imgCockpit, imgRefuel, imgAfterburner] = await Promise.all([
-        fetchImage('SR-71 Blackbird flight', 0),
-        fetchImage('SR-71 Blackbird cockpit', 0),
-        fetchImage('SR-71 Blackbird refueling', 0),
-        fetchImage('SR-71 Blackbird afterburner', 0),
+    const [imgPhalanx, imgVulcan, imgA10] = await Promise.all([
+        fetchImage('Phalanx CIWS firing', 0),
+        fetchImage('M61 Vulcan cannon', 0),
+        fetchImage('A-10 Warthog GAU-8', 0),
     ]);
 
-    console.log('[SR71Config] Images ready. Building config...');
+    console.log('[GunsConfig] Images ready. Building config...');
 
     return {
         output: {
-            title: 'sr71-blackbird-documentary',
+            title: 'top3-expensive-guns',
             format: 'portrait',
             fps: 30,
             crf: 23,
@@ -115,18 +115,18 @@ module.exports = (async () => {
         },
 
         defaults: {
-            voice: 'bm_george',
+            voice: 'am_adam', // ← FINANCE / MONEY AUTHORITY VOICE
             transition: 'fade',
             transitionDuration: 0.35,
         },
 
         scenes: [
 
-            // ── Scene 1 — Hook: the fastest aircraft ever ───────────────────
+            // ── Scene 0 — HOOK: What if a gun costs more than a Lamborghini? ──
             {
                 tts: {
-                    text: "The SR-71 Blackbird is the fastest air-breathing aircraft ever built. It flies at Mach three point two. It leaks fuel on the ground because the skin expands six inches at speed. The titanium was bought in secret from the Soviet Union.",
-                    voice: 'bm_george',
+                    text: "What if I told you a single minute of firing these guns could cost you a Lamborghini, a Ferrari, or even a private jet? Stay tuned for the top three most expensive weapons to fire.",
+                    voice: 'am_adam',
                     pauseAfter: 0.4,
                 },
                 captions: false,
@@ -134,7 +134,7 @@ module.exports = (async () => {
                     { type: 'background', color: '#e8dfcd' },
                     {
                         type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=sr71-s1',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-hook',
                         audioSync: true,
                         cursor: false,
                         waitFor: '[data-ready="1"]',
@@ -142,7 +142,7 @@ module.exports = (async () => {
                         viewport: { width: 1080, height: 1920 },
                         x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
                         data: {
-                            title: 'SR-71 BLACKBIRD',
+                            title: 'MONEY VS FIREPOWER',
                             theme: {
                                 paper: '#e8dfcd',
                                 ink: '#1a1a1a',
@@ -151,73 +151,174 @@ module.exports = (async () => {
                                 shadow: 'rgba(20,16,10,0.38)',
                             },
                             commands: [
-                                // Main flight photo — center
-                                ...(imgFlight ? [{
+                                // Big hook sticker — center
+                                {
+                                    id: 'hook1',
+                                    type: 'sticker', text: 'WHAT IF A GUN COSTS MORE THAN A LAMBORGHINI?',
+                                    x: 540, y: 400,
+                                    size: 60,
+                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    rotate: -1,
+                                    trigger: { atSeconds: 0.1 },
+                                },
+
+                                // Lamborghini icon — left
+                                {
+                                    id: 'i_hook1',
+                                    type: 'icon', icon: 'mdi:car-sports', size: 120,
+                                    x: 200, y: 700,
+                                    bg: 'circle', color: '#f1c40f',
+                                    trigger: { wordText: 'Lamborghini', occurrence: 1 },
+                                },
+
+                                // Ferrari icon — center
+                                {
+                                    id: 'i_hook2',
+                                    type: 'icon', icon: 'mdi:car-sports', size: 120,
+                                    x: 540, y: 700,
+                                    bg: 'circle', color: '#e74c3c',
+                                    trigger: { wordText: 'Ferrari', occurrence: 1 },
+                                },
+
+                                // Private Jet icon — right
+                                {
+                                    id: 'i_hook3',
+                                    type: 'icon', icon: 'mdi:airplane', size: 120,
+                                    x: 880, y: 700,
+                                    bg: 'circle', color: '#7f8c8d',
+                                    trigger: { wordText: 'private jet', occurrence: 1 },
+                                },
+
+                                // Bottom sticker: "TOP 3 COUNTDOWN"
+                                {
+                                    id: 'hook2',
+                                    type: 'sticker', text: 'TOP 3 COUNTDOWN',
+                                    x: 540, y: 1100,
+                                    size: 72,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
+                                    rotate: 1,
+                                    trigger: { wordText: 'top', occurrence: 1 },
+                                },
+                                {
+                                    id: 'sc_hook',
+                                    type: 'circle', target: 'hook2', color: '#a93226',
+                                    trigger: { afterId: 'hook2', offset: 0.3 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 1 — #3: Phalanx CIWS ($135k = Lamborghini) ──────────
+            {
+                tts: {
+                    text: "Number three: the Phalanx CIWS. The Navy's last line of defense. It fires four thousand five hundred rounds per minute. Each round costs thirty dollars. That's one hundred and thirty-five thousand dollars per minute. That's the price of a brand new Lamborghini, burned in sixty seconds.",
+                    voice: 'am_adam',
+                    pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#e8dfcd' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-s1',
+                        audioSync: true,
+                        cursor: false,
+                        waitFor: '[data-ready="1"]',
+                        fps: 30,
+                        viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: '#3 — PHALANX CIWS',
+                            theme: {
+                                paper: '#e8dfcd',
+                                ink: '#1a1a1a',
+                                accent: '#a93226',
+                                accent2: '#1a5276',
+                                shadow: 'rgba(20,16,10,0.38)',
+                            },
+                            commands: [
+                                // Main photo — center
+                                ...(imgPhalanx ? [{
                                     id: 'photo1',
-                                    type: 'photo', src: imgFlight,
-                                    x: 540, y: 520,
-                                    width: 800, height: 440,
+                                    type: 'photo', src: imgPhalanx,
+                                    x: 540, y: 480,
+                                    width: 760, height: 380,
                                     rotate: -2, pinStyle: 'tape',
-                                    caption: 'SR-71 BLACKBIRD — MACH 3.2',
+                                    caption: 'PHALANX CIWS — NAVY CLOSE-IN WEAPON SYSTEM',
                                     trigger: { atSeconds: 0.2 },
                                 }] : []),
 
-                                // "MACH 3.2" sticker — top left
+                                // Top sticker — "$30/ROUND"
                                 {
                                     id: 's1',
-                                    type: 'sticker', text: 'MACH 3.2',
+                                    type: 'sticker', text: '$30 PER ROUND',
                                     x: 280, y: 180,
-                                    size: 68,
+                                    size: 52,
                                     color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
                                     rotate: -2,
-                                    trigger: { wordText: 'mach', occurrence: 1 },
+                                    trigger: { wordText: 'thirty', occurrence: 1 },
                                 },
 
-                                // "LEAKS FUEL" sticker — top right
+                                // Top right — "4,500 RPM"
                                 {
                                     id: 's2',
-                                    type: 'sticker', text: 'LEAKS FUEL',
-                                    x: 800, y: 180,
-                                    size: 58,
+                                    type: 'sticker', text: '4,500 RPM',
+                                    x: 820, y: 190,
+                                    size: 52,
                                     color: '#1a1a1a', stroke: '#ffffff',
                                     rotate: 3,
-                                    trigger: { wordText: 'leaks', occurrence: 1 },
+                                    trigger: { wordText: 'thousand', occurrence: 1 },
                                 },
 
-                                // Label: expands 6 inches
-                                {
-                                    id: 'l1',
-                                    type: 'label', text: 'skin expands 6 inches at speed',
-                                    size: 38, x: 540, y: 280,
-                                    color: '#a93226', rotate: 1,
-                                    trigger: { wordText: 'expands', occurrence: 1 },
-                                },
-
-                                // Thermometer icon — left side
-                                {
-                                    id: 'i1',
-                                    type: 'icon', icon: 'mdi:thermometer', size: 110,
-                                    x: 160, y: 600,
-                                    bg: 'circle', color: '#e67e22',
-                                    trigger: { wordText: 'speed', occurrence: 1 },
-                                },
-
-                                // "TITANIUM FROM THE USSR" sticker — bottom
+                                // Cost sticker — $135,000 / MIN (left side of analogy row)
                                 {
                                     id: 's3',
-                                    type: 'sticker', text: 'TITANIUM FROM THE USSR',
-                                    x: 540, y: 1320,
-                                    size: 62,
+                                    type: 'sticker', text: '$135,000 / MIN',
+                                    x: 220, y: 920,
+                                    size: 54,
                                     color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: 1,
-                                    trigger: { wordText: 'titanium', occurrence: 1 },
+                                    rotate: -2,
+                                    trigger: { wordText: 'thirty-five', occurrence: 1 },
                                 },
 
-                                // Circle scribble around it
+                                // Equals sign sticker
+                                {
+                                    id: 'eq1',
+                                    type: 'sticker', text: '=',
+                                    x: 420, y: 920,
+                                    size: 54,
+                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    rotate: 0,
+                                    trigger: { afterId: 's3', offset: 0.1 },
+                                },
+
+                                // Lamborghini analogy sticker
+                                {
+                                    id: 's4',
+                                    type: 'sticker', text: '1 LAMBORGHINI',
+                                    x: 620, y: 920,
+                                    size: 50,
+                                    color: '#ffffff', stroke: '#f1c40f', bg: '#f1c40f',
+                                    rotate: 2,
+                                    trigger: { wordText: 'Lamborghini', occurrence: 1 },
+                                },
+
+                                // Lamborghini icon
+                                {
+                                    id: 'i1',
+                                    type: 'icon', icon: 'mdi:car-sports', size: 80,
+                                    x: 860, y: 920,
+                                    bg: 'circle', color: '#f1c40f',
+                                    trigger: { afterId: 's4', offset: 0.1 },
+                                },
+
+                                // Circle around the cost row
                                 {
                                     id: 'sc1',
                                     type: 'circle', target: 's3', color: '#a93226',
-                                    trigger: { afterId: 's3', offset: 0.4 },
+                                    trigger: { afterId: 's3', offset: 0.3 },
                                 },
                             ],
                         },
@@ -225,11 +326,11 @@ module.exports = (async () => {
                 ],
             },
 
-            // ── Scene 2 — The Engineering (Heat + Pressure) ────────────────
+            // ── Scene 2 — #2: M61 Vulcan ($180k = Ferrari) ─────────────────
             {
                 tts: {
-                    text: "The engineers had to design for extreme heat. The cockpit windows reach six hundred degrees. The crew wears pressure suits. It couldn't turn sharply at speed. It just flew straight and fast.",
-                    voice: 'bm_george',
+                    text: "Number two: the M61 Vulcan. Found on the F-16 and F-22. It fires six thousand rounds per minute. One hundred and eighty thousand dollars per minute. That's a Ferrari. Gone in sixty seconds.",
+                    voice: 'am_adam',
                     pauseAfter: 0.4,
                 },
                 captions: false,
@@ -237,7 +338,7 @@ module.exports = (async () => {
                     { type: 'background', color: '#e8dfcd' },
                     {
                         type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=sr71-s2',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-s2',
                         audioSync: true,
                         cursor: false,
                         waitFor: '[data-ready="1"]',
@@ -245,7 +346,7 @@ module.exports = (async () => {
                         viewport: { width: 1080, height: 1920 },
                         x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
                         data: {
-                            title: 'EXTREME ENGINEERING',
+                            title: '#2 — M61 VULCAN',
                             theme: {
                                 paper: '#e8dfcd',
                                 ink: '#1a1a1a',
@@ -254,62 +355,86 @@ module.exports = (async () => {
                                 shadow: 'rgba(20,16,10,0.38)',
                             },
                             commands: [
-                                // Cockpit photo — center
-                                ...(imgCockpit ? [{
+                                // Main photo — center
+                                ...(imgVulcan ? [{
                                     id: 'photo2',
-                                    type: 'photo', src: imgCockpit,
-                                    x: 540, y: 560,
-                                    width: 780, height: 460,
+                                    type: 'photo', src: imgVulcan,
+                                    x: 540, y: 480,
+                                    width: 760, height: 380,
                                     rotate: 2, pinStyle: 'pins',
-                                    caption: 'COCKPIT — 600°F WINDOWS',
+                                    caption: 'M61 VULCAN — 20mm GATLING CANNON',
                                     trigger: { atSeconds: 0.2 },
                                 }] : []),
 
-                                // "600°F" sticker — top center
-                                {
-                                    id: 's4',
-                                    type: 'sticker', text: '600°F WINDOWS',
-                                    x: 540, y: 190,
-                                    size: 60,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: -1,
-                                    trigger: { wordText: 'degrees', occurrence: 1 },
-                                },
-
-                                // Pressure suit icon + label — left side
-                                {
-                                    id: 'i2',
-                                    type: 'icon', icon: 'mdi:astronaut', size: 120,
-                                    x: 160, y: 480,
-                                    bg: 'circle', color: '#1a5276',
-                                    trigger: { wordText: 'pressure', occurrence: 1 },
-                                },
-                                {
-                                    id: 'l2',
-                                    type: 'label', text: 'pressure suits',
-                                    size: 38, x: 160, y: 620,
-                                    color: '#1a5276', rotate: -2,
-                                    trigger: { afterId: 'i2', offset: 0.2 },
-                                },
-
-                                // "STRAIGHT AND FAST" sticker — bottom
+                                // Top sticker — "$30/ROUND"
                                 {
                                     id: 's5',
-                                    type: 'sticker', text: 'STRAIGHT AND FAST',
-                                    x: 540, y: 1340,
-                                    size: 64,
+                                    type: 'sticker', text: '$30 PER ROUND',
+                                    x: 280, y: 180,
+                                    size: 52,
                                     color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
-                                    rotate: 1,
-                                    trigger: { wordText: 'straight', occurrence: 1 },
+                                    rotate: -2,
+                                    trigger: { wordText: 'thirty-dollar', occurrence: 1 },
                                 },
 
-                                // Arrow pointing from sticker to cockpit photo
+                                // Top right — "6,000 RPM"
                                 {
-                                    id: 'arr1',
-                                    type: 'arrow',
-                                    x1: 540, y1: 1280, x2: 540, y2: 1020,
-                                    color: '#a93226', curve: 20,
-                                    trigger: { afterId: 's5', offset: 0.2 },
+                                    id: 's6',
+                                    type: 'sticker', text: '6,000 RPM',
+                                    x: 820, y: 190,
+                                    size: 52,
+                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    rotate: 3,
+                                    trigger: { wordText: 'six thousand', occurrence: 1 },
+                                },
+
+                                // Cost sticker — $180,000 / MIN
+                                {
+                                    id: 's7',
+                                    type: 'sticker', text: '$180,000 / MIN',
+                                    x: 220, y: 920,
+                                    size: 54,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
+                                    rotate: -2,
+                                    trigger: { wordText: 'eighty thousand', occurrence: 1 },
+                                },
+
+                                // Equals sign
+                                {
+                                    id: 'eq2',
+                                    type: 'sticker', text: '=',
+                                    x: 420, y: 920,
+                                    size: 54,
+                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    rotate: 0,
+                                    trigger: { afterId: 's7', offset: 0.1 },
+                                },
+
+                                // Ferrari analogy sticker
+                                {
+                                    id: 's8',
+                                    type: 'sticker', text: '1 FERRARI',
+                                    x: 620, y: 920,
+                                    size: 50,
+                                    color: '#ffffff', stroke: '#e74c3c', bg: '#e74c3c',
+                                    rotate: 2,
+                                    trigger: { wordText: 'Ferrari', occurrence: 1 },
+                                },
+
+                                // Ferrari icon (using sports car with red color)
+                                {
+                                    id: 'i2',
+                                    type: 'icon', icon: 'mdi:car-sports', size: 80,
+                                    x: 860, y: 920,
+                                    bg: 'circle', color: '#e74c3c',
+                                    trigger: { afterId: 's8', offset: 0.1 },
+                                },
+
+                                // Circle around cost row
+                                {
+                                    id: 'sc2',
+                                    type: 'circle', target: 's7', color: '#a93226',
+                                    trigger: { afterId: 's7', offset: 0.3 },
                                 },
                             ],
                         },
@@ -317,11 +442,11 @@ module.exports = (async () => {
                 ],
             },
 
-            // ── Scene 3 — The Mission / Legacy ─────────────────────────────
+            // ── Scene 3 — #1: GAU-8 Avenger ($507k = Private Jet) ──────────
             {
                 tts: {
-                    text: "It flew over North Vietnam, the Korean DMZ, and the Soviet coast. Not a single one was ever shot down. It retired in nineteen ninety-eight. But its legacy lives on.",
-                    voice: 'bm_george',
+                    text: "And number one: the GAU-8 Avenger. The A-10 Warthog's main gun. Fires three thousand nine hundred rounds per minute, each costing one hundred and thirty dollars. That's over five hundred thousand dollars per minute. That's a private jet. Literally burning money. Subscribe for more.",
+                    voice: 'am_adam',
                     pauseAfter: 0.4,
                 },
                 captions: false,
@@ -329,7 +454,7 @@ module.exports = (async () => {
                     { type: 'background', color: '#e8dfcd' },
                     {
                         type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=sr71-s3',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-s3',
                         audioSync: true,
                         cursor: false,
                         waitFor: '[data-ready="1"]',
@@ -337,7 +462,7 @@ module.exports = (async () => {
                         viewport: { width: 1080, height: 1920 },
                         x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
                         data: {
-                            title: 'THE MISSION',
+                            title: '#1 — GAU-8 AVENGER',
                             theme: {
                                 paper: '#e8dfcd',
                                 ink: '#1a1a1a',
@@ -346,77 +471,96 @@ module.exports = (async () => {
                                 shadow: 'rgba(20,16,10,0.38)',
                             },
                             commands: [
-                                // Refueling photo — center top
-                                ...(imgRefuel ? [{
+                                // Main photo — center (slightly bigger)
+                                ...(imgA10 ? [{
                                     id: 'photo3',
-                                    type: 'photo', src: imgRefuel,
-                                    x: 540, y: 540,
-                                    width: 780, height: 440,
+                                    type: 'photo', src: imgA10,
+                                    x: 540, y: 460,
+                                    width: 800, height: 400,
                                     rotate: -3, pinStyle: 'tape',
-                                    caption: 'AIR-TO-AIR REFUELING',
+                                    caption: 'GAU-8 AVENGER — 30mm DEPLETED URANIUM',
                                     trigger: { atSeconds: 0.2 },
                                 }] : []),
 
-                                // Afterburner photo — bottom right, smaller
-                                ...(imgAfterburner ? [{
-                                    id: 'photo4',
-                                    type: 'photo', src: imgAfterburner,
-                                    x: 740, y: 1080,
-                                    width: 420, height: 280,
-                                    rotate: 4, pinStyle: 'pins',
-                                    caption: 'AFTERBURNER GLOW',
-                                    trigger: { wordText: 'shot', occurrence: 1 },
-                                }] : []),
-
-                                // "NEVER SHOT DOWN" sticker — top left
+                                // Top left — "$130/ROUND"
                                 {
-                                    id: 's6',
-                                    type: 'sticker', text: 'NEVER SHOT DOWN',
+                                    id: 's9',
+                                    type: 'sticker', text: '$130 PER ROUND',
                                     x: 280, y: 180,
-                                    size: 62,
+                                    size: 54,
                                     color: '#ffffff', stroke: '#a93226', bg: '#a93226',
                                     rotate: -2,
-                                    trigger: { wordText: 'shot', occurrence: 1 },
+                                    trigger: { wordText: 'hundred and thirty', occurrence: 1 },
                                 },
 
-                                // "RETIRED 1998" sticker — top right
+                                // Top right — "3,900 RPM"
                                 {
-                                    id: 's7',
-                                    type: 'sticker', text: 'RETIRED 1998',
+                                    id: 's10',
+                                    type: 'sticker', text: '3,900 RPM',
                                     x: 820, y: 190,
                                     size: 54,
                                     color: '#1a1a1a', stroke: '#ffffff',
                                     rotate: 3,
-                                    trigger: { wordText: 'retired', occurrence: 1 },
+                                    trigger: { wordText: 'three thousand nine hundred', occurrence: 1 },
                                 },
 
-                                // Radar icon — left side
+                                // "30mm DEPLETED URANIUM" label
+                                {
+                                    id: 'l1',
+                                    type: 'label', text: '30mm depleted uranium rounds',
+                                    size: 34, x: 180, y: 400,
+                                    color: '#1a5276', rotate: -2,
+                                    trigger: { wordText: 'millimeter', occurrence: 1 },
+                                },
+
+                                // Cost sticker — $507,000 / MIN
+                                {
+                                    id: 's11',
+                                    type: 'sticker', text: '$507,000 / MIN',
+                                    x: 200, y: 920,
+                                    size: 58,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
+                                    rotate: -2,
+                                    trigger: { wordText: 'five hundred thousand', occurrence: 1 },
+                                },
+
+                                // Equals sign
+                                {
+                                    id: 'eq3',
+                                    type: 'sticker', text: '=',
+                                    x: 430, y: 920,
+                                    size: 58,
+                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    rotate: 0,
+                                    trigger: { afterId: 's11', offset: 0.1 },
+                                },
+
+                                // Private Jet analogy sticker
+                                {
+                                    id: 's12',
+                                    type: 'sticker', text: '1 PRIVATE JET',
+                                    x: 650, y: 920,
+                                    size: 52,
+                                    color: '#ffffff', stroke: '#34495e', bg: '#34495e',
+                                    rotate: 2,
+                                    trigger: { wordText: 'private jet', occurrence: 1 },
+                                },
+
+                                // Private Jet icon
                                 {
                                     id: 'i3',
-                                    type: 'icon', icon: 'mdi:radar', size: 110,
-                                    x: 160, y: 600,
-                                    bg: 'circle', color: '#1a5276',
-                                    trigger: { wordText: 'vietnam', occurrence: 1 },
+                                    type: 'icon', icon: 'mdi:airplane', size: 85,
+                                    x: 880, y: 920,
+                                    bg: 'circle', color: '#7f8c8d',
+                                    trigger: { afterId: 's12', offset: 0.1 },
                                 },
 
-                                // Label: "Overflights"
+                                // Circle around cost row
                                 {
-                                    id: 'l3',
-                                    type: 'label', text: 'overflights: Vietnam, DMZ, Soviet coast',
-                                    size: 34, x: 180, y: 730,
-                                    color: '#1a5276', rotate: -1,
-                                    trigger: { afterId: 'i3', offset: 0.2 },
+                                    id: 'sc3',
+                                    type: 'circle', target: 's11', color: '#a93226',
+                                    trigger: { afterId: 's11', offset: 0.3 },
                                 },
-
-                                // String connecting the two photos
-                                ...(imgRefuel && imgAfterburner ? [{
-                                    id: 'str1',
-                                    type: 'string',
-                                    from: { target: 'photo3' },
-                                    to: { target: 'photo4' },
-                                    color: '#a93226', sag: 50,
-                                    trigger: { afterId: 'photo4', offset: 0.3 },
-                                }] : []),
 
                                 // Subscribe icon — top right corner
                                 {
@@ -424,7 +568,17 @@ module.exports = (async () => {
                                     type: 'icon', icon: 'mdi:bell-ring', size: 100,
                                     x: 940, y: 140,
                                     bg: 'circle', color: '#a93226',
-                                    trigger: { wordText: 'legacy', occurrence: 1 },
+                                    trigger: { wordText: 'subscribe', occurrence: 1 },
+                                },
+
+                                // Red string connecting photo to cost row
+                                {
+                                    id: 'str1',
+                                    type: 'string',
+                                    from: { target: 'photo3' },
+                                    to: { target: 's11' },
+                                    color: '#a93226', sag: 30,
+                                    trigger: { afterId: 'photo3', offset: 0.5 },
                                 },
                             ],
                         },
