@@ -1,6 +1,6 @@
-// config.top3-expensive-guns.js  — v2
-// Uses the new slot system (no overlap) and namedVisual (real images
-// fetched inside the Chromium tab when the narrator says the item).
+// config.top3-expensive-guns.js  — v2 (pre-fetch all images)
+// Uses the new slot system (no overlap) and photo commands with pre‑fetched
+// base64 images. All SerpAPI calls happen here, not inside the template.
 // Voice: am_adam. No beat/bgMusic.
 //
 // SLOT GRID REMINDER (3 cols × 6 rows):
@@ -14,17 +14,107 @@
 //
 // Each element owns one slot. Clash = auto-bumped to nearest free slot.
 //
-// namedVisual: when narrator says "F-16", the casing fetches a real photo
-// of it live (Puppeteer has network on GitHub Actions), no config
-// pre-fetching needed. Pass serpApiKey in data so the casing can call it.
-//
 // RUN: VIDEO_CONFIG=config.top3-expensive-guns.js node engine-ci.js
 
+const https = require('https');
+const http = require('http');
+
+// ── Fetch one image from SerpAPI, return as base64 data URI or null ──
+async function fetchImage(query, index = 0) {
+    const key = process.env.SERPAPI_API_KEY;
+    if (!key) {
+        console.warn('[GunsConfig] SERPAPI_API_KEY not set — skipping photo:', query);
+        return null;
+    }
+
+    try {
+        const searchUrl =
+            `https://serpapi.com/search.json` +
+            `?engine=google_images` +
+            `&q=${encodeURIComponent(query)}` +
+            `&ijn=0&num=30&safe=active` +
+            `&api_key=${key}`;
+
+        const data = await fetchJSON(searchUrl);
+        const results = (data?.images_results || []).filter(r => r.original && !r.original.startsWith('x-raw-image'));
+        if (!results.length) return null;
+
+        const pick = results[index % results.length];
+        if (!pick?.original) return null;
+
+        console.log(`[GunsConfig] Downloading: ${pick.original.slice(0, 70)}`);
+        const b64 = await urlToBase64(pick.original);
+        if (!b64) return null;
+
+        const mime = b64.startsWith('/9j/') || b64.startsWith('iVBOR') ? 'image/jpeg' : 'image/jpeg';
+        return `data:${mime};base64,${b64}`;
+    } catch (e) {
+        console.warn(`[GunsConfig] fetchImage failed for "${query}":`, e.message?.slice(0, 80));
+        return null;
+    }
+}
+
+function fetchJSON(url) {
+    return new Promise((resolve, reject) => {
+        const lib = url.startsWith('https') ? https : http;
+        lib.get(url, { headers: { 'User-Agent': 'ApexEngine/2.0' } }, (res) => {
+            let raw = '';
+            res.on('data', d => raw += d);
+            res.on('end', () => { try { resolve(JSON.parse(raw)); } catch (e) { reject(e); } });
+        }).on('error', reject).setTimeout(15000, function () { this.destroy(); reject(new Error('Timeout')); });
+    });
+}
+
+function urlToBase64(imageUrl) {
+    return new Promise((resolve) => {
+        const lib = imageUrl.startsWith('https') ? https : http;
+        const req = lib.get(imageUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ApexEngine/2.0)', 'Accept': 'image/*' },
+            timeout: 12000,
+        }, (res) => {
+            if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+                urlToBase64(res.headers.location).then(resolve);
+                return;
+            }
+            if (res.statusCode !== 200) { resolve(null); return; }
+            const chunks = [];
+            res.on('data', c => chunks.push(c));
+            res.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+        });
+        req.on('error', () => resolve(null));
+        req.on('timeout', () => { req.destroy(); resolve(null); });
+    });
+}
+
+// ── Main async config ────────────────────────────────────────────────────
 module.exports = (async () => {
-    // No pre-fetching needed — namedVisual handles it inside the casing.
-    // We only need the key available at config-build time for passing
-    // into data.serpApiKey.
-    const serpApiKey = process.env.SERPAPI_API_KEY || null;
+
+    console.log('[GunsConfig] Pre-fetching images from SerpAPI...');
+
+    // Pre‑fetch all unique images (reused across scenes)
+    const [
+        imgPhalanx,
+        imgVulcan,
+        imgGau8,
+        imgLambo,
+        imgFerrari,
+        imgJet,
+        imgF16,
+        imgF22,
+        imgA10,
+    ] = await Promise.all([
+        fetchImage('Phalanx CIWS weapon system ship', 0),
+        fetchImage('M61 Vulcan Gatling cannon 20mm', 0),
+        fetchImage('A-10 Warthog GAU-8 Avenger cannon firing', 0),
+        fetchImage('Lamborghini Huracan supercar yellow', 0),
+        fetchImage('Ferrari 488 red sports car', 0),
+        fetchImage('luxury private jet aircraft Gulfstream', 0),
+        fetchImage('F-16 Fighting Falcon fighter jet', 0),
+        fetchImage('F-22 Raptor stealth fighter jet', 0),
+        fetchImage('A-10 Warthog attack aircraft', 0),
+    ]);
+
+    console.log('[GunsConfig] Images ready. Building config...');
 
     const commonTheme = {
         paper: '#e8dfcd', ink: '#1a1a1a',
@@ -60,7 +150,6 @@ module.exports = (async () => {
                         data: {
                             title: 'MONEY VS FIREPOWER',
                             theme: commonTheme,
-                            serpApiKey,
                             commands: [
                                 // Hook sticker — full-width banner top
                                 {
@@ -72,24 +161,24 @@ module.exports = (async () => {
                                 },
                                 // Lamborghini image — mid left, fires when narrator says it
                                 {
-                                    id: 'img_lambo', type: 'namedVisual',
-                                    name: 'Lamborghini supercar',
+                                    id: 'img_lambo', type: 'photo',
+                                    src: imgLambo,
                                     slot: 'mid-left', width: 320, height: 220,
                                     caption: 'LAMBORGHINI', pinStyle: 'tape',
                                     trigger: { wordText: 'lamborghini', occurrence: 1 },
                                 },
                                 // Ferrari image — mid center
                                 {
-                                    id: 'img_ferrari', type: 'namedVisual',
-                                    name: 'Ferrari sports car',
+                                    id: 'img_ferrari', type: 'photo',
+                                    src: imgFerrari,
                                     slot: 'mid-center', width: 320, height: 220,
                                     caption: 'FERRARI', pinStyle: 'tape',
                                     trigger: { wordText: 'ferrari', occurrence: 1 },
                                 },
                                 // Private jet image — mid right
                                 {
-                                    id: 'img_jet', type: 'namedVisual',
-                                    name: 'private jet aircraft',
+                                    id: 'img_jet', type: 'photo',
+                                    src: imgJet,
                                     slot: 'mid-right', width: 320, height: 220,
                                     caption: 'PRIVATE JET', pinStyle: 'tape',
                                     trigger: { wordText: 'private', occurrence: 1 },
@@ -144,7 +233,6 @@ module.exports = (async () => {
                         data: {
                             title: '#3 — PHALANX CIWS',
                             theme: commonTheme,
-                            serpApiKey,
                             commands: [
                                 // Scene number — top left
                                 {
@@ -155,8 +243,8 @@ module.exports = (async () => {
                                 },
                                 // Phalanx photo — top center/right
                                 {
-                                    id: 'photo1', type: 'namedVisual',
-                                    name: 'Phalanx CIWS weapon system Navy ship',
+                                    id: 'photo1', type: 'photo',
+                                    src: imgPhalanx,
                                     slot: 'top-center', width: 580, height: 360,
                                     rotate: -2, pinStyle: 'tape',
                                     caption: 'PHALANX CIWS',
@@ -200,8 +288,8 @@ module.exports = (async () => {
                                 },
                                 // Lamborghini image — bot left
                                 {
-                                    id: 'img_lambo1', type: 'namedVisual',
-                                    name: 'Lamborghini Huracan supercar yellow',
+                                    id: 'img_lambo1', type: 'photo',
+                                    src: imgLambo,
                                     slot: 'bot-left', width: 340, height: 220,
                                     caption: '= 1 LAMBORGHINI', pinStyle: 'pins',
                                     trigger: { wordText: 'lamborghini', occurrence: 1 },
@@ -237,7 +325,6 @@ module.exports = (async () => {
                         data: {
                             title: '#2 — M61 VULCAN',
                             theme: commonTheme,
-                            serpApiKey,
                             commands: [
                                 // Scene number
                                 {
@@ -248,8 +335,8 @@ module.exports = (async () => {
                                 },
                                 // Vulcan cannon photo — top center
                                 {
-                                    id: 'photo2', type: 'namedVisual',
-                                    name: 'M61 Vulcan Gatling cannon 20mm',
+                                    id: 'photo2', type: 'photo',
+                                    src: imgVulcan,
                                     slot: 'top-center', width: 580, height: 360,
                                     rotate: 2, pinStyle: 'tape',
                                     caption: 'M61 VULCAN — 20mm GATLING',
@@ -257,16 +344,16 @@ module.exports = (async () => {
                                 },
                                 // F-16 image — fires when narrator says "F-16"
                                 {
-                                    id: 'img_f16', type: 'namedVisual',
-                                    name: 'F-16 Fighting Falcon fighter jet',
+                                    id: 'img_f16', type: 'photo',
+                                    src: imgF16,
                                     slot: 'mid-left', width: 320, height: 220,
                                     caption: 'F-16', pinStyle: 'tape',
                                     trigger: { wordText: 'f16', occurrence: 1 },
                                 },
                                 // F-22 image — fires when narrator says "F-22"
                                 {
-                                    id: 'img_f22', type: 'namedVisual',
-                                    name: 'F-22 Raptor stealth fighter jet',
+                                    id: 'img_f22', type: 'photo',
+                                    src: imgF22,
                                     slot: 'mid-right', width: 320, height: 220,
                                     caption: 'F-22', pinStyle: 'tape',
                                     trigger: { wordText: 'f22', occurrence: 1 },
@@ -301,8 +388,8 @@ module.exports = (async () => {
                                 },
                                 // Ferrari image — bot left
                                 {
-                                    id: 'img_ferrari1', type: 'namedVisual',
-                                    name: 'Ferrari 488 red sports car',
+                                    id: 'img_ferrari1', type: 'photo',
+                                    src: imgFerrari,
                                     slot: 'bot-left', width: 340, height: 220,
                                     caption: '= 1 FERRARI', pinStyle: 'pins',
                                     trigger: { wordText: 'ferrari', occurrence: 1 },
@@ -337,7 +424,6 @@ module.exports = (async () => {
                         data: {
                             title: '#1 — GAU-8 AVENGER',
                             theme: commonTheme,
-                            serpApiKey,
                             commands: [
                                 // Scene number
                                 {
@@ -348,8 +434,8 @@ module.exports = (async () => {
                                 },
                                 // GAU-8 / A-10 photo — top center
                                 {
-                                    id: 'photo3', type: 'namedVisual',
-                                    name: 'A-10 Warthog GAU-8 Avenger cannon firing',
+                                    id: 'photo3', type: 'photo',
+                                    src: imgGau8,
                                     slot: 'top-center', width: 600, height: 380,
                                     rotate: -3, pinStyle: 'tape',
                                     caption: 'GAU-8 AVENGER — 30mm',
@@ -357,8 +443,8 @@ module.exports = (async () => {
                                 },
                                 // A-10 image — fires when narrator says A-10 Warthog
                                 {
-                                    id: 'img_a10', type: 'namedVisual',
-                                    name: 'A-10 Warthog attack aircraft',
+                                    id: 'img_a10', type: 'photo',
+                                    src: imgA10,
                                     slot: 'mid-left', width: 320, height: 200,
                                     caption: 'A-10 WARTHOG', pinStyle: 'tape',
                                     trigger: { wordText: 'warthog', occurrence: 1 },
@@ -394,8 +480,8 @@ module.exports = (async () => {
                                 },
                                 // Private jet image — bot left
                                 {
-                                    id: 'img_pjet', type: 'namedVisual',
-                                    name: 'luxury private jet aircraft Gulfstream',
+                                    id: 'img_pjet', type: 'photo',
+                                    src: imgJet,
                                     slot: 'bot-left', width: 340, height: 220,
                                     caption: '= 1 PRIVATE JET', pinStyle: 'pins',
                                     trigger: { wordText: 'private', occurrence: 1 },
@@ -437,7 +523,6 @@ module.exports = (async () => {
                         data: {
                             title: 'SUBSCRIBE',
                             theme: commonTheme,
-                            serpApiKey,
                             commands: [
                                 {
                                     id: 'cta1', type: 'sticker', text: '🔔 SUBSCRIBE\nFOR MORE',
