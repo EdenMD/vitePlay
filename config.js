@@ -1,25 +1,11 @@
 // config.top3-expensive-guns.js
 // "Top 3 Most Expensive Guns to Fire Per Minute"
-// Countdown format: #3 Phalanx CIWS → #2 M61 Vulcan → #1 GAU-8 Avenger
-// WITH ANALOGIES: Lamborghini, Ferrari, Private Jet.
-// Voice: am_adam (finance/money authority voice).
-// 
-// HOW THE IMAGES WORK:
-// The config runs as an async module BEFORE the engine starts rendering.
-// It calls SerpAPI directly using process.env.SERPAPI_API_KEY, downloads
-// each image, and converts it to a base64 data: URI. The paper-sticker
-// template takes those as `src`, so Puppeteer has zero recording-time
-// network calls for images.
+// 4 scenes: #3 → #2 → #1 → FINAL CTA.
+// REAL PHOTOS: Platform (destroyer/F-16/A-10), Gun, Luxury (Lambo/Ferrari/Jet).
+// Voice: am_adam.
+// Each visual appears, then fades/erases after a few seconds to keep the scene tidy.
 //
-// If SERPAPI_API_KEY isn't set, fetchImage() returns null and photo
-// commands are omitted — stickers, icons, arrows, and strings still render.
-//
-// OPTIMIZED SEARCH QUERIES (short + visual, under 125 chars):
-//   - "Phalanx CIWS firing"
-//   - "M61 Vulcan cannon"
-//   - "A-10 Warthog GAU-8"
-//
-// Run with:  VIDEO_CONFIG=config.top3-expensive-guns.js node engine-ci.js
+// RUN: VIDEO_CONFIG=config.top3-expensive-guns.js node engine-ci.js
 
 const https = require('https');
 const http = require('http');
@@ -96,11 +82,25 @@ module.exports = (async () => {
 
     console.log('[GunsConfig] Pre-fetching images from SerpAPI...');
 
-    // ── OPTIMIZED QUERIES ── short, visual, under 125 chars ──────────────
-    const [imgPhalanx, imgVulcan, imgA10] = await Promise.all([
-        fetchImage('Phalanx CIWS firing', 0),
-        fetchImage('M61 Vulcan cannon', 0),
-        fetchImage('A-10 Warthog GAU-8', 0),
+    // ── Platform photos ──────────────────────────────────────────────────
+    const [imgDestroyer, imgF16, imgA10Full] = await Promise.all([
+        fetchImage('Arleigh Burke destroyer ship', 0),
+        fetchImage('F-16 fighter jet flying', 0),
+        fetchImage('A-10 Warthog aircraft', 0),
+    ]);
+
+    // ── Gun photos ──────────────────────────────────────────────────────
+    const [imgPhalanx, imgVulcan, imgGau8] = await Promise.all([
+        fetchImage('Phalanx CIWS firing ship', 0),
+        fetchImage('M61 Vulcan cannon mounted', 0),
+        fetchImage('A-10 Warthog GAU-8 firing', 0),
+    ]);
+
+    // ── Luxury photos ──────────────────────────────────────────────────
+    const [imgLambo, imgFerrari, imgJet] = await Promise.all([
+        fetchImage('Lamborghini Aventador front view', 0),
+        fetchImage('Ferrari SF90 front view', 0),
+        fetchImage('private jet landing', 0),
     ]);
 
     console.log('[GunsConfig] Images ready. Building config...');
@@ -115,100 +115,12 @@ module.exports = (async () => {
         },
 
         defaults: {
-            voice: 'am_adam', // ← FINANCE / MONEY AUTHORITY VOICE
+            voice: 'am_adam',
             transition: 'fade',
             transitionDuration: 0.35,
         },
 
         scenes: [
-
-            // ── Scene 0 — HOOK: What if a gun costs more than a Lamborghini? ──
-            {
-                tts: {
-                    text: "What if I told you a single minute of firing these guns could cost you a Lamborghini, a Ferrari, or even a private jet? Stay tuned for the top three most expensive weapons to fire.",
-                    voice: 'am_adam',
-                    pauseAfter: 0.4,
-                },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#e8dfcd' },
-                    {
-                        type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-hook',
-                        audioSync: true,
-                        cursor: false,
-                        waitFor: '[data-ready="1"]',
-                        fps: 30,
-                        viewport: { width: 1080, height: 1920 },
-                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                        data: {
-                            title: 'MONEY VS FIREPOWER',
-                            theme: {
-                                paper: '#e8dfcd',
-                                ink: '#1a1a1a',
-                                accent: '#a93226',
-                                accent2: '#1a5276',
-                                shadow: 'rgba(20,16,10,0.38)',
-                            },
-                            commands: [
-                                // Big hook sticker — center
-                                {
-                                    id: 'hook1',
-                                    type: 'sticker', text: 'WHAT IF A GUN COSTS MORE THAN A LAMBORGHINI?',
-                                    x: 540, y: 400,
-                                    size: 60,
-                                    color: '#1a1a1a', stroke: '#ffffff',
-                                    rotate: -1,
-                                    trigger: { atSeconds: 0.1 },
-                                },
-
-                                // Lamborghini icon — left
-                                {
-                                    id: 'i_hook1',
-                                    type: 'icon', icon: 'mdi:car-sports', size: 120,
-                                    x: 200, y: 700,
-                                    bg: 'circle', color: '#f1c40f',
-                                    trigger: { wordText: 'Lamborghini', occurrence: 1 },
-                                },
-
-                                // Ferrari icon — center
-                                {
-                                    id: 'i_hook2',
-                                    type: 'icon', icon: 'mdi:car-sports', size: 120,
-                                    x: 540, y: 700,
-                                    bg: 'circle', color: '#e74c3c',
-                                    trigger: { wordText: 'Ferrari', occurrence: 1 },
-                                },
-
-                                // Private Jet icon — right
-                                {
-                                    id: 'i_hook3',
-                                    type: 'icon', icon: 'mdi:airplane', size: 120,
-                                    x: 880, y: 700,
-                                    bg: 'circle', color: '#7f8c8d',
-                                    trigger: { wordText: 'private jet', occurrence: 1 },
-                                },
-
-                                // Bottom sticker: "TOP 3 COUNTDOWN"
-                                {
-                                    id: 'hook2',
-                                    type: 'sticker', text: 'TOP 3 COUNTDOWN',
-                                    x: 540, y: 1100,
-                                    size: 72,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: 1,
-                                    trigger: { wordText: 'top', occurrence: 1 },
-                                },
-                                {
-                                    id: 'sc_hook',
-                                    type: 'circle', target: 'hook2', color: '#a93226',
-                                    trigger: { afterId: 'hook2', offset: 0.3 },
-                                },
-                            ],
-                        },
-                    },
-                ],
-            },
 
             // ── Scene 1 — #3: Phalanx CIWS ($135k = Lamborghini) ──────────
             {
@@ -239,86 +151,118 @@ module.exports = (async () => {
                                 shadow: 'rgba(20,16,10,0.38)',
                             },
                             commands: [
-                                // Main photo — center
-                                ...(imgPhalanx ? [{
-                                    id: 'photo1',
-                                    type: 'photo', src: imgPhalanx,
+                                // ── STEP 1: Show DESTROYER (platform) ──
+                                ...(imgDestroyer ? [{
+                                    id: 'photo_destroyer',
+                                    type: 'photo', src: imgDestroyer,
                                     x: 540, y: 480,
-                                    width: 760, height: 380,
+                                    width: 760, height: 400,
                                     rotate: -2, pinStyle: 'tape',
-                                    caption: 'PHALANX CIWS — NAVY CLOSE-IN WEAPON SYSTEM',
+                                    caption: 'U.S. NAVY DESTROYER — PHALANX MOUNTED',
                                     trigger: { atSeconds: 0.2 },
                                 }] : []),
 
-                                // Top sticker — "$30/ROUND"
+                                // ── Sticker: "NAVY'S LAST LINE" ──
+                                {
+                                    id: 's_platform1',
+                                    type: 'sticker', text: 'NAVY CLOSE-IN WEAPON',
+                                    x: 540, y: 180,
+                                    size: 44,
+                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
+                                    rotate: 0,
+                                    trigger: { wordText: 'Navy', occurrence: 1 },
+                                },
+
+                                // ── Fade destroyer after 2 seconds ──
+                                {
+                                    id: 'fade_destroyer',
+                                    type: 'fadeGroup',
+                                    targets: ['photo_destroyer', 's_platform1'],
+                                    opacity: 0,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_destroyer', offset: 2.0 },
+                                },
+
+                                // ── STEP 2: Show PHALANX GUN ──
+                                ...(imgPhalanx ? [{
+                                    id: 'photo_phalanx',
+                                    type: 'photo', src: imgPhalanx,
+                                    x: 540, y: 480,
+                                    width: 760, height: 400,
+                                    rotate: 1, pinStyle: 'pins',
+                                    caption: 'PHALANX CIWS — 4,500 RPM',
+                                    trigger: { afterId: 'fade_destroyer', offset: 0.2 },
+                                }] : []),
+
+                                // ── "$30/ROUND" sticker ──
                                 {
                                     id: 's1',
                                     type: 'sticker', text: '$30 PER ROUND',
                                     x: 280, y: 180,
-                                    size: 52,
-                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
+                                    size: 44,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
                                     rotate: -2,
                                     trigger: { wordText: 'thirty', occurrence: 1 },
                                 },
 
-                                // Top right — "4,500 RPM"
+                                // ── "4,500 RPM" sticker ──
                                 {
                                     id: 's2',
                                     type: 'sticker', text: '4,500 RPM',
                                     x: 820, y: 190,
-                                    size: 52,
+                                    size: 44,
                                     color: '#1a1a1a', stroke: '#ffffff',
                                     rotate: 3,
                                     trigger: { wordText: 'thousand', occurrence: 1 },
                                 },
 
-                                // Cost sticker — $135,000 / MIN (left side of analogy row)
+                                // ── Fade Phalanx gun after 2 seconds ──
+                                {
+                                    id: 'fade_phalanx',
+                                    type: 'fadeGroup',
+                                    targets: ['photo_phalanx', 's1', 's2'],
+                                    opacity: 0,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_phalanx', offset: 2.0 },
+                                },
+
+                                // ── STEP 3: Show LAMBORGHINI ──
+                                ...(imgLambo ? [{
+                                    id: 'photo_lambo',
+                                    type: 'photo', src: imgLambo,
+                                    x: 540, y: 480,
+                                    width: 760, height: 400,
+                                    rotate: 2, pinStyle: 'tape',
+                                    caption: '1 LAMBORGHINI = $135,000',
+                                    trigger: { afterId: 'fade_phalanx', offset: 0.2 },
+                                }] : []),
+
+                                // ── Cost sticker "$135k" ──
                                 {
                                     id: 's3',
                                     type: 'sticker', text: '$135,000 / MIN',
-                                    x: 220, y: 920,
-                                    size: 54,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: -2,
-                                    trigger: { wordText: 'thirty-five', occurrence: 1 },
-                                },
-
-                                // Equals sign sticker
-                                {
-                                    id: 'eq1',
-                                    type: 'sticker', text: '=',
-                                    x: 420, y: 920,
-                                    size: 54,
-                                    color: '#1a1a1a', stroke: '#ffffff',
-                                    rotate: 0,
-                                    trigger: { afterId: 's3', offset: 0.1 },
-                                },
-
-                                // Lamborghini analogy sticker
-                                {
-                                    id: 's4',
-                                    type: 'sticker', text: '1 LAMBORGHINI',
-                                    x: 620, y: 920,
-                                    size: 50,
+                                    x: 540, y: 920,
+                                    size: 48,
                                     color: '#ffffff', stroke: '#f1c40f', bg: '#f1c40f',
-                                    rotate: 2,
-                                    trigger: { wordText: 'Lamborghini', occurrence: 1 },
+                                    rotate: 0,
+                                    trigger: { afterId: 'photo_lambo', offset: 0.2 },
                                 },
 
-                                // Lamborghini icon
-                                {
-                                    id: 'i1',
-                                    type: 'icon', icon: 'mdi:car-sports', size: 80,
-                                    x: 860, y: 920,
-                                    bg: 'circle', color: '#f1c40f',
-                                    trigger: { afterId: 's4', offset: 0.1 },
-                                },
-
-                                // Circle around the cost row
+                                // ── Circle around the cost sticker ──
                                 {
                                     id: 'sc1',
-                                    type: 'circle', target: 's3', color: '#a93226',
-                                    trigger: { afterId: 's3', offset: 0.3 },
+                                    type: 'circle', target: 's3', color: '#f1c40f',
+                                    trigger: { afterId: 's3', offset: 0.2 },
+                                },
+
+                                // ── Fade Lamborghini and cost after 3s ──
+                                {
+                                    id: 'fade_lambo',
+                                    type: 'fadeGroup',
+                                    targets: ['photo_lambo', 's3', 'sc1'],
+                                    opacity: 0,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_lambo', offset: 3.0 },
                                 },
                             ],
                         },
@@ -355,86 +299,118 @@ module.exports = (async () => {
                                 shadow: 'rgba(20,16,10,0.38)',
                             },
                             commands: [
-                                // Main photo — center
-                                ...(imgVulcan ? [{
-                                    id: 'photo2',
-                                    type: 'photo', src: imgVulcan,
+                                // ── STEP 1: Show F-16 (platform) ──
+                                ...(imgF16 ? [{
+                                    id: 'photo_f16',
+                                    type: 'photo', src: imgF16,
                                     x: 540, y: 480,
-                                    width: 760, height: 380,
-                                    rotate: 2, pinStyle: 'pins',
-                                    caption: 'M61 VULCAN — 20mm GATLING CANNON',
+                                    width: 760, height: 400,
+                                    rotate: 2, pinStyle: 'tape',
+                                    caption: 'F-16 FIGHTING FALCON — VULCAN MOUNTED',
                                     trigger: { atSeconds: 0.2 },
                                 }] : []),
 
-                                // Top sticker — "$30/ROUND"
+                                // ── Sticker: "FIGHTER JET" ──
+                                {
+                                    id: 's_platform2',
+                                    type: 'sticker', text: 'F-16 / F-22 / F-15',
+                                    x: 540, y: 180,
+                                    size: 40,
+                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
+                                    rotate: 0,
+                                    trigger: { wordText: 'F-16', occurrence: 1 },
+                                },
+
+                                // ── Fade F-16 after 2s ──
+                                {
+                                    id: 'fade_f16',
+                                    type: 'fadeGroup',
+                                    targets: ['photo_f16', 's_platform2'],
+                                    opacity: 0,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_f16', offset: 2.0 },
+                                },
+
+                                // ── STEP 2: Show VULCAN GUN ──
+                                ...(imgVulcan ? [{
+                                    id: 'photo_vulcan',
+                                    type: 'photo', src: imgVulcan,
+                                    x: 540, y: 480,
+                                    width: 760, height: 400,
+                                    rotate: -1, pinStyle: 'pins',
+                                    caption: 'M61 VULCAN — 6,000 RPM',
+                                    trigger: { afterId: 'fade_f16', offset: 0.2 },
+                                }] : []),
+
+                                // ── "$30/ROUND" sticker ──
                                 {
                                     id: 's5',
                                     type: 'sticker', text: '$30 PER ROUND',
                                     x: 280, y: 180,
-                                    size: 52,
-                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
+                                    size: 44,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
                                     rotate: -2,
                                     trigger: { wordText: 'thirty-dollar', occurrence: 1 },
                                 },
 
-                                // Top right — "6,000 RPM"
+                                // ── "6,000 RPM" sticker ──
                                 {
                                     id: 's6',
                                     type: 'sticker', text: '6,000 RPM',
                                     x: 820, y: 190,
-                                    size: 52,
+                                    size: 44,
                                     color: '#1a1a1a', stroke: '#ffffff',
                                     rotate: 3,
                                     trigger: { wordText: 'six thousand', occurrence: 1 },
                                 },
 
-                                // Cost sticker — $180,000 / MIN
+                                // ── Fade Vulcan after 2s ──
+                                {
+                                    id: 'fade_vulcan',
+                                    type: 'fadeGroup',
+                                    targets: ['photo_vulcan', 's5', 's6'],
+                                    opacity: 0,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_vulcan', offset: 2.0 },
+                                },
+
+                                // ── STEP 3: Show FERRARI ──
+                                ...(imgFerrari ? [{
+                                    id: 'photo_ferrari',
+                                    type: 'photo', src: imgFerrari,
+                                    x: 540, y: 480,
+                                    width: 760, height: 400,
+                                    rotate: 2, pinStyle: 'tape',
+                                    caption: '1 FERRARI = $180,000',
+                                    trigger: { afterId: 'fade_vulcan', offset: 0.2 },
+                                }] : []),
+
+                                // ── Cost sticker "$180k" ──
                                 {
                                     id: 's7',
                                     type: 'sticker', text: '$180,000 / MIN',
-                                    x: 220, y: 920,
-                                    size: 54,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: -2,
-                                    trigger: { wordText: 'eighty thousand', occurrence: 1 },
-                                },
-
-                                // Equals sign
-                                {
-                                    id: 'eq2',
-                                    type: 'sticker', text: '=',
-                                    x: 420, y: 920,
-                                    size: 54,
-                                    color: '#1a1a1a', stroke: '#ffffff',
-                                    rotate: 0,
-                                    trigger: { afterId: 's7', offset: 0.1 },
-                                },
-
-                                // Ferrari analogy sticker
-                                {
-                                    id: 's8',
-                                    type: 'sticker', text: '1 FERRARI',
-                                    x: 620, y: 920,
-                                    size: 50,
+                                    x: 540, y: 920,
+                                    size: 48,
                                     color: '#ffffff', stroke: '#e74c3c', bg: '#e74c3c',
-                                    rotate: 2,
-                                    trigger: { wordText: 'Ferrari', occurrence: 1 },
+                                    rotate: 0,
+                                    trigger: { afterId: 'photo_ferrari', offset: 0.2 },
                                 },
 
-                                // Ferrari icon (using sports car with red color)
-                                {
-                                    id: 'i2',
-                                    type: 'icon', icon: 'mdi:car-sports', size: 80,
-                                    x: 860, y: 920,
-                                    bg: 'circle', color: '#e74c3c',
-                                    trigger: { afterId: 's8', offset: 0.1 },
-                                },
-
-                                // Circle around cost row
+                                // ── Circle ──
                                 {
                                     id: 'sc2',
-                                    type: 'circle', target: 's7', color: '#a93226',
-                                    trigger: { afterId: 's7', offset: 0.3 },
+                                    type: 'circle', target: 's7', color: '#e74c3c',
+                                    trigger: { afterId: 's7', offset: 0.2 },
+                                },
+
+                                // ── Fade Ferrari and cost after 3s ──
+                                {
+                                    id: 'fade_ferrari',
+                                    type: 'fadeGroup',
+                                    targets: ['photo_ferrari', 's7', 'sc2'],
+                                    opacity: 0,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_ferrari', offset: 3.0 },
                                 },
                             ],
                         },
@@ -445,7 +421,7 @@ module.exports = (async () => {
             // ── Scene 3 — #1: GAU-8 Avenger ($507k = Private Jet) ──────────
             {
                 tts: {
-                    text: "And number one: the GAU-8 Avenger. The A-10 Warthog's main gun. Fires three thousand nine hundred rounds per minute, each costing one hundred and thirty dollars. That's over five hundred thousand dollars per minute. That's a private jet. Literally burning money. Subscribe for more.",
+                    text: "And number one: the GAU-8 Avenger. The A-10 Warthog's main gun. Fires three thousand nine hundred rounds per minute, each costing one hundred and thirty dollars. That's over five hundred thousand dollars per minute. That's a private jet. Literally burning money.",
                     voice: 'am_adam',
                     pauseAfter: 0.4,
                 },
@@ -471,114 +447,202 @@ module.exports = (async () => {
                                 shadow: 'rgba(20,16,10,0.38)',
                             },
                             commands: [
-                                // Main photo — center (slightly bigger)
-                                ...(imgA10 ? [{
-                                    id: 'photo3',
-                                    type: 'photo', src: imgA10,
-                                    x: 540, y: 460,
-                                    width: 800, height: 400,
-                                    rotate: -3, pinStyle: 'tape',
-                                    caption: 'GAU-8 AVENGER — 30mm DEPLETED URANIUM',
+                                // ── STEP 1: Show A-10 (platform) ──
+                                ...(imgA10Full ? [{
+                                    id: 'photo_a10',
+                                    type: 'photo', src: imgA10Full,
+                                    x: 540, y: 480,
+                                    width: 760, height: 400,
+                                    rotate: -1, pinStyle: 'tape',
+                                    caption: 'A-10 WARTHOG — BUILT AROUND THE GUN',
                                     trigger: { atSeconds: 0.2 },
                                 }] : []),
 
-                                // Top left — "$130/ROUND"
+                                // ── Sticker: "A-10 WARTHOG" ──
+                                {
+                                    id: 's_platform3',
+                                    type: 'sticker', text: 'A-10 WARTHOG',
+                                    x: 540, y: 180,
+                                    size: 44,
+                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
+                                    rotate: 0,
+                                    trigger: { wordText: 'A-10', occurrence: 1 },
+                                },
+
+                                // ── Fade A-10 after 2s ──
+                                {
+                                    id: 'fade_a10',
+                                    type: 'fadeGroup',
+                                    targets: ['photo_a10', 's_platform3'],
+                                    opacity: 0,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_a10', offset: 2.0 },
+                                },
+
+                                // ── STEP 2: Show GAU-8 GUN ──
+                                ...(imgGau8 ? [{
+                                    id: 'photo_gau8',
+                                    type: 'photo', src: imgGau8,
+                                    x: 540, y: 480,
+                                    width: 760, height: 400,
+                                    rotate: 2, pinStyle: 'pins',
+                                    caption: 'GAU-8 AVENGER — 3,900 RPM',
+                                    trigger: { afterId: 'fade_a10', offset: 0.2 },
+                                }] : []),
+
+                                // ── "$130/ROUND" sticker ──
                                 {
                                     id: 's9',
                                     type: 'sticker', text: '$130 PER ROUND',
                                     x: 280, y: 180,
-                                    size: 54,
+                                    size: 44,
                                     color: '#ffffff', stroke: '#a93226', bg: '#a93226',
                                     rotate: -2,
                                     trigger: { wordText: 'hundred and thirty', occurrence: 1 },
                                 },
 
-                                // Top right — "3,900 RPM"
+                                // ── "3,900 RPM" sticker ──
                                 {
                                     id: 's10',
                                     type: 'sticker', text: '3,900 RPM',
                                     x: 820, y: 190,
-                                    size: 54,
+                                    size: 44,
                                     color: '#1a1a1a', stroke: '#ffffff',
                                     rotate: 3,
                                     trigger: { wordText: 'three thousand nine hundred', occurrence: 1 },
                                 },
 
-                                // "30mm DEPLETED URANIUM" label
+                                // ── "30mm depleted uranium" label ──
                                 {
                                     id: 'l1',
                                     type: 'label', text: '30mm depleted uranium rounds',
-                                    size: 34, x: 180, y: 400,
+                                    size: 30, x: 180, y: 400,
                                     color: '#1a5276', rotate: -2,
                                     trigger: { wordText: 'millimeter', occurrence: 1 },
                                 },
 
-                                // Cost sticker — $507,000 / MIN
+                                // ── Fade GAU-8 after 2s ──
+                                {
+                                    id: 'fade_gau8',
+                                    type: 'fadeGroup',
+                                    targets: ['photo_gau8', 's9', 's10', 'l1'],
+                                    opacity: 0,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_gau8', offset: 2.0 },
+                                },
+
+                                // ── STEP 3: Show PRIVATE JET PHOTO (BIGGER, LONGER) ──
+                                ...(imgJet ? [{
+                                    id: 'photo_jet',
+                                    type: 'photo', src: imgJet,
+                                    x: 540, y: 490,
+                                    width: 840,
+                                    height: 420,
+                                    rotate: 1, pinStyle: 'tape',
+                                    caption: '1 PRIVATE JET = $507,000',
+                                    trigger: { afterId: 'fade_gau8', offset: 0.2 },
+                                }] : []),
+
+                                // ── Cost sticker — SMALLER, moved down ──
                                 {
                                     id: 's11',
                                     type: 'sticker', text: '$507,000 / MIN',
-                                    x: 200, y: 920,
-                                    size: 58,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: -2,
-                                    trigger: { wordText: 'five hundred thousand', occurrence: 1 },
-                                },
-
-                                // Equals sign
-                                {
-                                    id: 'eq3',
-                                    type: 'sticker', text: '=',
-                                    x: 430, y: 920,
-                                    size: 58,
-                                    color: '#1a1a1a', stroke: '#ffffff',
-                                    rotate: 0,
-                                    trigger: { afterId: 's11', offset: 0.1 },
-                                },
-
-                                // Private Jet analogy sticker
-                                {
-                                    id: 's12',
-                                    type: 'sticker', text: '1 PRIVATE JET',
-                                    x: 650, y: 920,
-                                    size: 52,
+                                    x: 540, y: 940,
+                                    size: 42,
                                     color: '#ffffff', stroke: '#34495e', bg: '#34495e',
-                                    rotate: 2,
-                                    trigger: { wordText: 'private jet', occurrence: 1 },
+                                    rotate: 0,
+                                    trigger: { afterId: 'photo_jet', offset: 0.2 },
                                 },
 
-                                // Private Jet icon
-                                {
-                                    id: 'i3',
-                                    type: 'icon', icon: 'mdi:airplane', size: 85,
-                                    x: 880, y: 920,
-                                    bg: 'circle', color: '#7f8c8d',
-                                    trigger: { afterId: 's12', offset: 0.1 },
-                                },
-
-                                // Circle around cost row
+                                // ── Circle around cost ──
                                 {
                                     id: 'sc3',
-                                    type: 'circle', target: 's11', color: '#a93226',
-                                    trigger: { afterId: 's11', offset: 0.3 },
+                                    type: 'circle', target: 's11', color: '#34495e',
+                                    trigger: { afterId: 's11', offset: 0.2 },
                                 },
 
-                                // Subscribe icon — top right corner
+                                // ── Erase Private Jet AFTER 3.5 seconds ──
                                 {
-                                    id: 'sub',
-                                    type: 'icon', icon: 'mdi:bell-ring', size: 100,
-                                    x: 940, y: 140,
-                                    bg: 'circle', color: '#a93226',
-                                    trigger: { wordText: 'subscribe', occurrence: 1 },
+                                    id: 'erase_jet',
+                                    type: 'erase',
+                                    target: 'photo_jet',
+                                    trigger: { afterId: 'photo_jet', offset: 3.5 },
                                 },
 
-                                // Red string connecting photo to cost row
+                                // ── Erase cost sticker after jet is erased ──
                                 {
-                                    id: 'str1',
-                                    type: 'string',
-                                    from: { target: 'photo3' },
-                                    to: { target: 's11' },
-                                    color: '#a93226', sag: 30,
-                                    trigger: { afterId: 'photo3', offset: 0.5 },
+                                    id: 'erase_cost3',
+                                    type: 'erase',
+                                    target: 's11',
+                                    trigger: { afterId: 'erase_jet', offset: 0.2 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 4 — FINAL CTA SCENE ──────────────────────────────────────
+            {
+                tts: {
+                    text: "Subscribe for more.",
+                    voice: 'am_adam',
+                    pauseAfter: 0.2,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#e8dfcd' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-cta',
+                        audioSync: true,
+                        cursor: false,
+                        waitFor: '[data-ready="1"]',
+                        fps: 30,
+                        viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: 'SUBSCRIBE',
+                            theme: {
+                                paper: '#e8dfcd',
+                                ink: '#1a1a1a',
+                                accent: '#a93226',
+                                accent2: '#1a5276',
+                                shadow: 'rgba(20,16,10,0.38)',
+                            },
+                            commands: [
+                                // ── GIANT CTA STICKER ──
+                                {
+                                    id: 'cta_final',
+                                    type: 'sticker', text: '🔔 SUBSCRIBE FOR MORE',
+                                    x: 540, y: 820,
+                                    size: 86,
+                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
+                                    rotate: 0,
+                                    trigger: { atSeconds: 0.1 },
+                                },
+
+                                // ── Circle scribble AROUND the CTA ──
+                                {
+                                    id: 'sc_cta_final',
+                                    type: 'circle', target: 'cta_final', color: '#1a5276',
+                                    trigger: { afterId: 'cta_final', offset: 0.3 },
+                                },
+
+                                // ── Bell icon RIGHT NEXT to the sticker ──
+                                {
+                                    id: 'bell_final',
+                                    type: 'icon', icon: 'mdi:bell-ring', size: 110,
+                                    x: 880, y: 820,
+                                    bg: 'circle', color: '#1a5276',
+                                    trigger: { afterId: 'cta_final', offset: 0.1 },
+                                },
+
+                                // ── Second circle around the bell ──
+                                {
+                                    id: 'sc_bell',
+                                    type: 'circle', target: 'bell_final', color: '#1a5276',
+                                    trigger: { afterId: 'bell_final', offset: 0.2 },
                                 },
                             ],
                         },
