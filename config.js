@@ -1,551 +1,363 @@
-// config.top3-expensive-guns.js  — v2 (pre-fetch all images)
-// Uses the new slot system (no overlap) and photo commands with pre‑fetched
-// base64 images. All SerpAPI calls happen here, not inside the template.
-// Voice: am_adam. No beat/bgMusic.
+// config.ohio-class.js
+// Submarine Class series, Episode 1: Ohio-class.
+// Paper-sticker corkboard documentary, ApexCasing v2.1
+// (paper-sticker-explainer.html). ONE file — everything inline, no
+// separate modules. All image fetching happens here in config.js; the
+// casing itself never calls an API, it only ever receives base64 `src`.
 //
-// SLOT GRID REMINDER (3 cols × 6 rows):
-//   top-left   top-center   top-right
-//   mid-left   mid-center   mid-right
-//   low-left   low-center   low-right
-//   bot-left   bot-center   bot-right
-//   deep-left  deep-center  deep-right
-//   floor-left floor-center floor-right
-//   + banner-top / banner-mid / banner-low / banner-bot (full-width)
+// Every analogy in the narration is paired with its own fetched photo —
+// none are text-only. Older photo/sticker pairs get blurred + dimmed
+// (not erased) as the board fills, so it never clumps, while still
+// reading as a real accumulating case file rather than a wipe-and-replace
+// slideshow. panZoom is used twice: a slow push-in as the dramatic
+// firepower reveal lands, and a pull-back at the end to show the whole
+// board before the CTA. Uses the casing's own slot system (top/mid/low/
+// bot/deep/floor × left/center/right) to spread content across the full
+// canvas instead of hand-picked coordinates — two elements per analogy
+// beat land in the same row (photo + caption) so they read together.
 //
-// Each element owns one slot. Clash = auto-bumped to nearest free slot.
-//
-// RUN: VIDEO_CONFIG=config.top3-expensive-guns.js node engine-ci.js
+// Voice: am_fenrir (deep, gravelly — matches the dry, deadpan delivery
+// this script is written for).
 
-const https = require('https');
-const http = require('http');
+const SERPAPI_KEY  = process.env.SERPAPI_API_KEY    || null;
+const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY || null;
+const PEXELS_KEY   = process.env.PEXELS_API_KEY      || null;
+const PIXABAY_KEY  = process.env.PIXABAY_API_KEY     || null;
 
-// ── Fetch one image from SerpAPI, return as base64 data URI or null ──
-async function fetchImage(query, index = 0) {
-    const key = process.env.SERPAPI_API_KEY;
-    if (!key) {
-        console.warn('[GunsConfig] SERPAPI_API_KEY not set — skipping photo:', query);
-        return null;
-    }
+// Cache SerpAPI result lists per query+orientation so multiple images
+// from the same search (different imageIndex) don't cost extra calls —
+// same behavior as the engine's own src/image-api.js.
+const serpApiResultsCache = new Map();
 
-    try {
-        const searchUrl =
-            `https://serpapi.com/search.json` +
-            `?engine=google_images` +
-            `&q=${encodeURIComponent(query)}` +
-            `&ijn=0&num=30&safe=active` +
-            `&api_key=${key}`;
-
-        const data = await fetchJSON(searchUrl);
-        const results = (data?.images_results || []).filter(r => r.original && !r.original.startsWith('x-raw-image'));
-        if (!results.length) return null;
-
-        const pick = results[index % results.length];
-        if (!pick?.original) return null;
-
-        console.log(`[GunsConfig] Downloading: ${pick.original.slice(0, 70)}`);
-        const b64 = await urlToBase64(pick.original);
-        if (!b64) return null;
-
-        const mime = b64.startsWith('/9j/') || b64.startsWith('iVBOR') ? 'image/jpeg' : 'image/jpeg';
-        return `data:${mime};base64,${b64}`;
-    } catch (e) {
-        console.warn(`[GunsConfig] fetchImage failed for "${query}":`, e.message?.slice(0, 80));
-        return null;
-    }
+function getSourceChain() {
+    const chain = [];
+    if (SERPAPI_KEY)  chain.push('serpapi');
+    if (UNSPLASH_KEY) chain.push('unsplash');
+    if (PEXELS_KEY)   chain.push('pexels');
+    if (PIXABAY_KEY)  chain.push('pixabay');
+    chain.push('picsum'); // always available, no key needed — final resort
+    return chain;
 }
 
-function fetchJSON(url) {
-    return new Promise((resolve, reject) => {
-        const lib = url.startsWith('https') ? https : http;
-        lib.get(url, { headers: { 'User-Agent': 'ApexEngine/2.0' } }, (res) => {
-            let raw = '';
-            res.on('data', d => raw += d);
-            res.on('end', () => { try { resolve(JSON.parse(raw)); } catch (e) { reject(e); } });
-        }).on('error', reject).setTimeout(15000, function () { this.destroy(); reject(new Error('Timeout')); });
-    });
+async function fetchJSON(url, headers = {}) {
+    const res = await fetch(url, { headers: { 'User-Agent': 'APEX-Engine/2.0', ...headers } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
 }
 
-function urlToBase64(imageUrl) {
-    return new Promise((resolve) => {
-        const lib = imageUrl.startsWith('https') ? https : http;
-        const req = lib.get(imageUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ApexEngine/2.0)', 'Accept': 'image/*' },
-            timeout: 12000,
-        }, (res) => {
-            if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
-                urlToBase64(res.headers.location).then(resolve);
-                return;
+// Same validation as the engine's downloadFile(): rejects HTML error
+// pages and suspiciously-small responses. Returns a base64 data URI
+// instead of writing to disk.
+async function downloadAsDataUri(url) {
+    const res = await fetch(url, { headers: { 'User-Agent': 'APEX-Engine/2.0' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const ct = res.headers.get('content-type') || 'image/jpeg';
+    if (ct.includes('text/html')) throw new Error('Server returned HTML instead of an image');
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 1024) throw new Error(`File too small (${buf.length}B) — likely an error response`);
+    return `data:${ct};base64,${buf.toString('base64')}`;
+}
+
+async function searchSerpApi(query, orientation, imageIndex) {
+    if (!SERPAPI_KEY) throw new Error('SERPAPI_API_KEY not set');
+    const cacheKey = `${query.toLowerCase().trim()}::${orientation}`;
+    let results = serpApiResultsCache.get(cacheKey);
+    if (!results) {
+        const url =
+            `https://serpapi.com/search.json?engine=google_images` +
+            `&q=${encodeURIComponent(query)}&ijn=0&num=100&safe=active` +
+            `&api_key=${SERPAPI_KEY}`;
+        const data = await fetchJSON(url, { Authorization: `Bearer ${SERPAPI_KEY}` });
+        const raw  = data?.images_results || [];
+        if (!raw.length) throw new Error('No image results from SerpAPI');
+        const usable = raw.filter(r => r.original && !r.original.startsWith('x-raw-image'));
+        results = usable.length ? usable : raw;
+        serpApiResultsCache.set(cacheKey, results);
+    }
+    return results;
+}
+
+async function searchUnsplash(query, orientation) {
+    if (!UNSPLASH_KEY) throw new Error('No UNSPLASH_ACCESS_KEY');
+    const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)}` +
+        `&orientation=${orientation}&content_filter=high&client_id=${UNSPLASH_KEY}`;
+    const data = await fetchJSON(url);
+    return data?.urls?.regular || data?.urls?.full || null;
+}
+
+async function searchPexels(query, orientation) {
+    if (!PEXELS_KEY) throw new Error('No PEXELS_API_KEY');
+    const orMap = { portrait: 'portrait', landscape: 'landscape', squarish: 'square' };
+    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}` +
+        `&orientation=${orMap[orientation] || 'portrait'}&per_page=5&page=1`;
+    const data = await fetchJSON(url, { Authorization: PEXELS_KEY });
+    const photos = data?.photos;
+    if (!photos?.length) return null;
+    const photo = photos[Math.floor(Math.random() * photos.length)];
+    return photo?.src?.large2x || photo?.src?.large || null;
+}
+
+async function searchPixabay(query, orientation) {
+    if (!PIXABAY_KEY) throw new Error('No PIXABAY_API_KEY');
+    const orMap = { portrait: 'vertical', landscape: 'horizontal', squarish: 'square' };
+    const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(query)}` +
+        `&image_type=photo&orientation=${orMap[orientation] || 'vertical'}` +
+        `&safesearch=true&per_page=5&min_width=1080`;
+    const data = await fetchJSON(url);
+    const hits = data?.hits;
+    if (!hits?.length) return null;
+    const hit = hits[Math.floor(Math.random() * hits.length)];
+    return hit?.largeImageURL || hit?.webformatURL || null;
+}
+
+async function getPicsum(orientation) {
+    const w = orientation === 'landscape' ? 1920 : 1080;
+    const h = orientation === 'landscape' ? 1080 : 1920;
+    const seed = Math.floor(Math.random() * 1000);
+    return `https://picsum.photos/seed/${seed}/${w}/${h}`;
+}
+
+const PLACEHOLDER_SVG =
+    'data:image/svg+xml;base64,' + Buffer.from(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920">` +
+        `<rect width="100%" height="100%" fill="#2a2a33"/>` +
+        `<text x="50%" y="50%" fill="#888" font-size="42" text-anchor="middle" font-family="sans-serif">image unavailable</text>` +
+        `</svg>`
+    ).toString('base64');
+
+// Same fallback order and same "retry every cached SerpAPI result before
+// moving to the next provider" behavior as src/image-api.js.
+async function fetchImageBase64(query, orientation = 'portrait', imageIndex = 0) {
+    for (const source of getSourceChain()) {
+        if (source === 'serpapi') {
+            try {
+                const results = await searchSerpApi(query, orientation, imageIndex);
+                const total = results.length || 1;
+                let lastErr = null;
+                for (let attempt = 0; attempt < total; attempt++) {
+                    const idx = (imageIndex + attempt) % total;
+                    const candidateUrl = results[idx]?.original;
+                    if (!candidateUrl) continue;
+                    try { return await downloadAsDataUri(candidateUrl); }
+                    catch (e) { lastErr = e; }
+                }
+                console.warn(`[image] serpapi exhausted all ${total} result(s) for "${query}": ${lastErr?.message || 'unknown'}`);
+            } catch (e) {
+                console.warn(`[image] serpapi failed for "${query}": ${e.message}`);
             }
-            if (res.statusCode !== 200) { resolve(null); return; }
-            const chunks = [];
-            res.on('data', c => chunks.push(c));
-            res.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
-        });
-        req.on('error', () => resolve(null));
-        req.on('timeout', () => { req.destroy(); resolve(null); });
-    });
+            continue;
+        }
+        try {
+            const url = await (
+                source === 'unsplash' ? searchUnsplash(query, orientation) :
+                source === 'pexels'   ? searchPexels(query, orientation) :
+                source === 'pixabay'  ? searchPixabay(query, orientation) :
+                getPicsum(orientation)
+            );
+            if (!url) continue;
+            return await downloadAsDataUri(url);
+        } catch (e) {
+            console.warn(`[image] ${source} failed for "${query}": ${e.message}`);
+        }
+    }
+    console.warn(`[image] ALL sources failed for "${query}" — using placeholder`);
+    return PLACEHOLDER_SVG;
 }
 
-// ── Main async config ────────────────────────────────────────────────────
-module.exports = (async () => {
+// ═══════════════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════════════
 
-    console.log('[GunsConfig] Pre-fetching images from SerpAPI...');
-
-    // Pre‑fetch all unique images (reused across scenes)
-    const [
-        imgPhalanx,
-        imgVulcan,
-        imgGau8,
-        imgLambo,
-        imgFerrari,
-        imgJet,
-        imgF16,
-        imgF22,
-        imgA10,
-    ] = await Promise.all([
-        fetchImage('Phalanx CIWS weapon system ship', 0),
-        fetchImage('M61 Vulcan Gatling cannon 20mm', 0),
-        fetchImage('A-10 Warthog GAU-8 Avenger cannon firing', 0),
-        fetchImage('Lamborghini Huracan supercar yellow', 0),
-        fetchImage('Ferrari 488 red sports car', 0),
-        fetchImage('luxury private jet aircraft Gulfstream', 0),
-        fetchImage('F-16 Fighting Falcon fighter jet', 0),
-        fetchImage('F-22 Raptor stealth fighter jet', 0),
-        fetchImage('A-10 Warthog attack aircraft', 0),
-    ]);
-
-    console.log('[GunsConfig] Images ready. Building config...');
-
-    const commonTheme = {
-        paper: '#e8dfcd', ink: '#1a1a1a',
-        accent: '#a93226', accent2: '#1a5276',
-        shadow: 'rgba(20,16,10,0.38)',
+module.exports = async () => {
+    const queries = {
+        hero:      'submarine ocean',
+        length:    'football field',
+        weight:    'parking lot cars',
+        crew:      'submarine crew interior',
+        speed:     'speed limit sign',
+        stealth:   'library interior',
+        fuel:      'gas station pump',
+        firepower: 'trident missile launch',
+        fleet:     'aerial ocean',
     };
+
+    const entries = Object.entries(queries);
+    const fetched = await Promise.all(entries.map(([, q]) => fetchImageBase64(q, 'portrait', 0)));
+    const img = {};
+    entries.forEach(([key], i) => { img[key] = fetched[i]; });
+
+    const narration =
+        "There's a machine sitting in the Pacific right now that most people have never heard of, " +
+        "and it could end a war before breakfast. It's called the Ohio class submarine, and everything " +
+        "about it sounds made up. It's five hundred sixty feet long. That's two football fields, nose to " +
+        "tail, with room to spare. Submerged, it weighs almost nineteen thousand tons, heavier than twelve " +
+        "thousand cars, all crammed into one hull. Inside: a hundred fifty five people, zero sunlight, for " +
+        "up to ninety days straight. It can outrun a school zone speed limit, completely underwater. And " +
+        "somehow, it's quieter than a public library. Its nuclear reactor runs for over twenty years " +
+        "without refueling, like buying one tank of gas in college and still driving on it at your " +
+        "retirement party. And here's the part that actually stops people: a single one of these carries " +
+        "more destructive power than every bomb dropped in the entire Second World War, combined. Eighteen " +
+        "of them are active right now. Hiding. All at once. And nobody, not even most of the Navy, knows " +
+        "exactly where. This is the Ohio class. Submarine one of this series. Subscribe, because next " +
+        "week, we go even deeper.";
 
     return {
         output: {
-            title: 'top3-expensive-guns',
+            title:  'ohio-class-submarine-ep1',
             format: 'portrait',
-            fps: 30, crf: 23, preset: 'medium',
+            fps:    30,
+            crf:    23,
+            preset: 'fast',
+            beat: {
+                bpm: 90, bars: 16, genre: 'cinematic', key: 'Dmin',
+                layers: ['kick', 'snare', 'bass', 'pad'],
+                swing: 0.06, reverb: 0.3, loop: true, vol: 0.10,
+            },
         },
-        defaults: { voice: 'am_adam', transition: 'fade', transitionDuration: 0.35 },
+
+        defaults: { voice: 'am_fenrir', transition: 'zoom-cut', transitionDuration: 0.45 },
 
         scenes: [
-
-            // ── Scene 0 — HOOK ────────────────────────────────────────────
             {
-                tts: {
-                    text: "What if I told you firing these guns for one minute costs more than a Lamborghini, a Ferrari, or even a private jet? Here are the top three most expensive weapons to fire per minute.",
-                    voice: 'am_adam', pauseAfter: 0.4,
-                },
-                captions: false,
+                tts: { text: narration, pauseAfter: 0.6 },
+                captions: { style: 'highlight', fontSize: 60, highlightColor: '#f5c518', wordsPerChunk: 3 },
                 layers: [
-                    { type: 'background', color: '#e8dfcd' },
+                    { type: 'background', color: '#f4ecdd' },
                     {
-                        type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-hook',
-                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]',
-                        fps: 30, viewport: { width: 1080, height: 1920 },
-                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        type:      'html-record',
+                        src:       './ApexCasing/paper-sticker-explainer.html?tag=ohio-class-ep1',
+                        audioSync: true,
+                        cursor:    false,
                         data: {
-                            title: 'MONEY VS FIREPOWER',
-                            theme: commonTheme,
+                            title: 'CASE FILE: SUBMARINE CLASS 01',
+                            theme: { accent: '#ff5a3c', accent2: '#2f7cf6', ink: '#17181c' },
                             commands: [
-                                // Hook sticker — full-width banner top
-                                {
-                                    id: 'hook1', type: 'sticker',
-                                    text: 'COSTS MORE THAN\nA SUPERCAR?',
-                                    slot: 'banner-top', size: 70,
-                                    color: '#1a1a1a', stroke: '#ffffff',
-                                    rotate: -1, trigger: { atSeconds: 0.1 },
-                                },
-                                // Lamborghini image — mid left, fires when narrator says it
-                                {
-                                    id: 'img_lambo', type: 'photo',
-                                    src: imgLambo,
-                                    slot: 'mid-left', width: 320, height: 220,
-                                    caption: 'LAMBORGHINI', pinStyle: 'tape',
-                                    trigger: { wordText: 'lamborghini', occurrence: 1 },
-                                },
-                                // Ferrari image — mid center
-                                {
-                                    id: 'img_ferrari', type: 'photo',
-                                    src: imgFerrari,
-                                    slot: 'mid-center', width: 320, height: 220,
-                                    caption: 'FERRARI', pinStyle: 'tape',
-                                    trigger: { wordText: 'ferrari', occurrence: 1 },
-                                },
-                                // Private jet image — mid right
-                                {
-                                    id: 'img_jet', type: 'photo',
-                                    src: imgJet,
-                                    slot: 'mid-right', width: 320, height: 220,
-                                    caption: 'PRIVATE JET', pinStyle: 'tape',
-                                    trigger: { wordText: 'private', occurrence: 1 },
-                                },
-                                // "TOP 3" sticker — bottom banner
-                                {
-                                    id: 'hook2', type: 'sticker', text: 'TOP 3 COUNTDOWN',
-                                    slot: 'banner-bot', size: 72,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: 1,
-                                    trigger: { wordText: 'top', occurrence: 1 },
-                                },
-                                {
-                                    id: 'sc_hook', type: 'circle', target: 'hook2',
-                                    color: '#a93226',
-                                    trigger: { afterId: 'hook2', offset: 0.3 },
-                                },
-                                // Strings connecting the three car images
-                                {
-                                    id: 'str1', type: 'string',
-                                    from: { target: 'img_lambo' }, to: { target: 'img_ferrari' },
-                                    color: '#a93226', sag: 30,
-                                    trigger: { afterId: 'img_ferrari', offset: 0.3 },
-                                },
-                                {
-                                    id: 'str2', type: 'string',
-                                    from: { target: 'img_ferrari' }, to: { target: 'img_jet' },
-                                    color: '#a93226', sag: 30,
-                                    trigger: { afterId: 'img_jet', offset: 0.3 },
-                                },
+                                // ── HERO — fires on the very first word, big and central ──
+                                { id: 'hero', type: 'photo', src: img.hero,
+                                  x: 540, y: 300, width: 760, height: 520, pinStyle: 'pins',
+                                  kenBurns: 'zoom-in', kenBurnsAmount: 0.14,
+                                  trigger: { wordText: 'theres', occurrence: 1 } },
+
+                                // ── LENGTH — row 0 ──────────────────────────────────────
+                                { id: 'lengthPhoto', type: 'photo', src: img.length,
+                                  slot: 'top-left', width: 300, height: 220, pinStyle: 'tape',
+                                  trigger: { wordText: 'feet', occurrence: 1 } },
+                                { id: 'lengthSticker', type: 'sticker', text: '560 FT\n2 FOOTBALL FIELDS',
+                                  slot: 'top-right', size: 42, rotate: -3,
+                                  trigger: { wordText: 'football', occurrence: 1 } },
+
+                                // ── WEIGHT — row 1 ──────────────────────────────────────
+                                { id: 'weightPhoto', type: 'photo', src: img.weight,
+                                  slot: 'mid-left', width: 300, height: 220, pinStyle: 'tape',
+                                  trigger: { wordText: 'tons', occurrence: 1 } },
+                                { id: 'weightSticker', type: 'sticker', text: '18,750 TONS\nSUBMERGED',
+                                  slot: 'mid-right', size: 42, rotate: 2,
+                                  trigger: { wordText: 'cars', occurrence: 1 } },
+
+                                // ── CREW — row 2 ────────────────────────────────────────
+                                { id: 'crewPhoto', type: 'photo', src: img.crew,
+                                  slot: 'low-left', width: 300, height: 220, pinStyle: 'pins',
+                                  trigger: { wordText: 'sunlight', occurrence: 1 } },
+                                { id: 'crewSticker', type: 'sticker', text: '155 CREW\n90 DAYS, NO SUN',
+                                  slot: 'low-right', size: 40, rotate: -2,
+                                  trigger: { wordText: 'ninety', occurrence: 1 } },
+
+                                // ── SPEED — row 3 ───────────────────────────────────────
+                                { id: 'speedPhoto', type: 'photo', src: img.speed,
+                                  slot: 'bot-left', width: 300, height: 220, pinStyle: 'tape',
+                                  trigger: { wordText: 'speed', occurrence: 1 } },
+                                { id: 'speedSticker', type: 'sticker', text: 'FASTER THAN\nA SCHOOL ZONE',
+                                  slot: 'bot-right', size: 40, rotate: 3,
+                                  trigger: { wordText: 'underwater', occurrence: 1 } },
+
+                                // ── STEALTH — row 4 ─────────────────────────────────────
+                                { id: 'stealthPhoto', type: 'photo', src: img.stealth,
+                                  slot: 'deep-left', width: 300, height: 220, pinStyle: 'tape',
+                                  trigger: { wordText: 'quieter', occurrence: 1 } },
+                                { id: 'stealthSticker', type: 'sticker', text: 'QUIETER THAN\nA LIBRARY',
+                                  slot: 'deep-right', size: 40, rotate: -3,
+                                  trigger: { wordText: 'library', occurrence: 1 } },
+
+                                // ── FUEL — row 5 (board is now full, top to floor) ──────
+                                { id: 'fuelPhoto', type: 'photo', src: img.fuel,
+                                  slot: 'floor-left', width: 300, height: 220, pinStyle: 'pins',
+                                  trigger: { wordText: 'reactor', occurrence: 1 } },
+                                { id: 'fuelSticker', type: 'sticker', text: '20+ YEARS\nONE TANK OF FUEL',
+                                  slot: 'floor-right', size: 38, rotate: 2,
+                                  trigger: { wordText: 'retirement', occurrence: 1 } },
+
+                                // ── DECLUTTER — blur + dim the earliest two beats so the
+                                // board doesn't clump once the big reveals land on top ──
+                                { id: 'blurLength', type: 'blur', target: 'lengthPhoto', amount: 6, duration: 0.8,
+                                  trigger: { wordText: 'stops', occurrence: 1 } },
+                                { id: 'fadeLength', type: 'fadeGroup', targets: ['lengthPhoto', 'lengthSticker'],
+                                  opacity: 0.30, duration: 0.8,
+                                  trigger: { wordText: 'stops', occurrence: 1 } },
+                                { id: 'blurWeight', type: 'blur', target: 'weightPhoto', amount: 6, duration: 0.8,
+                                  trigger: { afterId: 'blurLength', offset: 0.15 } },
+                                { id: 'fadeWeight', type: 'fadeGroup', targets: ['weightPhoto', 'weightSticker'],
+                                  opacity: 0.30, duration: 0.8,
+                                  trigger: { afterId: 'fadeLength', offset: 0.15 } },
+
+                                // ── FIREPOWER — the big dramatic centerpiece, placed
+                                // explicitly (not slotted) so it can sit large, front and
+                                // center, over the now-blurred earlier rows ─────────────
+                                { id: 'firepowerPhoto', type: 'photo', src: img.firepower,
+                                  x: 540, y: 860, width: 620, height: 460, pinStyle: 'pins',
+                                  trigger: { wordText: 'combined', occurrence: 1 } },
+                                { id: 'firepowerSticker', type: 'sticker', text: 'MORE FIREPOWER THAN\nALL OF WWII COMBINED',
+                                  x: 540, y: 1160, size: 46, rotate: -1, color: '#ff5a3c',
+                                  trigger: { afterId: 'firepowerPhoto', offset: 0.3 } },
+                                { id: 'zoomIn', type: 'panZoom', toScale: 1.12, toX: 0, toY: -80, duration: 1.4,
+                                  trigger: { wordText: 'combined', occurrence: 1 } },
+
+                                // ── declutter crew/speed rows before the fleet reveal ───
+                                { id: 'blurCrew', type: 'blur', target: 'crewPhoto', amount: 6, duration: 0.7,
+                                  trigger: { wordText: 'eighteen', occurrence: 1 } },
+                                { id: 'fadeCrew', type: 'fadeGroup', targets: ['crewPhoto', 'crewSticker'],
+                                  opacity: 0.30, duration: 0.7,
+                                  trigger: { wordText: 'eighteen', occurrence: 1 } },
+                                { id: 'blurSpeed', type: 'blur', target: 'speedPhoto', amount: 6, duration: 0.7,
+                                  trigger: { afterId: 'blurCrew', offset: 0.15 } },
+                                { id: 'fadeSpeed', type: 'fadeGroup', targets: ['speedPhoto', 'speedSticker'],
+                                  opacity: 0.30, duration: 0.7,
+                                  trigger: { afterId: 'fadeCrew', offset: 0.15 } },
+
+                                // ── FLEET reveal — explicit placement, lower board ──────
+                                { id: 'fleetPhoto', type: 'photo', src: img.fleet,
+                                  x: 540, y: 1420, width: 640, height: 420, pinStyle: 'pins',
+                                  trigger: { wordText: 'hiding', occurrence: 1 } },
+                                { id: 'fleetSticker', type: 'sticker', text: '18 ACTIVE RIGHT NOW\nLOCATION: UNKNOWN',
+                                  x: 540, y: 1660, size: 40, color: '#2f7cf6',
+                                  trigger: { afterId: 'fleetPhoto', offset: 0.3 } },
+
+                                // string connecting the hero shot to the fleet reveal —
+                                // one deliberate detective-board connection, not ten
+                                { id: 'caseString', type: 'string',
+                                  from: { target: 'hero' }, to: { target: 'fleetPhoto' },
+                                  color: '#c0392b', sag: 60,
+                                  trigger: { wordText: 'nobody', occurrence: 1 } },
+
+                                // pull back to reveal the whole board before the CTA
+                                { id: 'zoomOut', type: 'panZoom', toScale: 0.86, toX: 0, toY: 40, duration: 1.6,
+                                  trigger: { wordText: 'nobody', occurrence: 1 } },
+
+                                // ── title + CTA ──────────────────────────────────────────
+                                { id: 'titleSticker', type: 'sticker', text: 'OHIO-CLASS',
+                                  x: 540, y: 1750, size: 84, bg: '#ffffff',
+                                  trigger: { wordText: 'class', occurrence: 2 } },
+                                { id: 'ctaSticker', type: 'sticker', text: 'SUBSCRIBE\nFOR EPISODE 2',
+                                  x: 540, y: 1850, size: 50, color: '#ff5a3c',
+                                  trigger: { wordText: 'subscribe', occurrence: 1 } },
                             ],
                         },
-                    },
-                ],
-            },
-
-            // ── Scene 1 — #3: Phalanx CIWS ($135k = Lamborghini) ─────────
-            {
-                tts: {
-                    text: "Number three: the Phalanx CIWS. The Navy's last line of defense. Four thousand five hundred rounds per minute. Thirty dollars a round. One hundred and thirty-five thousand dollars per minute. The price of a Lamborghini, gone in sixty seconds.",
-                    voice: 'am_adam', pauseAfter: 0.4,
-                },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#e8dfcd' },
-                    {
-                        type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-s1',
-                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]',
-                        fps: 30, viewport: { width: 1080, height: 1920 },
+                        waitFor: '[data-ready="1"]',
+                        fps: 30,
+                        viewport: { width: 1080, height: 1920 },
                         x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                        data: {
-                            title: '#3 — PHALANX CIWS',
-                            theme: commonTheme,
-                            commands: [
-                                // Scene number — top left
-                                {
-                                    id: 'num1', type: 'sticker', text: '#3',
-                                    slot: 'top-left', size: 90,
-                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
-                                    rotate: -3, trigger: { atSeconds: 0.1 },
-                                },
-                                // Phalanx photo — top center/right
-                                {
-                                    id: 'photo1', type: 'photo',
-                                    src: imgPhalanx,
-                                    slot: 'top-center', width: 580, height: 360,
-                                    rotate: -2, pinStyle: 'tape',
-                                    caption: 'PHALANX CIWS',
-                                    trigger: { wordText: 'phalanx', occurrence: 1 },
-                                },
-                                // "$30 per round" — mid left
-                                {
-                                    id: 's1', type: 'sticker', text: '$30\nPER ROUND',
-                                    slot: 'mid-left', size: 56,
-                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
-                                    rotate: -2,
-                                    trigger: { wordText: 'thirty', occurrence: 1 },
-                                },
-                                // "4,500 RPM" — mid right
-                                {
-                                    id: 's2', type: 'sticker', text: '4,500\nRPM',
-                                    slot: 'mid-right', size: 56,
-                                    color: '#1a1a1a', stroke: '#ffffff',
-                                    rotate: 3,
-                                    trigger: { wordText: 'thousand', occurrence: 1 },
-                                },
-                                // Arrow from round-cost to RPM (connecting the math)
-                                {
-                                    id: 'arr1', type: 'arrow',
-                                    x1: 300, y1: 820, x2: 780, y2: 820,
-                                    color: '#a93226', curve: 30,
-                                    trigger: { afterId: 's2', offset: 0.2 },
-                                },
-                                // "= $135,000/MIN" — low center, big reveal
-                                {
-                                    id: 's3', type: 'sticker', text: '$135,000\nPER MINUTE',
-                                    slot: 'low-center', size: 64,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: -1,
-                                    trigger: { wordText: 'thirty-five', occurrence: 1 },
-                                },
-                                {
-                                    id: 'sc1', type: 'circle', target: 's3',
-                                    color: '#a93226',
-                                    trigger: { afterId: 's3', offset: 0.3 },
-                                },
-                                // Lamborghini image — bot left
-                                {
-                                    id: 'img_lambo1', type: 'photo',
-                                    src: imgLambo,
-                                    slot: 'bot-left', width: 340, height: 220,
-                                    caption: '= 1 LAMBORGHINI', pinStyle: 'pins',
-                                    trigger: { wordText: 'lamborghini', occurrence: 1 },
-                                },
-                                // String from cost sticker to car image
-                                {
-                                    id: 'str3', type: 'string',
-                                    from: { target: 's3' }, to: { target: 'img_lambo1' },
-                                    color: '#a93226', sag: 40,
-                                    trigger: { afterId: 'img_lambo1', offset: 0.2 },
-                                },
-                            ],
-                        },
-                    },
-                ],
-            },
-
-            // ── Scene 2 — #2: M61 Vulcan ($180k = Ferrari) ───────────────
-            {
-                tts: {
-                    text: "Number two: the M61 Vulcan. The cannon on the F-16 and the F-22. Six thousand rounds per minute. One hundred and eighty thousand dollars per minute. A Ferrari. Sixty seconds. Gone.",
-                    voice: 'am_adam', pauseAfter: 0.4,
-                },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#e8dfcd' },
-                    {
-                        type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-s2',
-                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]',
-                        fps: 30, viewport: { width: 1080, height: 1920 },
-                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                        data: {
-                            title: '#2 — M61 VULCAN',
-                            theme: commonTheme,
-                            commands: [
-                                // Scene number
-                                {
-                                    id: 'num2', type: 'sticker', text: '#2',
-                                    slot: 'top-left', size: 90,
-                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
-                                    rotate: -3, trigger: { atSeconds: 0.1 },
-                                },
-                                // Vulcan cannon photo — top center
-                                {
-                                    id: 'photo2', type: 'photo',
-                                    src: imgVulcan,
-                                    slot: 'top-center', width: 580, height: 360,
-                                    rotate: 2, pinStyle: 'tape',
-                                    caption: 'M61 VULCAN — 20mm GATLING',
-                                    trigger: { wordText: 'vulcan', occurrence: 1 },
-                                },
-                                // F-16 image — fires when narrator says "F-16"
-                                {
-                                    id: 'img_f16', type: 'photo',
-                                    src: imgF16,
-                                    slot: 'mid-left', width: 320, height: 220,
-                                    caption: 'F-16', pinStyle: 'tape',
-                                    trigger: { wordText: 'f16', occurrence: 1 },
-                                },
-                                // F-22 image — fires when narrator says "F-22"
-                                {
-                                    id: 'img_f22', type: 'photo',
-                                    src: imgF22,
-                                    slot: 'mid-right', width: 320, height: 220,
-                                    caption: 'F-22', pinStyle: 'tape',
-                                    trigger: { wordText: 'f22', occurrence: 1 },
-                                },
-                                // String connecting the two jets
-                                {
-                                    id: 'str4', type: 'string',
-                                    from: { target: 'img_f16' }, to: { target: 'img_f22' },
-                                    color: '#1a5276', sag: 25,
-                                    trigger: { afterId: 'img_f22', offset: 0.3 },
-                                },
-                                // 6000 RPM sticker
-                                {
-                                    id: 's5', type: 'sticker', text: '6,000 RPM',
-                                    slot: 'low-left', size: 56,
-                                    color: '#1a1a1a', stroke: '#ffffff',
-                                    rotate: -2,
-                                    trigger: { wordText: 'six', occurrence: 1 },
-                                },
-                                // Cost reveal
-                                {
-                                    id: 's6', type: 'sticker', text: '$180,000\nPER MINUTE',
-                                    slot: 'low-center', size: 62,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: -1,
-                                    trigger: { wordText: 'eighty', occurrence: 1 },
-                                },
-                                {
-                                    id: 'sc2', type: 'circle', target: 's6',
-                                    color: '#a93226',
-                                    trigger: { afterId: 's6', offset: 0.3 },
-                                },
-                                // Ferrari image — bot left
-                                {
-                                    id: 'img_ferrari1', type: 'photo',
-                                    src: imgFerrari,
-                                    slot: 'bot-left', width: 340, height: 220,
-                                    caption: '= 1 FERRARI', pinStyle: 'pins',
-                                    trigger: { wordText: 'ferrari', occurrence: 1 },
-                                },
-                                {
-                                    id: 'str5', type: 'string',
-                                    from: { target: 's6' }, to: { target: 'img_ferrari1' },
-                                    color: '#a93226', sag: 35,
-                                    trigger: { afterId: 'img_ferrari1', offset: 0.2 },
-                                },
-                            ],
-                        },
-                    },
-                ],
-            },
-
-            // ── Scene 3 — #1: GAU-8 Avenger ($507k = Private Jet) ────────
-            {
-                tts: {
-                    text: "And number one: the GAU-8 Avenger. The A-10 Warthog's main gun. Three thousand nine hundred rounds per minute, each round costing one hundred and thirty dollars. Over five hundred thousand dollars per minute. That's a private jet. Literally burning money.",
-                    voice: 'am_adam', pauseAfter: 0.4,
-                },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#e8dfcd' },
-                    {
-                        type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-s3',
-                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]',
-                        fps: 30, viewport: { width: 1080, height: 1920 },
-                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                        data: {
-                            title: '#1 — GAU-8 AVENGER',
-                            theme: commonTheme,
-                            commands: [
-                                // Scene number
-                                {
-                                    id: 'num3', type: 'sticker', text: '#1',
-                                    slot: 'top-left', size: 90,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: -3, trigger: { atSeconds: 0.1 },
-                                },
-                                // GAU-8 / A-10 photo — top center
-                                {
-                                    id: 'photo3', type: 'photo',
-                                    src: imgGau8,
-                                    slot: 'top-center', width: 600, height: 380,
-                                    rotate: -3, pinStyle: 'tape',
-                                    caption: 'GAU-8 AVENGER — 30mm',
-                                    trigger: { wordText: 'avenger', occurrence: 1 },
-                                },
-                                // A-10 image — fires when narrator says A-10 Warthog
-                                {
-                                    id: 'img_a10', type: 'photo',
-                                    src: imgA10,
-                                    slot: 'mid-left', width: 320, height: 200,
-                                    caption: 'A-10 WARTHOG', pinStyle: 'tape',
-                                    trigger: { wordText: 'warthog', occurrence: 1 },
-                                },
-                                // "$130/round" sticker
-                                {
-                                    id: 's7', type: 'sticker', text: '$130\nPER ROUND',
-                                    slot: 'mid-right', size: 56,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: 2,
-                                    trigger: { wordText: 'hundred and thirty', occurrence: 1 },
-                                },
-                                // "3,900 RPM"
-                                {
-                                    id: 's8', type: 'sticker', text: '3,900 RPM',
-                                    slot: 'low-left', size: 54,
-                                    color: '#1a1a1a', stroke: '#ffffff',
-                                    rotate: -2,
-                                    trigger: { wordText: 'three thousand', occurrence: 1 },
-                                },
-                                // Cost reveal — low center
-                                {
-                                    id: 's9', type: 'sticker', text: '$507,000\nPER MINUTE',
-                                    slot: 'low-center', size: 62,
-                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
-                                    rotate: -1,
-                                    trigger: { wordText: 'five hundred', occurrence: 1 },
-                                },
-                                {
-                                    id: 'sc3', type: 'circle', target: 's9',
-                                    color: '#a93226',
-                                    trigger: { afterId: 's9', offset: 0.3 },
-                                },
-                                // Private jet image — bot left
-                                {
-                                    id: 'img_pjet', type: 'photo',
-                                    src: imgJet,
-                                    slot: 'bot-left', width: 340, height: 220,
-                                    caption: '= 1 PRIVATE JET', pinStyle: 'pins',
-                                    trigger: { wordText: 'private', occurrence: 1 },
-                                },
-                                {
-                                    id: 'str6', type: 'string',
-                                    from: { target: 's9' }, to: { target: 'img_pjet' },
-                                    color: '#a93226', sag: 38,
-                                    trigger: { afterId: 'img_pjet', offset: 0.2 },
-                                },
-                                // "LITERALLY BURNING MONEY" draw preset — bot right
-                                {
-                                    id: 'fire1', type: 'draw', preset: 'moneyBurn',
-                                    slot: 'bot-right', scale: 1.2, color: '#e67e22',
-                                    fillAfter: true,
-                                    trigger: { wordText: 'burning', occurrence: 1 },
-                                },
-                            ],
-                        },
-                    },
-                ],
-            },
-
-            // ── Scene 4 — CTA ─────────────────────────────────────────────
-            {
-                tts: {
-                    text: "Subscribe for more.",
-                    voice: 'am_adam', pauseAfter: 0.2,
-                },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#e8dfcd' },
-                    {
-                        type: 'html-record',
-                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-cta',
-                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]',
-                        fps: 30, viewport: { width: 1080, height: 1920 },
-                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                        data: {
-                            title: 'SUBSCRIBE',
-                            theme: commonTheme,
-                            commands: [
-                                {
-                                    id: 'cta1', type: 'sticker', text: '🔔 SUBSCRIBE\nFOR MORE',
-                                    slot: 'banner-mid', size: 88,
-                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
-                                    rotate: 0, trigger: { atSeconds: 0.1 },
-                                },
-                                {
-                                    id: 'sc_cta', type: 'circle', target: 'cta1',
-                                    color: '#1a5276',
-                                    trigger: { afterId: 'cta1', offset: 0.3 },
-                                },
-                                {
-                                    id: 'bell1', type: 'icon', icon: 'mdi:bell-ring',
-                                    size: 130, slot: 'low-center',
-                                    bg: 'circle', color: '#1a5276',
-                                    trigger: { afterId: 'cta1', offset: 0.2 },
-                                },
-                            ],
-                        },
                     },
                 ],
             },
         ],
     };
-})();
+};
