@@ -1,363 +1,624 @@
-// config.ohio-class.js
-// Submarine Class series, Episode 1: Ohio-class.
-// Paper-sticker corkboard documentary, ApexCasing v2.1
-// (paper-sticker-explainer.html). ONE file — everything inline, no
-// separate modules. All image fetching happens here in config.js; the
-// casing itself never calls an API, it only ever receives base64 `src`.
+// config.ohio-class-submarine.js
+// "Ohio Class — The Most Overpowered Underwater Hotel Ever Built"
+// 4 scenes: Hook → The Submarine → The Missiles → CTA
+// Full-canvas visuals, blur after 2.5 seconds, word triggers.
+// Voice: am_fenrir (deep, dramatic, playful).
+// ANALOGIES: Submarine = 2 skyscrapers, 18,000 tons = 18 million goldfish, etc.
 //
-// Every analogy in the narration is paired with its own fetched photo —
-// none are text-only. Older photo/sticker pairs get blurred + dimmed
-// (not erased) as the board fills, so it never clumps, while still
-// reading as a real accumulating case file rather than a wipe-and-replace
-// slideshow. panZoom is used twice: a slow push-in as the dramatic
-// firepower reveal lands, and a pull-back at the end to show the whole
-// board before the CTA. Uses the casing's own slot system (top/mid/low/
-// bot/deep/floor × left/center/right) to spread content across the full
-// canvas instead of hand-picked coordinates — two elements per analogy
-// beat land in the same row (photo + caption) so they read together.
+// ROBUST IMAGE FETCHING: If a query fails, automatically retry with different
+// indices (0→1→2→3→4) until one succeeds. Uses short, generic queries.
 //
-// Voice: am_fenrir (deep, gravelly — matches the dry, deadpan delivery
-// this script is written for).
+// SLOT SYSTEM: 3×6 grid + banners (full-canvas images use 'banner' slots).
+//
+// RUN: VIDEO_CONFIG=config.ohio-class-submarine.js node engine-ci.js
 
-const SERPAPI_KEY  = process.env.SERPAPI_API_KEY    || null;
-const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY || null;
-const PEXELS_KEY   = process.env.PEXELS_API_KEY      || null;
-const PIXABAY_KEY  = process.env.PIXABAY_API_KEY     || null;
+const https = require('https');
+const http = require('http');
 
-// Cache SerpAPI result lists per query+orientation so multiple images
-// from the same search (different imageIndex) don't cost extra calls —
-// same behavior as the engine's own src/image-api.js.
-const serpApiResultsCache = new Map();
-
-function getSourceChain() {
-    const chain = [];
-    if (SERPAPI_KEY)  chain.push('serpapi');
-    if (UNSPLASH_KEY) chain.push('unsplash');
-    if (PEXELS_KEY)   chain.push('pexels');
-    if (PIXABAY_KEY)  chain.push('pixabay');
-    chain.push('picsum'); // always available, no key needed — final resort
-    return chain;
-}
-
-async function fetchJSON(url, headers = {}) {
-    const res = await fetch(url, { headers: { 'User-Agent': 'APEX-Engine/2.0', ...headers } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-}
-
-// Same validation as the engine's downloadFile(): rejects HTML error
-// pages and suspiciously-small responses. Returns a base64 data URI
-// instead of writing to disk.
-async function downloadAsDataUri(url) {
-    const res = await fetch(url, { headers: { 'User-Agent': 'APEX-Engine/2.0' } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const ct = res.headers.get('content-type') || 'image/jpeg';
-    if (ct.includes('text/html')) throw new Error('Server returned HTML instead of an image');
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length < 1024) throw new Error(`File too small (${buf.length}B) — likely an error response`);
-    return `data:${ct};base64,${buf.toString('base64')}`;
-}
-
-async function searchSerpApi(query, orientation, imageIndex) {
-    if (!SERPAPI_KEY) throw new Error('SERPAPI_API_KEY not set');
-    const cacheKey = `${query.toLowerCase().trim()}::${orientation}`;
-    let results = serpApiResultsCache.get(cacheKey);
-    if (!results) {
-        const url =
-            `https://serpapi.com/search.json?engine=google_images` +
-            `&q=${encodeURIComponent(query)}&ijn=0&num=100&safe=active` +
-            `&api_key=${SERPAPI_KEY}`;
-        const data = await fetchJSON(url, { Authorization: `Bearer ${SERPAPI_KEY}` });
-        const raw  = data?.images_results || [];
-        if (!raw.length) throw new Error('No image results from SerpAPI');
-        const usable = raw.filter(r => r.original && !r.original.startsWith('x-raw-image'));
-        results = usable.length ? usable : raw;
-        serpApiResultsCache.set(cacheKey, results);
+// ── Fetch image with fallback to higher indices ──────────────────────────
+async function fetchImage(baseQuery, maxAttempts = 5) {
+    const key = process.env.SERPAPI_API_KEY;
+    if (!key) {
+        console.warn('[OhioConfig] SERPAPI_API_KEY not set — skipping photos');
+        return null;
     }
-    return results;
-}
 
-async function searchUnsplash(query, orientation) {
-    if (!UNSPLASH_KEY) throw new Error('No UNSPLASH_ACCESS_KEY');
-    const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)}` +
-        `&orientation=${orientation}&content_filter=high&client_id=${UNSPLASH_KEY}`;
-    const data = await fetchJSON(url);
-    return data?.urls?.regular || data?.urls?.full || null;
-}
-
-async function searchPexels(query, orientation) {
-    if (!PEXELS_KEY) throw new Error('No PEXELS_API_KEY');
-    const orMap = { portrait: 'portrait', landscape: 'landscape', squarish: 'square' };
-    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}` +
-        `&orientation=${orMap[orientation] || 'portrait'}&per_page=5&page=1`;
-    const data = await fetchJSON(url, { Authorization: PEXELS_KEY });
-    const photos = data?.photos;
-    if (!photos?.length) return null;
-    const photo = photos[Math.floor(Math.random() * photos.length)];
-    return photo?.src?.large2x || photo?.src?.large || null;
-}
-
-async function searchPixabay(query, orientation) {
-    if (!PIXABAY_KEY) throw new Error('No PIXABAY_API_KEY');
-    const orMap = { portrait: 'vertical', landscape: 'horizontal', squarish: 'square' };
-    const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(query)}` +
-        `&image_type=photo&orientation=${orMap[orientation] || 'vertical'}` +
-        `&safesearch=true&per_page=5&min_width=1080`;
-    const data = await fetchJSON(url);
-    const hits = data?.hits;
-    if (!hits?.length) return null;
-    const hit = hits[Math.floor(Math.random() * hits.length)];
-    return hit?.largeImageURL || hit?.webformatURL || null;
-}
-
-async function getPicsum(orientation) {
-    const w = orientation === 'landscape' ? 1920 : 1080;
-    const h = orientation === 'landscape' ? 1080 : 1920;
-    const seed = Math.floor(Math.random() * 1000);
-    return `https://picsum.photos/seed/${seed}/${w}/${h}`;
-}
-
-const PLACEHOLDER_SVG =
-    'data:image/svg+xml;base64,' + Buffer.from(
-        `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920">` +
-        `<rect width="100%" height="100%" fill="#2a2a33"/>` +
-        `<text x="50%" y="50%" fill="#888" font-size="42" text-anchor="middle" font-family="sans-serif">image unavailable</text>` +
-        `</svg>`
-    ).toString('base64');
-
-// Same fallback order and same "retry every cached SerpAPI result before
-// moving to the next provider" behavior as src/image-api.js.
-async function fetchImageBase64(query, orientation = 'portrait', imageIndex = 0) {
-    for (const source of getSourceChain()) {
-        if (source === 'serpapi') {
-            try {
-                const results = await searchSerpApi(query, orientation, imageIndex);
-                const total = results.length || 1;
-                let lastErr = null;
-                for (let attempt = 0; attempt < total; attempt++) {
-                    const idx = (imageIndex + attempt) % total;
-                    const candidateUrl = results[idx]?.original;
-                    if (!candidateUrl) continue;
-                    try { return await downloadAsDataUri(candidateUrl); }
-                    catch (e) { lastErr = e; }
-                }
-                console.warn(`[image] serpapi exhausted all ${total} result(s) for "${query}": ${lastErr?.message || 'unknown'}`);
-            } catch (e) {
-                console.warn(`[image] serpapi failed for "${query}": ${e.message}`);
-            }
-            continue;
-        }
+    // Try different indices (0, 1, 2, 3, 4) until we get a working image
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
-            const url = await (
-                source === 'unsplash' ? searchUnsplash(query, orientation) :
-                source === 'pexels'   ? searchPexels(query, orientation) :
-                source === 'pixabay'  ? searchPixabay(query, orientation) :
-                getPicsum(orientation)
-            );
-            if (!url) continue;
-            return await downloadAsDataUri(url);
+            const query = `${baseQuery}`; // Keep it short and generic
+            const searchUrl =
+                `https://serpapi.com/search.json` +
+                `?engine=google_images` +
+                `&q=${encodeURIComponent(query)}` +
+                `&ijn=${attempt}&num=20&safe=active` +
+                `&api_key=${key}`;
+
+            console.log(`[OhioConfig] Searching: "${query}" (attempt ${attempt + 1})`);
+            const data = await fetchJSON(searchUrl);
+            const results = (data?.images_results || []).filter(r => r.original && !r.original.startsWith('x-raw-image'));
+            if (!results.length) {
+                console.log(`[OhioConfig] No results for attempt ${attempt + 1}`);
+                continue;
+            }
+
+            const pick = results[0];
+            if (!pick?.original) {
+                console.log(`[OhioConfig] No original URL for attempt ${attempt + 1}`);
+                continue;
+            }
+
+            console.log(`[OhioConfig] Downloading: ${pick.original.slice(0, 70)}`);
+            const b64 = await urlToBase64(pick.original);
+            if (b64) {
+                const mime = b64.startsWith('/9j/') || b64.startsWith('iVBOR') ? 'image/jpeg' : 'image/jpeg';
+                console.log(`[OhioConfig] ✅ Success on attempt ${attempt + 1}`);
+                return `data:${mime};base64,${b64}`;
+            }
+            console.log(`[OhioConfig] ❌ Failed to download attempt ${attempt + 1}, retrying...`);
         } catch (e) {
-            console.warn(`[image] ${source} failed for "${query}": ${e.message}`);
+            console.warn(`[OhioConfig] Attempt ${attempt + 1} failed:`, e.message?.slice(0, 60));
         }
     }
-    console.warn(`[image] ALL sources failed for "${query}" — using placeholder`);
-    return PLACEHOLDER_SVG;
+
+    console.warn(`[OhioConfig] ❌ All ${maxAttempts} attempts failed for: "${baseQuery}"`);
+    return null;
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// CONFIG
-// ═══════════════════════════════════════════════════════════════════════
+function fetchJSON(url) {
+    return new Promise((resolve, reject) => {
+        const lib = url.startsWith('https') ? https : http;
+        lib.get(url, { headers: { 'User-Agent': 'ApexEngine/2.0' } }, (res) => {
+            let raw = '';
+            res.on('data', d => raw += d);
+            res.on('end', () => { try { resolve(JSON.parse(raw)); } catch (e) { reject(e); } });
+        }).on('error', reject).setTimeout(15000, function () { this.destroy(); reject(new Error('Timeout')); });
+    });
+}
 
-module.exports = async () => {
-    const queries = {
-        hero:      'submarine ocean',
-        length:    'football field',
-        weight:    'parking lot cars',
-        crew:      'submarine crew interior',
-        speed:     'speed limit sign',
-        stealth:   'library interior',
-        fuel:      'gas station pump',
-        firepower: 'trident missile launch',
-        fleet:     'aerial ocean',
+function urlToBase64(imageUrl) {
+    return new Promise((resolve) => {
+        const lib = imageUrl.startsWith('https') ? https : http;
+        const req = lib.get(imageUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ApexEngine/2.0)', 'Accept': 'image/*' },
+            timeout: 12000,
+        }, (res) => {
+            if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+                urlToBase64(res.headers.location).then(resolve);
+                return;
+            }
+            if (res.statusCode !== 200) { resolve(null); return; }
+            const chunks = [];
+            res.on('data', c => chunks.push(c));
+            res.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+        });
+        req.on('error', () => resolve(null));
+        req.on('timeout', () => { req.destroy(); resolve(null); });
+    });
+}
+
+// ── Main async config ────────────────────────────────────────────────────
+module.exports = (async () => {
+
+    console.log('[OhioConfig] Pre-fetching images from SerpAPI (with fallback)...');
+
+    // ── Pre-fetch all images with fallback to higher indices ──────────────
+    const [
+        imgOhioFull,
+        imgOhioSide,
+        imgCrew,
+        imgSubmerged,
+        imgLaunch,
+        imgTrident
+    ] = await Promise.all([
+        fetchImage('Ohio class submarine surfaced', 0),
+        fetchImage('Ohio class submarine side view', 0),
+        fetchImage('US Navy submarine crew', 0),
+        fetchImage('Ohio class submarine submerged', 0),
+        fetchImage('Trident missile launch submarine', 0),
+        fetchImage('Trident II D5 missile', 0),
+    ]);
+
+    console.log('[OhioConfig] Images ready. Building config...');
+
+    const commonTheme = {
+        paper: '#1a1a2e',  // Dark paper for submarine content
+        ink: '#e8e8e8',
+        accent: '#ffd700',
+        accent2: '#4fc3f7',
+        shadow: 'rgba(0,0,0,0.7)',
     };
-
-    const entries = Object.entries(queries);
-    const fetched = await Promise.all(entries.map(([, q]) => fetchImageBase64(q, 'portrait', 0)));
-    const img = {};
-    entries.forEach(([key], i) => { img[key] = fetched[i]; });
-
-    const narration =
-        "There's a machine sitting in the Pacific right now that most people have never heard of, " +
-        "and it could end a war before breakfast. It's called the Ohio class submarine, and everything " +
-        "about it sounds made up. It's five hundred sixty feet long. That's two football fields, nose to " +
-        "tail, with room to spare. Submerged, it weighs almost nineteen thousand tons, heavier than twelve " +
-        "thousand cars, all crammed into one hull. Inside: a hundred fifty five people, zero sunlight, for " +
-        "up to ninety days straight. It can outrun a school zone speed limit, completely underwater. And " +
-        "somehow, it's quieter than a public library. Its nuclear reactor runs for over twenty years " +
-        "without refueling, like buying one tank of gas in college and still driving on it at your " +
-        "retirement party. And here's the part that actually stops people: a single one of these carries " +
-        "more destructive power than every bomb dropped in the entire Second World War, combined. Eighteen " +
-        "of them are active right now. Hiding. All at once. And nobody, not even most of the Navy, knows " +
-        "exactly where. This is the Ohio class. Submarine one of this series. Subscribe, because next " +
-        "week, we go even deeper.";
 
     return {
         output: {
-            title:  'ohio-class-submarine-ep1',
+            title: 'ohio-class-submarine',
             format: 'portrait',
-            fps:    30,
-            crf:    23,
-            preset: 'fast',
-            beat: {
-                bpm: 90, bars: 16, genre: 'cinematic', key: 'Dmin',
-                layers: ['kick', 'snare', 'bass', 'pad'],
-                swing: 0.06, reverb: 0.3, loop: true, vol: 0.10,
-            },
+            fps: 30,
+            crf: 23,
+            preset: 'medium',
+        },
+        defaults: {
+            voice: 'am_fenrir',  // Deep, dramatic, playful
+            transition: 'fade',
+            transitionDuration: 0.35,
         },
 
-        defaults: { voice: 'am_fenrir', transition: 'zoom-cut', transitionDuration: 0.45 },
-
         scenes: [
+
+            // ── Scene 0 — HOOK (Playful) ──────────────────────────────────
             {
-                tts: { text: narration, pauseAfter: 0.6 },
-                captions: { style: 'highlight', fontSize: 60, highlightColor: '#f5c518', wordsPerChunk: 3 },
+                tts: {
+                    text: "Imagine you're a fish. You're minding your own business. Then a skyscraper the size of two football fields silently glides past you, carrying more explosives than every war in history combined. That's the Ohio-class submarine. And it's been doing this since the 1980s. Time to see what's inside.",
+                    voice: 'am_fenrir',
+                    pauseAfter: 0.4,
+                },
+                captions: false,
                 layers: [
-                    { type: 'background', color: '#f4ecdd' },
+                    { type: 'background', color: '#1a1a2e' },
                     {
-                        type:      'html-record',
-                        src:       './ApexCasing/paper-sticker-explainer.html?tag=ohio-class-ep1',
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=ohio-hook',
                         audioSync: true,
-                        cursor:    false,
-                        data: {
-                            title: 'CASE FILE: SUBMARINE CLASS 01',
-                            theme: { accent: '#ff5a3c', accent2: '#2f7cf6', ink: '#17181c' },
-                            commands: [
-                                // ── HERO — fires on the very first word, big and central ──
-                                { id: 'hero', type: 'photo', src: img.hero,
-                                  x: 540, y: 300, width: 760, height: 520, pinStyle: 'pins',
-                                  kenBurns: 'zoom-in', kenBurnsAmount: 0.14,
-                                  trigger: { wordText: 'theres', occurrence: 1 } },
-
-                                // ── LENGTH — row 0 ──────────────────────────────────────
-                                { id: 'lengthPhoto', type: 'photo', src: img.length,
-                                  slot: 'top-left', width: 300, height: 220, pinStyle: 'tape',
-                                  trigger: { wordText: 'feet', occurrence: 1 } },
-                                { id: 'lengthSticker', type: 'sticker', text: '560 FT\n2 FOOTBALL FIELDS',
-                                  slot: 'top-right', size: 42, rotate: -3,
-                                  trigger: { wordText: 'football', occurrence: 1 } },
-
-                                // ── WEIGHT — row 1 ──────────────────────────────────────
-                                { id: 'weightPhoto', type: 'photo', src: img.weight,
-                                  slot: 'mid-left', width: 300, height: 220, pinStyle: 'tape',
-                                  trigger: { wordText: 'tons', occurrence: 1 } },
-                                { id: 'weightSticker', type: 'sticker', text: '18,750 TONS\nSUBMERGED',
-                                  slot: 'mid-right', size: 42, rotate: 2,
-                                  trigger: { wordText: 'cars', occurrence: 1 } },
-
-                                // ── CREW — row 2 ────────────────────────────────────────
-                                { id: 'crewPhoto', type: 'photo', src: img.crew,
-                                  slot: 'low-left', width: 300, height: 220, pinStyle: 'pins',
-                                  trigger: { wordText: 'sunlight', occurrence: 1 } },
-                                { id: 'crewSticker', type: 'sticker', text: '155 CREW\n90 DAYS, NO SUN',
-                                  slot: 'low-right', size: 40, rotate: -2,
-                                  trigger: { wordText: 'ninety', occurrence: 1 } },
-
-                                // ── SPEED — row 3 ───────────────────────────────────────
-                                { id: 'speedPhoto', type: 'photo', src: img.speed,
-                                  slot: 'bot-left', width: 300, height: 220, pinStyle: 'tape',
-                                  trigger: { wordText: 'speed', occurrence: 1 } },
-                                { id: 'speedSticker', type: 'sticker', text: 'FASTER THAN\nA SCHOOL ZONE',
-                                  slot: 'bot-right', size: 40, rotate: 3,
-                                  trigger: { wordText: 'underwater', occurrence: 1 } },
-
-                                // ── STEALTH — row 4 ─────────────────────────────────────
-                                { id: 'stealthPhoto', type: 'photo', src: img.stealth,
-                                  slot: 'deep-left', width: 300, height: 220, pinStyle: 'tape',
-                                  trigger: { wordText: 'quieter', occurrence: 1 } },
-                                { id: 'stealthSticker', type: 'sticker', text: 'QUIETER THAN\nA LIBRARY',
-                                  slot: 'deep-right', size: 40, rotate: -3,
-                                  trigger: { wordText: 'library', occurrence: 1 } },
-
-                                // ── FUEL — row 5 (board is now full, top to floor) ──────
-                                { id: 'fuelPhoto', type: 'photo', src: img.fuel,
-                                  slot: 'floor-left', width: 300, height: 220, pinStyle: 'pins',
-                                  trigger: { wordText: 'reactor', occurrence: 1 } },
-                                { id: 'fuelSticker', type: 'sticker', text: '20+ YEARS\nONE TANK OF FUEL',
-                                  slot: 'floor-right', size: 38, rotate: 2,
-                                  trigger: { wordText: 'retirement', occurrence: 1 } },
-
-                                // ── DECLUTTER — blur + dim the earliest two beats so the
-                                // board doesn't clump once the big reveals land on top ──
-                                { id: 'blurLength', type: 'blur', target: 'lengthPhoto', amount: 6, duration: 0.8,
-                                  trigger: { wordText: 'stops', occurrence: 1 } },
-                                { id: 'fadeLength', type: 'fadeGroup', targets: ['lengthPhoto', 'lengthSticker'],
-                                  opacity: 0.30, duration: 0.8,
-                                  trigger: { wordText: 'stops', occurrence: 1 } },
-                                { id: 'blurWeight', type: 'blur', target: 'weightPhoto', amount: 6, duration: 0.8,
-                                  trigger: { afterId: 'blurLength', offset: 0.15 } },
-                                { id: 'fadeWeight', type: 'fadeGroup', targets: ['weightPhoto', 'weightSticker'],
-                                  opacity: 0.30, duration: 0.8,
-                                  trigger: { afterId: 'fadeLength', offset: 0.15 } },
-
-                                // ── FIREPOWER — the big dramatic centerpiece, placed
-                                // explicitly (not slotted) so it can sit large, front and
-                                // center, over the now-blurred earlier rows ─────────────
-                                { id: 'firepowerPhoto', type: 'photo', src: img.firepower,
-                                  x: 540, y: 860, width: 620, height: 460, pinStyle: 'pins',
-                                  trigger: { wordText: 'combined', occurrence: 1 } },
-                                { id: 'firepowerSticker', type: 'sticker', text: 'MORE FIREPOWER THAN\nALL OF WWII COMBINED',
-                                  x: 540, y: 1160, size: 46, rotate: -1, color: '#ff5a3c',
-                                  trigger: { afterId: 'firepowerPhoto', offset: 0.3 } },
-                                { id: 'zoomIn', type: 'panZoom', toScale: 1.12, toX: 0, toY: -80, duration: 1.4,
-                                  trigger: { wordText: 'combined', occurrence: 1 } },
-
-                                // ── declutter crew/speed rows before the fleet reveal ───
-                                { id: 'blurCrew', type: 'blur', target: 'crewPhoto', amount: 6, duration: 0.7,
-                                  trigger: { wordText: 'eighteen', occurrence: 1 } },
-                                { id: 'fadeCrew', type: 'fadeGroup', targets: ['crewPhoto', 'crewSticker'],
-                                  opacity: 0.30, duration: 0.7,
-                                  trigger: { wordText: 'eighteen', occurrence: 1 } },
-                                { id: 'blurSpeed', type: 'blur', target: 'speedPhoto', amount: 6, duration: 0.7,
-                                  trigger: { afterId: 'blurCrew', offset: 0.15 } },
-                                { id: 'fadeSpeed', type: 'fadeGroup', targets: ['speedPhoto', 'speedSticker'],
-                                  opacity: 0.30, duration: 0.7,
-                                  trigger: { afterId: 'fadeCrew', offset: 0.15 } },
-
-                                // ── FLEET reveal — explicit placement, lower board ──────
-                                { id: 'fleetPhoto', type: 'photo', src: img.fleet,
-                                  x: 540, y: 1420, width: 640, height: 420, pinStyle: 'pins',
-                                  trigger: { wordText: 'hiding', occurrence: 1 } },
-                                { id: 'fleetSticker', type: 'sticker', text: '18 ACTIVE RIGHT NOW\nLOCATION: UNKNOWN',
-                                  x: 540, y: 1660, size: 40, color: '#2f7cf6',
-                                  trigger: { afterId: 'fleetPhoto', offset: 0.3 } },
-
-                                // string connecting the hero shot to the fleet reveal —
-                                // one deliberate detective-board connection, not ten
-                                { id: 'caseString', type: 'string',
-                                  from: { target: 'hero' }, to: { target: 'fleetPhoto' },
-                                  color: '#c0392b', sag: 60,
-                                  trigger: { wordText: 'nobody', occurrence: 1 } },
-
-                                // pull back to reveal the whole board before the CTA
-                                { id: 'zoomOut', type: 'panZoom', toScale: 0.86, toX: 0, toY: 40, duration: 1.6,
-                                  trigger: { wordText: 'nobody', occurrence: 1 } },
-
-                                // ── title + CTA ──────────────────────────────────────────
-                                { id: 'titleSticker', type: 'sticker', text: 'OHIO-CLASS',
-                                  x: 540, y: 1750, size: 84, bg: '#ffffff',
-                                  trigger: { wordText: 'class', occurrence: 2 } },
-                                { id: 'ctaSticker', type: 'sticker', text: 'SUBSCRIBE\nFOR EPISODE 2',
-                                  x: 540, y: 1850, size: 50, color: '#ff5a3c',
-                                  trigger: { wordText: 'subscribe', occurrence: 1 } },
-                            ],
-                        },
+                        cursor: false,
                         waitFor: '[data-ready="1"]',
                         fps: 30,
                         viewport: { width: 1080, height: 1920 },
                         x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: 'OHIO CLASS — SSBN',
+                            theme: commonTheme,
+                            commands: [
+                                // ── FULL-CANVAS SUBMARINE PHOTO ──
+                                {
+                                    id: 'photo_hook',
+                                    type: 'photo',
+                                    src: imgOhioFull,
+                                    slot: 'banner-top',
+                                    width: 1080,
+                                    height: 1920,
+                                    rotate: 0,
+                                    pinStyle: 'none',
+                                    caption: '',
+                                    trigger: { atSeconds: 0.1 },
+                                },
+                                // ── DARK OVERLAY ──
+                                {
+                                    id: 'overlay1',
+                                    type: 'sticker',
+                                    text: '',
+                                    slot: 'banner-top',
+                                    size: 1,
+                                    bg: 'rgba(0,0,0,0.50)',
+                                    color: 'transparent',
+                                    stroke: 'transparent',
+                                    rotate: 0,
+                                    trigger: { afterId: 'photo_hook', offset: 0.1 },
+                                },
+                                // ── HOOK TEXT ── "UNDERWATER SKYSCRAPER" ──
+                                {
+                                    id: 'hook_text',
+                                    type: 'sticker',
+                                    text: 'UNDERWATER\nSKYSCRAPER',
+                                    slot: 'banner-mid',
+                                    size: 76,
+                                    color: '#ffffff',
+                                    stroke: '#1a1a2e',
+                                    bg: 'rgba(0,0,0,0.55)',
+                                    rotate: -1,
+                                    trigger: { wordText: 'skyscraper', occurrence: 1 },
+                                },
+                                // ── FUNNY SUBTITLE ──
+                                {
+                                    id: 'sub_text',
+                                    type: 'label',
+                                    text: 'Fish: 👁️👄👁️',
+                                    slot: 'low-center',
+                                    size: 42,
+                                    color: '#ffd700',
+                                    rotate: 0,
+                                    trigger: { afterId: 'hook_text', offset: 0.4 },
+                                },
+                                // ── BLUR THE HOOK PHOTO after 2.5 seconds ──
+                                {
+                                    id: 'blur_hook',
+                                    type: 'blur',
+                                    target: 'photo_hook',
+                                    amount: 8,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_hook', offset: 2.5 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 1 — THE SUBMARINE (Funny Stats) ─────────────────────
+            {
+                tts: {
+                    text: "This thing is 560 feet long. That's the height of a 50-story building, lying on its side, underwater. It weighs 18,000 tons. That's 18 million goldfish. If you laid them end to end, you'd have 18 million goldfish. But the crew? Only 155 people. That's less than a high school football team with all the parents watching. And they live underwater for months.",
+                    voice: 'am_fenrir',
+                    pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#1a1a2e' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=ohio-s1',
+                        audioSync: true,
+                        cursor: false,
+                        waitFor: '[data-ready="1"]',
+                        fps: 30,
+                        viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: 'THE SUBMARINE',
+                            theme: commonTheme,
+                            commands: [
+                                // ── FULL-CANVAS SIDE VIEW ──
+                                {
+                                    id: 'photo_side',
+                                    type: 'photo',
+                                    src: imgOhioSide,
+                                    slot: 'banner-top',
+                                    width: 1080,
+                                    height: 1920,
+                                    rotate: 0,
+                                    pinStyle: 'none',
+                                    caption: '',
+                                    trigger: { atSeconds: 0.1 },
+                                },
+                                // ── OVERLAY ──
+                                {
+                                    id: 'overlay2',
+                                    type: 'sticker',
+                                    text: '',
+                                    slot: 'banner-top',
+                                    size: 1,
+                                    bg: 'rgba(0,0,0,0.45)',
+                                    color: 'transparent',
+                                    stroke: 'transparent',
+                                    rotate: 0,
+                                    trigger: { afterId: 'photo_side', offset: 0.1 },
+                                },
+                                // ── TITLE ──
+                                {
+                                    id: 's1',
+                                    type: 'sticker',
+                                    text: '560 FT LONG',
+                                    slot: 'banner-top',
+                                    size: 60,
+                                    color: '#ffffff',
+                                    stroke: '#1a1a2e',
+                                    bg: 'rgba(0,0,0,0.5)',
+                                    rotate: -1,
+                                    trigger: { wordText: 'five hundred', occurrence: 1 },
+                                },
+                                // ── FUNNY ANALOGY: "50-STORY BUILDING" ──
+                                {
+                                    id: 'analogy1',
+                                    type: 'sticker',
+                                    text: '= 50-STORY BUILDING',
+                                    slot: 'mid-left',
+                                    size: 40,
+                                    color: '#ffd700',
+                                    stroke: '#1a1a2e',
+                                    bg: 'rgba(0,0,0,0.6)',
+                                    rotate: -2,
+                                    trigger: { wordText: 'fifty', occurrence: 1 },
+                                },
+                                // ── WEIGHT: "18,000 TONS" ──
+                                {
+                                    id: 'stat2',
+                                    type: 'sticker',
+                                    text: '18,000 TONS',
+                                    slot: 'mid-right',
+                                    size: 48,
+                                    color: '#4fc3f7',
+                                    stroke: '#1a1a2e',
+                                    bg: 'rgba(0,0,0,0.6)',
+                                    rotate: 2,
+                                    trigger: { wordText: 'eighteen', occurrence: 1 },
+                                },
+                                // ── FUNNY ANALOGY: "18M GOLDFISH" ──
+                                {
+                                    id: 'analogy2',
+                                    type: 'sticker',
+                                    text: '= 18M GOLDFISH',
+                                    slot: 'bot-left',
+                                    size: 38,
+                                    color: '#ffd700',
+                                    stroke: '#1a1a2e',
+                                    bg: 'rgba(0,0,0,0.6)',
+                                    rotate: -1,
+                                    trigger: { wordText: 'goldfish', occurrence: 1 },
+                                },
+                                // ── CREW: "155 PEOPLE" ──
+                                {
+                                    id: 'stat3',
+                                    type: 'sticker',
+                                    text: '155 CREW',
+                                    slot: 'low-center',
+                                    size: 44,
+                                    color: '#ffffff',
+                                    stroke: '#1a1a2e',
+                                    bg: 'rgba(0,0,0,0.6)',
+                                    rotate: 0,
+                                    trigger: { wordText: 'hundred and fifty', occurrence: 1 },
+                                },
+                                // ── FUNNY ANALOGY: "LESS THAN A SCHOOL" ──
+                                {
+                                    id: 'analogy3',
+                                    type: 'label',
+                                    text: 'Less than a high school football crowd 🏈',
+                                    slot: 'bot-right',
+                                    size: 30,
+                                    color: '#4fc3f7',
+                                    rotate: 1,
+                                    trigger: { wordText: 'school', occurrence: 1 },
+                                },
+                                // ── CREW PHOTO ── small inset ──
+                                {
+                                    id: 'photo_crew',
+                                    type: 'photo',
+                                    src: imgCrew,
+                                    slot: 'deep-left',
+                                    width: 240,
+                                    height: 170,
+                                    rotate: 2,
+                                    pinStyle: 'tape',
+                                    caption: '155 PEOPLE = 155 FRIENDS',
+                                    trigger: { wordText: 'crew', occurrence: 1 },
+                                },
+                                // ── BLUR MAIN PHOTO after 2.5 seconds ──
+                                {
+                                    id: 'blur_side',
+                                    type: 'blur',
+                                    target: 'photo_side',
+                                    amount: 8,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_side', offset: 2.5 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 2 — THE MISSILES (Funny Firepower) ──────────────────
+            {
+                tts: {
+                    text: "Now the good part. Each Ohio carries 24 Trident missiles. Each missile has up to 8 warheads. That's 192 warheads per submarine. Multiply that by 14 submarines. You get 2,688 warheads. That's enough to turn every major city on Earth into a swimming pool. But in a bad way. It's the most expensive, terrifying, and over-engineered \"don't you dare\" button ever built.",
+                    voice: 'am_fenrir',
+                    pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#1a1a2e' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=ohio-s2',
+                        audioSync: true,
+                        cursor: false,
+                        waitFor: '[data-ready="1"]',
+                        fps: 30,
+                        viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: 'THE MISSILES',
+                            theme: commonTheme,
+                            commands: [
+                                // ── FULL-CANVAS MISSILE LAUNCH ──
+                                {
+                                    id: 'photo_missile',
+                                    type: 'photo',
+                                    src: imgLaunch || imgTrident,
+                                    slot: 'banner-top',
+                                    width: 1080,
+                                    height: 1920,
+                                    rotate: 0,
+                                    pinStyle: 'none',
+                                    caption: '',
+                                    trigger: { atSeconds: 0.1 },
+                                },
+                                // ── OVERLAY ──
+                                {
+                                    id: 'overlay3',
+                                    type: 'sticker',
+                                    text: '',
+                                    slot: 'banner-top',
+                                    size: 1,
+                                    bg: 'rgba(0,0,0,0.50)',
+                                    color: 'transparent',
+                                    stroke: 'transparent',
+                                    rotate: 0,
+                                    trigger: { afterId: 'photo_missile', offset: 0.1 },
+                                },
+                                // ── TITLE ──
+                                {
+                                    id: 's4',
+                                    type: 'sticker',
+                                    text: '24 TRIDENT\nMISSILES',
+                                    slot: 'banner-top',
+                                    size: 56,
+                                    color: '#ffffff',
+                                    stroke: '#1a1a2e',
+                                    bg: 'rgba(0,0,0,0.5)',
+                                    rotate: -1,
+                                    trigger: { wordText: 'trident', occurrence: 1 },
+                                },
+                                // ── STAT: "8 WARHEADS" ──
+                                {
+                                    id: 'stat4',
+                                    type: 'sticker',
+                                    text: '8 WARHEADS\nEACH',
+                                    slot: 'mid-left',
+                                    size: 44,
+                                    color: '#ffd700',
+                                    stroke: '#1a1a2e',
+                                    bg: 'rgba(0,0,0,0.6)',
+                                    rotate: -2,
+                                    trigger: { wordText: 'eight', occurrence: 1 },
+                                },
+                                // ── STAT: "192 PER SUB" ──
+                                {
+                                    id: 'stat5',
+                                    type: 'sticker',
+                                    text: '192 WARHEADS\nPER SUBMARINE',
+                                    slot: 'mid-right',
+                                    size: 44,
+                                    color: '#4fc3f7',
+                                    stroke: '#1a1a2e',
+                                    bg: 'rgba(0,0,0,0.6)',
+                                    rotate: 2,
+                                    trigger: { wordText: 'hundred and ninety', occurrence: 1 },
+                                },
+                                // ── FUNNY ANALOGY: "2,688 = SWIMMING POOL" ──
+                                {
+                                    id: 'analogy4',
+                                    type: 'sticker',
+                                    text: '2,688 WARHEADS\n= EVERY CITY → SWIMMING POOL 💀',
+                                    slot: 'low-center',
+                                    size: 42,
+                                    color: '#ffd700',
+                                    stroke: '#1a1a2e',
+                                    bg: 'rgba(0,0,0,0.65)',
+                                    rotate: 0,
+                                    trigger: { wordText: 'twenty six', occurrence: 1 },
+                                },
+                                // ── FUNNY LABEL ──
+                                {
+                                    id: 'analogy5',
+                                    type: 'label',
+                                    text: 'The world\'s most expensive "don\'t you dare" button 🔴',
+                                    slot: 'bot-center',
+                                    size: 32,
+                                    color: '#ffd700',
+                                    rotate: 1,
+                                    trigger: { wordText: 'dare', occurrence: 1 },
+                                },
+                                // ── BLUR MAIN PHOTO after 2.5 seconds ──
+                                {
+                                    id: 'blur_missile',
+                                    type: 'blur',
+                                    target: 'photo_missile',
+                                    amount: 8,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_missile', offset: 2.5 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 3 — FINAL CTA ────────────────────────────────────────
+            {
+                tts: {
+                    text: "The Ohio class has been on patrol since nineteen eighty one. It will continue until the Columbia class takes over. Until then, it's just a very expensive, very quiet, very angry skyscraper underwater. Subscribe for more. And don't worry, we'll do the Columbia next.",
+                    voice: 'am_fenrir',
+                    pauseAfter: 0.2,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#1a1a2e' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=ohio-cta',
+                        audioSync: true,
+                        cursor: false,
+                        waitFor: '[data-ready="1"]',
+                        fps: 30,
+                        viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: 'SUBSCRIBE',
+                            theme: commonTheme,
+                            commands: [
+                                // ── FULL-CANVAS SUBMERGED PHOTO ──
+                                {
+                                    id: 'photo_cta',
+                                    type: 'photo',
+                                    src: imgSubmerged || imgOhioFull,
+                                    slot: 'banner-top',
+                                    width: 1080,
+                                    height: 1920,
+                                    rotate: 0,
+                                    pinStyle: 'none',
+                                    caption: '',
+                                    trigger: { atSeconds: 0.1 },
+                                },
+                                // ── OVERLAY ──
+                                {
+                                    id: 'overlay4',
+                                    type: 'sticker',
+                                    text: '',
+                                    slot: 'banner-top',
+                                    size: 1,
+                                    bg: 'rgba(0,0,0,0.55)',
+                                    color: 'transparent',
+                                    stroke: 'transparent',
+                                    rotate: 0,
+                                    trigger: { afterId: 'photo_cta', offset: 0.1 },
+                                },
+                                // ── GIANT CTA ──
+                                {
+                                    id: 'cta_main',
+                                    type: 'sticker',
+                                    text: '🔔 SUBSCRIBE\nFOR MORE',
+                                    slot: 'banner-mid',
+                                    size: 80,
+                                    color: '#ffffff',
+                                    stroke: '#1a1a2e',
+                                    bg: 'rgba(26,26,46,0.75)',
+                                    rotate: 0,
+                                    trigger: { wordText: 'subscribe', occurrence: 1 },
+                                },
+                                // ── CIRCLE AROUND CTA ──
+                                {
+                                    id: 'sc_cta',
+                                    type: 'circle',
+                                    target: 'cta_main',
+                                    color: '#ffd700',
+                                    trigger: { afterId: 'cta_main', offset: 0.3 },
+                                },
+                                // ── BELL ICON ──
+                                {
+                                    id: 'bell_cta',
+                                    type: 'icon',
+                                    icon: 'mdi:bell-ring',
+                                    size: 120,
+                                    slot: 'low-center',
+                                    bg: 'circle',
+                                    color: '#ffd700',
+                                    trigger: { afterId: 'cta_main', offset: 0.2 },
+                                },
+                                // ── FUNNY LABEL ──
+                                {
+                                    id: 'funny_cta',
+                                    type: 'label',
+                                    text: 'Next: Columbia class (bigger, scarier) 🚀',
+                                    slot: 'bot-center',
+                                    size: 32,
+                                    color: '#4fc3f7',
+                                    rotate: 0,
+                                    trigger: { afterId: 'cta_main', offset: 0.5 },
+                                },
+                                // ── BLUR MAIN PHOTO after 2.5 seconds ──
+                                {
+                                    id: 'blur_cta',
+                                    type: 'blur',
+                                    target: 'photo_cta',
+                                    amount: 8,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_cta', offset: 2.5 },
+                                },
+                            ],
+                        },
                     },
                 ],
             },
         ],
     };
-};
+})();
