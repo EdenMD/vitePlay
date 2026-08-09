@@ -1,22 +1,23 @@
-// drop-XX-ntw20.js  — rename XX to your next sequential drop number
-// "The NTW-20" — same locked 4-scene formula as the F-22/KF-21/T-7A
-// drops: Hook → Creator → Design Philosophy → CTA. bm_george voice,
-// SerpAPI stills w/ Ken Burns 0.30-0.36, no bg music, highlight captions
-// (#f5c518, 60px, 3 words/chunk).
+// drop-XX-gau8-avenger.js  — rename XX to your next sequential drop number
+// "The GAU-8 Avenger" — same locked 4-scene formula: Hook → Creator →
+// Design Philosophy → CTA. bm_george voice, SerpAPI stills, no bg music,
+// highlight captions (#f5c518, 60px, 3 words/chunk).
 //
-// Not a jet this time — same formula applied to a weapon instead, per
-// your ask. South African, so same NARA caveat as the KF-21 file: US
-// National Archives almost certainly has nothing on it, so Scene 3 will
-// fall back to the SerpAPI still every time. Fine, just setting
-// expectations the same way as last time.
+// NEW this batch: Design Philosophy's fallback is now a
+// stock-image-sequence (4 slides) with a mixed kenBurnsSequence — 2 of
+// the 4 slides use the new rotate-cw/rotate-ccw Ken Burns type, the
+// other 2 stay zoom/pan, per the "mix, don't uniform-ize" guidance.
+// Fixes the exact "long static scene reads as dead air" problem —
+// Design Philosophy is always this template's longest scene.
 //
-// Run with:  VIDEO_CONFIG=drop-XX-ntw20.js node engine-ci.js
+// American subject, so same odds as the T-7A file: NARA *might* have
+// something, but don't expect it — falls straight to the sequence below
+// either way.
+//
+// Run with:  VIDEO_CONFIG=drop-XX-gau8-avenger.js node engine-ci.js
 
 const NARA_SEARCH = 'https://catalog.archives.gov/api/v2/records/search';
 
-// Pulls the first NARA record that has an actual playable video file
-// attached (not just a metadata/photo record), or returns null so the
-// scene can fall back to a still image instead of failing the render.
 async function resolveNaraClip(query) {
     try {
         const res = await fetch(
@@ -46,8 +47,8 @@ async function resolveNaraClip(query) {
 
 module.exports = (async () => {
     const naraUrl =
-        (await resolveNaraClip('NTW-20 anti-materiel rifle')) ||
-        (await resolveNaraClip('20mm anti-materiel rifle'));
+        (await resolveNaraClip('GAU-8 Avenger A-10 cannon')) ||
+        (await resolveNaraClip('A-10 Warthog gun firing'));
 
     const designPhilosophyVisual = naraUrl
         ? {
@@ -59,17 +60,27 @@ module.exports = (async () => {
               x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
           }
         : {
-              type: 'stock-image',
-              query: 'NTW-20 rifle',
+              type: 'stock-image-sequence',
+              queries: [
+                  'GAU-8 Avenger cannon closeup',
+                  'A-10 Warthog nose gun',
+                  '30mm depleted uranium round',
+                  'A-10 Warthog firing gun',
+              ],
               source: 'serpapi',
               fit: 'cover',
-              kenBurns: 'zoom-in',
-              kenBurnsAmount: 0.32,
+              kenBurnsSequence: [
+                  { kenBurns: 'zoom-in',    kenBurnsAmount: 0.32 },
+                  { kenBurns: 'rotate-cw',  kenBurnsAmount: 0.3, rotateDeg: 10 },
+                  { kenBurns: 'pan-left',   kenBurnsAmount: 0.3 },
+                  { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10 },
+              ],
+              x: 0, y: 0, width: 1080, height: 1920,
           };
 
     return {
         output: {
-            title: 'ntw20-anti-materiel-rifle',
+            title: 'gau8-avenger',
             format: 'portrait',
             fps: 30,
             crf: 23,
@@ -86,7 +97,7 @@ module.exports = (async () => {
             // ── Scene 1 — Hook ──────────────────────────────────────
             {
                 tts: {
-                    text: "This is the NTW-20, and it doesn't fire a sniper bullet. It fires an actual anti-aircraft cannon shell. Here's why this might be the most powerful rifle ever built for a single person to carry into the field.",
+                    text: "This is the GAU-8 Avenger, the rotary cannon built into the A-10 Warthog, and it fires so hard that the recoil alone can measurably slow the whole aircraft down mid-flight. Here's how a gun got powerful enough to fight its own airplane.",
                     voice: 'bm_george',
                     pauseAfter: 0.4,
                 },
@@ -97,14 +108,14 @@ module.exports = (async () => {
                 },
                 layers: [
                     {
-                        type: 'stock-image', query: 'NTW-20 rifle',
+                        type: 'stock-image', query: 'GAU-8 Avenger cannon',
                         source: 'serpapi', fit: 'cover',
                         kenBurns: 'zoom-in', kenBurnsAmount: 0.34,
                     },
                     { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
                     {
-                        type: 'text', text: 'NOT A BULLET.\nA CANNON\nSHELL.', x: 540, y: 260,
-                        fontSize: 66, fontFamily: 'Arial Black, sans-serif',
+                        type: 'text', text: 'THE GUN THAT\nFIGHTS ITS OWN\nAIRPLANE', x: 540, y: 260,
+                        fontSize: 60, fontFamily: 'Arial Black, sans-serif',
                         color: '#f5c518', align: 'center', hookLayer: true,
                         stroke: true, strokeColor: '#000', strokeWidth: 5,
                     },
@@ -114,7 +125,7 @@ module.exports = (async () => {
             // ── Scene 2 — Creator ───────────────────────────────────
             {
                 tts: {
-                    text: "South Africa built it in the nineteen nineties, originally under Mechem, later produced by Denel Land Systems. It wasn't designed to hunt people. It was designed to destroy equipment — parked aircraft, radar systems, light armored vehicles, from a distance most rifles can't touch.",
+                    text: "General Electric built it in the nineteen seventies, and it wasn't designed to fit an existing plane. The A-10 Warthog was designed around the gun instead — the entire aircraft built as a platform for one job: killing tanks.",
                     voice: 'bm_george',
                     pauseAfter: 0.4,
                 },
@@ -125,13 +136,13 @@ module.exports = (async () => {
                 },
                 layers: [
                     {
-                        type: 'stock-image', query: 'Denel Land Systems factory',
+                        type: 'stock-image', query: 'General Electric factory',
                         source: 'serpapi', fit: 'cover',
                         kenBurns: 'pan-up', kenBurnsAmount: 0.3,
                     },
                     { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
                     {
-                        type: 'text', text: 'DENEL LAND\nSYSTEMS', x: 540, y: 1500,
+                        type: 'text', text: 'GENERAL\nELECTRIC', x: 540, y: 1500,
                         fontSize: 52, fontFamily: 'Arial Black, sans-serif',
                         color: '#ffffff', align: 'center',
                         stroke: true, strokeColor: '#000', strokeWidth: 4,
@@ -139,10 +150,10 @@ module.exports = (async () => {
                 ],
             },
 
-            // ── Scene 3 — Design Philosophy (NARA footage, expect fallback) ──
+            // ── Scene 3 — Design Philosophy (NARA footage, expect fallback sequence) ──
             {
                 tts: {
-                    text: "It fires the same twenty millimeter rounds built for anti-aircraft guns, and the barrel can be swapped to fire a smaller round instead. It's too heavy and too violent to fire from a shoulder, so it's braced against the ground on folding legs. It even breaks down into two backpack-sized loads, so two soldiers can carry it into position and put it back together by hand.",
+                    text: "Seven rotating barrels fire depleted-uranium rounds at nearly four thousand rounds a minute, fast enough to shred a tank's armor in under two seconds. The gun is mounted slightly off-center from the plane's nose, engineered specifically to counter the sideways force of its own recoil. The Warthog wasn't just built to carry this weapon. It was built to survive firing it.",
                     voice: 'bm_george',
                     pauseAfter: 0.4,
                 },
@@ -155,8 +166,8 @@ module.exports = (async () => {
                     designPhilosophyVisual,
                     { type: 'overlay', color: 'rgba(0,0,0,0.25)' },
                     {
-                        type: 'text', text: 'BUILT TO\nDESTROY MACHINES.\nNOT JUST MEN.', x: 540, y: 1560,
-                        fontSize: 48, fontFamily: 'Arial Black, sans-serif',
+                        type: 'text', text: 'BUILT AROUND\nTHE GUN.\nNOT THE OTHER\nWAY AROUND.', x: 540, y: 1560,
+                        fontSize: 42, fontFamily: 'Arial Black, sans-serif',
                         color: '#f5c518', align: 'center',
                         stroke: true, strokeColor: '#000', strokeWidth: 4,
                     },
@@ -166,7 +177,7 @@ module.exports = (async () => {
             // ── Scene 4 — CTA (provocative, comment-bait framing) ───
             {
                 tts: {
-                    text: "So here's the question. If a single rifle can knock out a parked helicopter from over a mile away, should something like this even still be called a rifle? Comment your take below.",
+                    text: "So here's the question. When an entire airplane gets built around its gun instead of the other way around, is it still fair to call it a fighter jet? Comment your take below.",
                     voice: 'bm_george',
                     pauseAfter: 0.3,
                 },
@@ -177,14 +188,14 @@ module.exports = (async () => {
                 },
                 layers: [
                     {
-                        type: 'stock-image', query: 'anti-materiel rifle closeup',
+                        type: 'stock-image', query: 'A-10 Warthog flying',
                         source: 'serpapi', fit: 'cover',
-                        kenBurns: 'zoom-out', kenBurnsAmount: 0.3,
+                        kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10,
                     },
                     { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
                     {
-                        type: 'text', text: 'STILL A RIFLE?\nCOMMENT\nYOUR TAKE', x: 540, y: 900,
-                        fontSize: 58, fontFamily: 'Arial Black, sans-serif',
+                        type: 'text', text: 'STILL A JET?\nOR JUST\nA FLYING GUN?', x: 540, y: 900,
+                        fontSize: 54, fontFamily: 'Arial Black, sans-serif',
                         color: '#ffffff', align: 'center',
                         stroke: true, strokeColor: '#000', strokeWidth: 5,
                     },
