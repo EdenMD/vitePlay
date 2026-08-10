@@ -1,208 +1,185 @@
-// drop-XX-metal-storm.js  — rename XX to your next sequential drop number
-// "Metal Storm" — same locked 4-scene formula: Hook → Creator → Design
-// Philosophy → CTA. bm_george voice, SerpAPI stills, no bg music,
-// highlight captions (#f5c518, 60px, 3 words/chunk).
+// config.girl-who-built-bombs.js
+// "The Girl Who Built Bombs" — first entry in the new storytelling-short
+// line, mostly Pexels generic video with only 2 Pollinations ai-image
+// layers (both flux-anime — IMPORTANT: only one model resolves per whole
+// batch run, so every ai-image layer here must share the same model key
+// or later ones silently render with the first scene's model instead).
 //
-// Continuation of the NTW-20 "most powerful" thread — real, documented:
-// Australian-invented electronic firearm system (Mike O'Dwyer, 1990s)
-// with no moving parts at all — rounds stacked inside the barrel and
-// fired electronically instead of by a mechanical action. Drew serious
-// US military/DARPA interest for close-in defense applications, but the
-// company behind it struggled financially and the tech never saw wide
-// battlefield adoption — a good comment-bait contrast to build the CTA
-// around.
+// The story is a fictionalized composite, not a specific named person —
+// deliberate, both because Pollinations can't reliably render a specific
+// real face, and because "canary girls" (TNT-exposed munitions workers)
+// were a real, widespread WWII/WWI phenomenon best told as a composite
+// rather than claiming to be one real named woman's biography.
 //
-// Australian subject — expect the same NARA-miss behavior as the
-// Typhoon/Borei/Yasen files. Design Philosophy uses the same
-// rotate-accented stock-image-sequence pattern as the last batch.
+// Tone note: gentle fades throughout, not the punchy zoom-cut/glitch
+// transitions from the drop-template weapon videos — this one's meant to
+// sit and breathe, not hook-and-slam.
 //
-// Run with:  VIDEO_CONFIG=drop-XX-metal-storm.js node engine-ci.js
+// Est. runtime: ~197 words of narration, roughly 80-85s at this engine's
+// measured pace — longer than your punchier shorts, intentionally, since
+// it's a story rather than a hook-and-facts format.
+//
+// Run with:  VIDEO_CONFIG=config.girl-who-built-bombs.js node engine-ci.js
 
-const NARA_SEARCH = 'https://catalog.archives.gov/api/v2/records/search';
+module.exports = {
+    output: {
+        title:  'the-girl-who-built-bombs',
+        format: 'portrait',
+        fps:    30,
+        crf:    23,
+        preset: 'medium',
+        postProcess: { grain: true, grainStrength: 0.025, vignette: true, vignetteStrength: 0.4 },
+    },
 
-async function resolveNaraClip(query) {
-    try {
-        const res = await fetch(
-            `${NARA_SEARCH}?q=${encodeURIComponent(query)}&limit=20&resultTypes=video`
-        );
-        if (!res.ok) return null;
-        const data = await res.json();
-        const hits = data?.body?.hits?.hits || [];
+    defaults: { voice: 'bm_george', transitionDuration: 0.6 },
 
-        for (const hit of hits) {
-            const record = hit?._source?.record;
-            const objects = record?.digitalObjects || [];
-            const videoObj = objects.find(o =>
-                (o.objectType || '').toLowerCase().includes('video') ||
-                (o.objectFilename || '').match(/\.(mp4|mov|mpg|mpeg)$/i)
-            );
-            if (videoObj?.objectUrl) {
-                return videoObj.objectUrl;
-            }
-        }
-        return null;
-    } catch (err) {
-        console.warn(`[NARA] lookup failed for "${query}":`, err.message);
-        return null;
-    }
-}
-
-module.exports = (async () => {
-    const naraUrl =
-        (await resolveNaraClip('Metal Storm weapon system')) ||
-        (await resolveNaraClip('electronic firearm rapid fire test'));
-
-    const designPhilosophyVisual = naraUrl
-        ? {
-              type: 'video',
-              url: naraUrl,
-              maxDuration: 6,
-              fps: 30,
-              loop: true,
-              x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-          }
-        : {
-              type: 'stock-image-sequence',
-              queries: [
-                  'stacked ammunition barrel cutaway',
-                  'electronic circuit board closeup',
-                  'rapid fire weapon test range',
-                  'Metal Storm weapon system',
-              ],
-              source: 'serpapi',
-              fit: 'cover',
-              kenBurnsSequence: [
-                  { kenBurns: 'zoom-in',   kenBurnsAmount: 0.32 },
-                  { kenBurns: 'rotate-cw', kenBurnsAmount: 0.3, rotateDeg: 10 },
-                  { kenBurns: 'pan-left',  kenBurnsAmount: 0.3 },
-                  { kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10 },
-              ],
-              x: 0, y: 0, width: 1080, height: 1920,
-          };
-
-    return {
-        output: {
-            title: 'metal-storm',
-            format: 'portrait',
-            fps: 30,
-            crf: 23,
-            preset: 'medium',
-        },
-
-        defaults: {
-            voice: 'bm_george',
+    scenes: [
+        // ══ SCENE 1 — anime portrait, the opening ══════════════════════
+        {
+            tts: { text: "Her name isn't in any history book. In 1943, she was one of nearly two million women who built the weapons of a war they'd never fight in person.", voice: 'bm_george', pauseAfter: 0.5 },
             transition: 'fade',
-            transitionDuration: 0.3,
+            captions: {
+                style: 'highlight', fontSize: 60, color: '#ffffff',
+                highlightColor: '#f5c518', wordsPerChunk: 3,
+                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
+            },
+            layers: [
+                {
+                    type: 'ai-image',
+                    prompt: 'young woman factory worker in 1940s coveralls and headscarf, standing at a factory gate at dawn, determined expression, soft morning light',
+                    model: 'flux-anime', animeStyle: 'anime-portrait',
+                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
+                {
+                    type: 'text', text: 'A STORY TOLD\nTHROUGH ONE', x: 540, y: 1650,
+                    fontSize: 44, fontFamily: 'Arial Black, sans-serif',
+                    color: '#f5c518', align: 'center',
+                    stroke: true, strokeColor: '#000', strokeWidth: 4,
+                },
+            ],
         },
 
-        scenes: [
-            // ── Scene 1 — Hook ──────────────────────────────────────
-            {
-                tts: {
-                    text: "This is Metal Storm — a gun with no bolt, no firing pin, and no moving parts at all. In testing, it was reportedly fired at a rate of over a million rounds a minute. Here's how a gun this fast almost never made it to war.",
-                    voice: 'bm_george',
-                    pauseAfter: 0.4,
-                },
-                captions: {
-                    style: 'highlight', fontSize: 60, color: '#ffffff',
-                    highlightColor: '#f5c518', wordsPerChunk: 3,
-                    strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
-                },
-                layers: [
-                    {
-                        type: 'stock-image', query: 'Metal Storm weapon system',
-                        source: 'serpapi', fit: 'cover',
-                        kenBurns: 'zoom-in', kenBurnsAmount: 0.34,
-                    },
-                    { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
-                    {
-                        type: 'text', text: 'A GUN WITH NO\nMOVING PARTS\nAT ALL', x: 540, y: 260,
-                        fontSize: 58, fontFamily: 'Arial Black, sans-serif',
-                        color: '#f5c518', align: 'center', hookLayer: true,
-                        stroke: true, strokeColor: '#000', strokeWidth: 5,
-                    },
-                ],
+        // ══ SCENE 2 — pexels-video, the factory floor ══════════════════
+        {
+            tts: { text: "Inside, the air tasted like sulfur and metal. Row after row of empty shell casings waited to be filled, packed, and sealed — fast, and steady.", voice: 'bm_george', pauseAfter: 0.4 },
+            transition: 'fade',
+            captions: {
+                style: 'highlight', fontSize: 58, color: '#ffffff',
+                highlightColor: '#f5c518', wordsPerChunk: 3,
+                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
             },
+            layers: [
+                {
+                    type: 'pexels-video', query: 'factory assembly line workers',
+                    orientation: 'portrait', loop: true,
+                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
+            ],
+        },
 
-            // ── Scene 2 — Creator ───────────────────────────────────
-            {
-                tts: {
-                    text: "An Australian engineer named Mike O'Dwyer invented it in the nineteen nineties. He didn't try to improve the traditional gun mechanism. He scrapped it entirely, and rebuilt the idea from scratch around electronics instead of moving metal.",
-                    voice: 'bm_george',
-                    pauseAfter: 0.4,
-                },
-                captions: {
-                    style: 'highlight', fontSize: 60, color: '#ffffff',
-                    highlightColor: '#f5c518', wordsPerChunk: 3,
-                    strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
-                },
-                layers: [
-                    {
-                        type: 'stock-image', query: 'engineer workshop electronics',
-                        source: 'serpapi', fit: 'cover',
-                        kenBurns: 'pan-up', kenBurnsAmount: 0.3,
-                    },
-                    { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
-                    {
-                        type: 'text', text: 'MIKE O\u2019DWYER,\n1990s', x: 540, y: 1500,
-                        fontSize: 50, fontFamily: 'Arial Black, sans-serif',
-                        color: '#ffffff', align: 'center',
-                        stroke: true, strokeColor: '#000', strokeWidth: 4,
-                    },
-                ],
+        // ══ SCENE 3 — pexels-video, the "canary girls" fact ═══════════
+        {
+            tts: { text: "The workers called themselves canaries. The TNT powder they handled every day stained their skin a pale yellow that never fully washed out.", voice: 'bm_george', pauseAfter: 0.5 },
+            transition: 'fade',
+            captions: {
+                style: 'highlight', fontSize: 58, color: '#ffffff',
+                highlightColor: '#f5c518', wordsPerChunk: 3,
+                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
             },
+            layers: [
+                {
+                    type: 'pexels-video', query: 'hands working machinery closeup',
+                    orientation: 'portrait', loop: true,
+                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.45)' },
+            ],
+        },
 
-            // ── Scene 3 — Design Philosophy (NARA fallback expected) ──
-            {
-                tts: {
-                    text: "Every round sits stacked directly inside the barrel itself, one in front of the other, each one fired by its own electronic pulse instead of a mechanical firing pin. With no bolt cycling and nothing physically moving between shots, there's nothing left to jam. The US military and DARPA both took a serious look at it for close-in defense systems.",
-                    voice: 'bm_george',
-                    pauseAfter: 0.4,
-                },
-                captions: {
-                    style: 'highlight', fontSize: 60, color: '#ffffff',
-                    highlightColor: '#f5c518', wordsPerChunk: 3,
-                    strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
-                },
-                layers: [
-                    designPhilosophyVisual,
-                    { type: 'overlay', color: 'rgba(0,0,0,0.25)' },
-                    {
-                        type: 'text', text: 'NOTHING MOVES.\nNOTHING\nTO JAM.', x: 540, y: 1560,
-                        fontSize: 48, fontFamily: 'Arial Black, sans-serif',
-                        color: '#f5c518', align: 'center',
-                        stroke: true, strokeColor: '#000', strokeWidth: 4,
-                    },
-                ],
+        // ══ SCENE 4 — pexels-video, her reason ═════════════════════════
+        {
+            tts: { text: "She never talked about why she came. A brother somewhere in the Pacific. Letters that had stopped arriving as often as they used to. This was the only part of the war she could actually touch.", voice: 'bm_george', pauseAfter: 0.5 },
+            transition: 'fade',
+            captions: {
+                style: 'highlight', fontSize: 58, color: '#ffffff',
+                highlightColor: '#f5c518', wordsPerChunk: 3,
+                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
             },
+            layers: [
+                {
+                    type: 'pexels-video', query: 'vintage wartime letters photograph',
+                    orientation: 'portrait', loop: true,
+                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.45)' },
+            ],
+        },
 
-            // ── Scene 4 — CTA (provocative, comment-bait framing) ───
-            {
-                tts: {
-                    text: "So here's the question. If removing every moving part makes a gun fire faster than almost anything else ever built, why do you think this one never actually made it onto the battlefield? Comment your take below.",
-                    voice: 'bm_george',
-                    pauseAfter: 0.3,
-                },
-                captions: {
-                    style: 'highlight', fontSize: 60, color: '#ffffff',
-                    highlightColor: '#f5c518', wordsPerChunk: 3,
-                    strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
-                },
-                layers: [
-                    {
-                        type: 'stock-image', query: 'rapid fire weapon closeup',
-                        source: 'serpapi', fit: 'cover',
-                        kenBurns: 'rotate-ccw', kenBurnsAmount: 0.3, rotateDeg: 10,
-                    },
-                    { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
-                    {
-                        type: 'text', text: 'TOO GOOD TO\nMAKE IT TO WAR?\nCOMMENT BELOW', x: 540, y: 900,
-                        fontSize: 50, fontFamily: 'Arial Black, sans-serif',
-                        color: '#ffffff', align: 'center',
-                        stroke: true, strokeColor: '#000', strokeWidth: 5,
-                    },
-                ],
+        // ══ SCENE 5 — pexels-video, the daily risk ═════════════════════
+        {
+            tts: { text: "One wrong spark, and an entire wing of the factory could go up in seconds. Nobody talked about it out loud. You just kept your hands steady, and got through the shift.", voice: 'bm_george', pauseAfter: 0.5 },
+            transition: 'fade',
+            captions: {
+                style: 'highlight', fontSize: 58, color: '#ffffff',
+                highlightColor: '#f5c518', wordsPerChunk: 3,
+                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
             },
-        ],
-    };
-})();
+            layers: [
+                {
+                    type: 'pexels-video', query: 'industrial factory machinery',
+                    orientation: 'portrait', loop: true,
+                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
+            ],
+        },
+
+        // ══ SCENE 6 — anime portrait, the quiet moment ═════════════════
+        {
+            tts: { text: "At night, she'd sit outside the gates a moment before walking home, hands still faintly yellow under the streetlight, wondering if anyone would ever know her name.", voice: 'bm_george', pauseAfter: 0.6 },
+            transition: 'fade',
+            captions: {
+                style: 'highlight', fontSize: 58, color: '#ffffff',
+                highlightColor: '#f5c518', wordsPerChunk: 3,
+                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
+            },
+            layers: [
+                {
+                    type: 'ai-image',
+                    prompt: 'young woman sitting alone outside a factory gate at night, streetlight glow, tired but thoughtful expression, hands resting in lap, quiet melancholy mood',
+                    model: 'flux-anime', animeStyle: 'anime-portrait',
+                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.3)' },
+            ],
+        },
+
+        // ══ SCENE 7 — pexels-video, the closing line ═══════════════════
+        {
+            tts: { text: "Nobody remembers her name. But somewhere, in a war she never set foot in, a shell she packed by hand might have made the difference for someone who did.", voice: 'bm_george', pauseAfter: 0.7 },
+            transition: 'fade',
+            transitionDuration: 0.8,
+            captions: {
+                style: 'highlight', fontSize: 58, color: '#ffffff',
+                highlightColor: '#f5c518', wordsPerChunk: 3,
+                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
+            },
+            layers: [
+                {
+                    type: 'pexels-video', query: 'factory exterior sunset',
+                    orientation: 'portrait', loop: true,
+                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
+                {
+                    type: 'text', text: 'THE STORIES\nHISTORY LEFT OUT', x: 540, y: 1650,
+                    fontSize: 42, fontFamily: 'Arial Black, sans-serif',
+                    color: '#f5c518', align: 'center',
+                    stroke: true, strokeColor: '#000', strokeWidth: 4,
+                },
+            ],
+        },
+    ],
+};
