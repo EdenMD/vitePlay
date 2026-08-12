@@ -1,185 +1,83 @@
-// config.girl-who-built-bombs.js
-// "The Girl Who Built Bombs" — first entry in the new storytelling-short
-// line, mostly Pexels generic video with only 2 Pollinations ai-image
-// layers (both flux-anime — IMPORTANT: only one model resolves per whole
-// batch run, so every ai-image layer here must share the same model key
-// or later ones silently render with the first scene's model instead).
+// =============================================================================
+// config.glowchecka-phone-demo.js
+// Silent phone-mockup walkthrough of https://glowchecka.netlify.app using
+// the engine's animations/phone-frame.html — a real HTML/CSS device bezel
+// with the live site loaded inside a real iframe (not a canvas screenshot
+// composite), scripted to scroll down the page over the recording.
+// =============================================================================
 //
-// The story is a fictionalized composite, not a specific named person —
-// deliberate, both because Pollinations can't reliably render a specific
-// real face, and because "canary girls" (TNT-exposed munitions workers)
-// were a real, widespread WWII/WWI phenomenon best told as a composite
-// rather than claiming to be one real named woman's biography.
+// HOW THIS WORKS (see animations/phone-frame.html's own header comment and
+// documentations/Html_recording_Interactions.md for the full mechanics):
+//   - `src` points at the wrapper file with the target URL as a query param.
+//   - `iframeSelector: '#site-frame'` tells the engine to resolve every
+//     `interactions` selector/scroll INSIDE that iframe, not the wrapper
+//     shell — this is what lets `scroll` actually scroll the real site.
+//   - `waitFor: '[data-ready="1"]'` — the wrapper only sets that attribute
+//     once the FRAMED SITE has actually finished loading (see the iframe's
+//     'load' listener in phone-frame.html), not just the empty shell.
+//   - `cursor: false` — the wrapper draws its own glowing cursor via
+//     `window.__apexSetCursor`; the engine's normal synthetic cursor isn't
+//     needed (and would draw on the wrong layer/coordinate space) here.
+//   - REQUIRES glowchecka.netlify.app to not send a restrictive
+//     X-Frame-Options/CSP frame-ancestors header — if it blocks framing,
+//     the iframe will fail to load and `waitFor` will time out. Netlify
+//     sites usually don't set this by default, but there's no way to
+//     confirm from here without actually running the recording pass.
 //
-// Tone note: gentle fades throughout, not the punchy zoom-cut/glitch
-// transitions from the drop-template weapon videos — this one's meant to
-// sit and breathe, not hook-and-slam.
+// Four ascending `scroll` interactions give a smooth, continuous scroll
+// down the page rather than one big jump — each targets an absolute Y
+// (not a delta), increasing speed slightly deeper into the page since a
+// scroll to a much larger Y at the same px/sec takes proportionally
+// longer otherwise.
 //
-// Est. runtime: ~197 words of narration, roughly 80-85s at this engine's
-// measured pace — longer than your punchier shorts, intentionally, since
-// it's a story rather than a hook-and-facts format.
+// No `tts` on this scene — it's a silent b-roll-style demo — so
+// `scene.duration` is set explicitly (12s) and matches the layer's own
+// `duration` so the recording isn't cut short or padded with a static
+// last frame.
 //
-// Run with:  VIDEO_CONFIG=config.girl-who-built-bombs.js node engine-ci.js
+// Run with:  VIDEO_CONFIG=config.glowchecka-phone-demo.js node engine-ci.js
 
 module.exports = {
-    output: {
-        title:  'the-girl-who-built-bombs',
-        format: 'portrait',
-        fps:    30,
-        crf:    23,
-        preset: 'medium',
-        postProcess: { grain: true, grainStrength: 0.025, vignette: true, vignetteStrength: 0.4 },
+
+  output: {
+    title:  'glowchecka-phone-walkthrough',
+    format: 'portrait',
+    fps:    30,
+    crf:    20,
+    preset: 'medium',
+  },
+
+  scenes: [
+    {
+      duration: 12,   // no tts on this scene — silent demo, so this drives length
+
+      layers: [
+        // Simple dark gradient behind the phone mockup so it doesn't sit
+        // on a flat/transparent background.
+        {
+          type: 'gradient',
+          colors: ['#141821', '#05060a'],
+          gradientType: 'radial',
+        },
+        {
+          type:           'html-record',
+          src:            './animations/phone-frame.html?url=' + encodeURIComponent('https://glowchecka.netlify.app'),
+          iframeSelector: '#site-frame',
+          waitFor:        '[data-ready="1"]',
+          cursor:         false,
+          duration:       12,
+          fps:            30,
+          viewport:       { width: 1080, height: 1920 },
+          x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+
+          interactions: [
+            { at: 2.0,  action: 'scroll', y: 700,  speed: 220 },
+            { at: 4.5,  action: 'scroll', y: 1500, speed: 260 },
+            { at: 7.0,  action: 'scroll', y: 2400, speed: 300 },
+            { at: 9.5,  action: 'scroll', y: 3400, speed: 340 },
+          ],
+        },
+      ],
     },
-
-    defaults: { voice: 'bm_george', transitionDuration: 0.6 },
-
-    scenes: [
-        // ══ SCENE 1 — anime portrait, the opening ══════════════════════
-        {
-            tts: { text: "Her name isn't in any history book. In 1943, she was one of nearly two million women who built the weapons of a war they'd never fight in person.", voice: 'bm_george', pauseAfter: 0.5 },
-            transition: 'fade',
-            captions: {
-                style: 'highlight', fontSize: 60, color: '#ffffff',
-                highlightColor: '#f5c518', wordsPerChunk: 3,
-                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
-            },
-            layers: [
-                {
-                    type: 'ai-image',
-                    prompt: 'young woman factory worker in 1940s coveralls and headscarf, standing at a factory gate at dawn, determined expression, soft morning light',
-                    model: 'flux-anime', animeStyle: 'anime-portrait',
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
-                {
-                    type: 'text', text: 'A STORY TOLD\nTHROUGH ONE', x: 540, y: 1650,
-                    fontSize: 44, fontFamily: 'Arial Black, sans-serif',
-                    color: '#f5c518', align: 'center',
-                    stroke: true, strokeColor: '#000', strokeWidth: 4,
-                },
-            ],
-        },
-
-        // ══ SCENE 2 — pexels-video, the factory floor ══════════════════
-        {
-            tts: { text: "Inside, the air tasted like sulfur and metal. Row after row of empty shell casings waited to be filled, packed, and sealed — fast, and steady.", voice: 'bm_george', pauseAfter: 0.4 },
-            transition: 'fade',
-            captions: {
-                style: 'highlight', fontSize: 58, color: '#ffffff',
-                highlightColor: '#f5c518', wordsPerChunk: 3,
-                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
-            },
-            layers: [
-                {
-                    type: 'pexels-video', query: 'factory assembly line workers',
-                    orientation: 'portrait', loop: true,
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
-            ],
-        },
-
-        // ══ SCENE 3 — pexels-video, the "canary girls" fact ═══════════
-        {
-            tts: { text: "The workers called themselves canaries. The TNT powder they handled every day stained their skin a pale yellow that never fully washed out.", voice: 'bm_george', pauseAfter: 0.5 },
-            transition: 'fade',
-            captions: {
-                style: 'highlight', fontSize: 58, color: '#ffffff',
-                highlightColor: '#f5c518', wordsPerChunk: 3,
-                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
-            },
-            layers: [
-                {
-                    type: 'pexels-video', query: 'hands working machinery closeup',
-                    orientation: 'portrait', loop: true,
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.45)' },
-            ],
-        },
-
-        // ══ SCENE 4 — pexels-video, her reason ═════════════════════════
-        {
-            tts: { text: "She never talked about why she came. A brother somewhere in the Pacific. Letters that had stopped arriving as often as they used to. This was the only part of the war she could actually touch.", voice: 'bm_george', pauseAfter: 0.5 },
-            transition: 'fade',
-            captions: {
-                style: 'highlight', fontSize: 58, color: '#ffffff',
-                highlightColor: '#f5c518', wordsPerChunk: 3,
-                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
-            },
-            layers: [
-                {
-                    type: 'pexels-video', query: 'vintage wartime letters photograph',
-                    orientation: 'portrait', loop: true,
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.45)' },
-            ],
-        },
-
-        // ══ SCENE 5 — pexels-video, the daily risk ═════════════════════
-        {
-            tts: { text: "One wrong spark, and an entire wing of the factory could go up in seconds. Nobody talked about it out loud. You just kept your hands steady, and got through the shift.", voice: 'bm_george', pauseAfter: 0.5 },
-            transition: 'fade',
-            captions: {
-                style: 'highlight', fontSize: 58, color: '#ffffff',
-                highlightColor: '#f5c518', wordsPerChunk: 3,
-                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
-            },
-            layers: [
-                {
-                    type: 'pexels-video', query: 'industrial factory machinery',
-                    orientation: 'portrait', loop: true,
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
-            ],
-        },
-
-        // ══ SCENE 6 — anime portrait, the quiet moment ═════════════════
-        {
-            tts: { text: "At night, she'd sit outside the gates a moment before walking home, hands still faintly yellow under the streetlight, wondering if anyone would ever know her name.", voice: 'bm_george', pauseAfter: 0.6 },
-            transition: 'fade',
-            captions: {
-                style: 'highlight', fontSize: 58, color: '#ffffff',
-                highlightColor: '#f5c518', wordsPerChunk: 3,
-                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
-            },
-            layers: [
-                {
-                    type: 'ai-image',
-                    prompt: 'young woman sitting alone outside a factory gate at night, streetlight glow, tired but thoughtful expression, hands resting in lap, quiet melancholy mood',
-                    model: 'flux-anime', animeStyle: 'anime-portrait',
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.3)' },
-            ],
-        },
-
-        // ══ SCENE 7 — pexels-video, the closing line ═══════════════════
-        {
-            tts: { text: "Nobody remembers her name. But somewhere, in a war she never set foot in, a shell she packed by hand might have made the difference for someone who did.", voice: 'bm_george', pauseAfter: 0.7 },
-            transition: 'fade',
-            transitionDuration: 0.8,
-            captions: {
-                style: 'highlight', fontSize: 58, color: '#ffffff',
-                highlightColor: '#f5c518', wordsPerChunk: 3,
-                strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5,
-            },
-            layers: [
-                {
-                    type: 'pexels-video', query: 'factory exterior sunset',
-                    orientation: 'portrait', loop: true,
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
-                {
-                    type: 'text', text: 'THE STORIES\nHISTORY LEFT OUT', x: 540, y: 1650,
-                    fontSize: 42, fontFamily: 'Arial Black, sans-serif',
-                    color: '#f5c518', align: 'center',
-                    stroke: true, strokeColor: '#000', strokeWidth: 4,
-                },
-            ],
-        },
-    ],
+  ],
 };
