@@ -1,57 +1,61 @@
-
 // =============================================================================
 // config.f35-conversational.js — "The F-35: Brilliant or Fragile?"
 // Full 5-minute direct-address audit. Alternates ApexCasing dossier scenes
 // (icons/stamps/meters/ledgerLines/redact/panZoom) WITH native engine
-// visuals (stat-counter, gradient, stock-image-sequence + rotate Ken Burns)
-// for variety — not exclusively one or the other. Only 2 pexels-video clips
-// total (hook + pivot); everything else is either dossier-native or
-// engine-native, zero extra image-fetch cost beyond those.
+// visuals (stat-counter, gradient, stock-image-sequence + rotate Ken Burns).
 //
-// VOICE: am_santa, per explicit instruction.
+// FIX APPLIED: previous version referenced CANVAS and DARK_THEME inside
+// dossierLayer() without either being defined anywhere in the file — that
+// was the crash. Also fixed: dossierLayer() was being CALLED everywhere as
+// dossierLayer(tag, duration, title, commands) but its own signature was
+// (tag, commands, opts) — a 4-arg call into a 3-arg function. Function
+// signature below now matches every call site exactly.
 //
-// STRUCTURE:
-//   1. pexels-video   — hook, direct address
-//   2. dossier        — mechanism pt.1: stealth
-//   3. NATIVE         — mechanism pt.2: sensor fusion (gradient + stat-counter)
-//   4. dossier        — defects pt.1: program cost
-//   5. NATIVE         — defects pt.1b: readiness (stat-counter sequence)
-//   6. dossier        — defects pt.2: ballast/radar redact gag
-//   7. NATIVE         — defects pt.2b: cooling/Block 4/delays (image-sequence + rotate)
-//   8. pexels-video   — pivot, direct address
-//   9. dossier        — advantages pt.1: stealth edge / first-look-first-kill
-//   10. NATIVE        — advantages pt.2: 19 nations (stat-counter)
-//   11. dossier       — verdict + subscribe CTA
+// COORDINATES: kept exactly as given — portrait-style (540/960 center,
+// 1080x1920 layer dimensions) — per explicit instruction that these were
+// intentional, not a mistake. CANVAS is set to { width:1080, height:1920 }
+// to match them.
 //
-// SOURCING: all figures reused from verified GAO-26-108113 (June 2026)
-// data already used in config.f35b-audit.js this session.
+// ⚠ HEADS UP — NOT SILENTLY CHANGED: `output.format`/`width`/`height` below
+// are still landscape (1920x1080), and the pexels-video / stock-image-
+// sequence layers in scenes 1, 7, and 8 still use 1080x1920 portrait
+// dimensions too — so those are internally consistent with each other and
+// with the dossier CANVAS. The one place still worth double-checking is
+// whatever your actual render pipeline uses as the FINAL output canvas —
+// if it's driven by `output.width/height` (1920x1080) while every layer on
+// screen is authored for 1080x1920, the composited result will show your
+// portrait content as a tall box with empty bars on either side inside a
+// wide frame. If you actually want true portrait output, tell me and I'll
+// switch `output.width/height` to 1080x1920 to match everything else in
+// this file. Left as you had it for now since you said don't touch the
+// coordinates.
 //
 // Run with:  VIDEO_CONFIG=config.f35-conversational.js node engine-ci.js
 
 'use strict';
 
 const DOSSIER_SRC = './ApexCasing/dossier-audit-explainer.html';
+const CANVAS = { width: 1080, height: 1920 };
 const THEME = { paper: '#e9e2ce', ink: '#201d16', accent: '#b3242f', accent2: '#c98a1c' };
 const VOICE = 'am_santa';
 
-function dossierLayer(tag, commands, opts = {}) {
+function dossierLayer(tag, duration, title, commands) {
   return {
     type: 'html-record', src: `${DOSSIER_SRC}?tag=${tag}`, audioSync: true,
-    waitFor: '[data-ready="1"]', duration: opts.duration || 60, fps: 30, cursor: false,
+    waitFor: '[data-ready="1"]', duration, fps: 30, cursor: false,
     viewport: CANVAS, x: 0, y: 0, width: CANVAS.width, height: CANVAS.height, fit: 'cover',
-    data: { title: opts.title || '', canvas: CANVAS, theme: DARK_THEME, commands },
+    data: { title, canvas: CANVAS, theme: THEME, commands },
   };
 }
 
 module.exports = () => ({
-  
+
   output: {
     title: 'f35b-brilliant-or-fragile-longform', format: 'landscape',
     width: 1920, height: 1080,
     fps: 30, crf: 20, preset: 'medium',
-    bgMusicVol: 0.07, bgMusic: { mood: 'cinemic' },
+    bgMusicVol: 0.07, bgMusic: { mood: 'cinematic' },
     postProcess: { grain: true, grainStrength: 0.02, vignette: false },
- 
   },
   defaults: { voice: VOICE, speed: 1.0, transition: 'fade' },
   scenes: [
