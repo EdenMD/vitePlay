@@ -1,259 +1,201 @@
 // =============================================================================
-// config.f35-conversational-landscape.js — "The F-35: Brilliant or Fragile?"
-// CORRECTED to true landscape (1920x1080). Uses dossier-audit-explainer-
-// landscape.html (dimension-fixed casing) — NOT the portrait original.
-// Every element below is repositioned for a wide frame (center 960/540,
-// horizontal pairing instead of vertical stacking) — not just resized.
+// config.f35b-audit-v2.js — "F-35B: Brilliant, or Just Fragile?" (long-form)
+// =============================================================================
 //
-// Same 11-scene structure, same am_santa voice, same 2 pexels-video clips,
-// same verified GAO figures as the portrait version.
+// REVISION NOTES vs config.f35b-audit.js (kept for reference, not deleted):
+//   - Landscape long-form dimensions (1920x1080) via dossier-audit-explainer.html's
+//     new data.canvas support, not vertical shorts.
+//   - Dark theme via data.theme.mode: 'dark' (also new in the template).
+//   - Voice switched to am_santa ("Jolly, booming" — Voices.md) throughout.
+//   - Narration rewritten to talk TO the viewer on every beat ("you", direct
+//     address, rhetorical questions) instead of narrating facts in third
+//     person, and restructured per the requested arc: cold open → "for
+//     those of you who don't know" intro + VERY short mechanics explainer
+//     → the bulk of the runtime on defects/problems → an explicit pivot
+//     ("this plane ain't that bad, don't get me wrong") → a few real
+//     advantages → close.
+//   - Camera movement: panZoom used far more aggressively between beats
+//     inside the dossier board (zoom toward whichever side of the frame
+//     the next stat lands on, zoom back out to reveal), plus kenBurns on
+//     every pexels-video cutaway.
+//   - Native engine "data representations": a real `chart` layer (bar
+//     type — src/layers.js's drawChart) for the mission-capable-rate
+//     comparison, composited over the dossier board in scene 3, alongside
+//     the dossier's own ledgerLine/stamp/meter elements. `chart` has no
+//     word-trigger of its own (it always animates from its own scene's
+//     t=0 over `animDur`) — placed in the readiness scene so it's already
+//     fully grown and sitting there as supporting evidence by the time
+//     the narrator gets to the actual numbers, same as how a real
+//     documentary edit often pre-lays a graphic before the line that
+//     references it, rather than trying to hit it frame-perfectly.
+//   - Pexels stock video: exactly 3 short cutaway clips (generic aviation
+//     b-roll — "fighter jet flying", "aircraft hangar", "jets formation" —
+//     Pexels is contemporary stock footage, not an archive, so these are
+//     mood/connective cutaways, not claimed to literally be F-35B footage;
+//     see documentations/Pexels.md's accuracy section). Resolved natively
+//     by the engine in Phase 1.1 — no manual fetch code needed here, just
+//     `type: 'pexels-video'` layers. PEXELS_API_KEY must be set.
 //
 // DIMENSION FIX: output block now sets explicit width/height alongside
-// format — 'format: landscape' alone was the exact gap that caused
-// silent portrait-default issues on an earlier long-form file in this
-// project. Every layer's own x/y/width/height was already correctly
-// converted to the 1920x1080 frame (checked line by line — nothing left
-// over at portrait-style coordinates), so this was the one real gap.
+// format — same gap found and fixed on config.f35-conversational-landscape.js
+// earlier ('format: landscape' alone, no explicit width/height). Every
+// layer here already used the CANVAS constant (1920x1080) consistently
+// for viewport/x/y/width/height, so — same as last time — this was the
+// one real gap, not a scene-by-scene repositioning problem.
 //
-// Run with:  VIDEO_CONFIG=config.f35-conversational-landscape.js node engine-ci.js
+// STRUCTURE — 7 scenes: cold-open cutaway → dossier intro/mechanics →
+// cutaway → dossier defects pt.1 (cost + readiness, native chart) →
+// dossier defects pt.2 (ballast/radar, cooling, delivery delays) →
+// cutaway → dossier pivot/advantages/close. ~556 words of dossier-scene
+// narration + 3 short cutaway lines, ≈ 4.5-5 min at a measured pace.
+//
+// SOURCING: same public GAO reporting (GAO-26-108113, June 2026) and
+// contemporaneous defense-press coverage as config.f35b-audit.js — see
+// that file's header for the specific figures and their basis. This is
+// documentary/encyclopedia-level public information, not operational or
+// targeting detail.
+//
+// Run with:  VIDEO_CONFIG=config.f35b-audit-v2.js node engine-ci.js
 
 'use strict';
 
-const DOSSIER_SRC = './ApexCasing/dossier-audit-explainer-landscape.html';
-const THEME = { paper: '#e9e2ce', ink: '#201d16', accent: '#b3242f', accent2: '#c98a1c' };
-const VOICE = 'am_santa';
+const DOSSIER_SRC = './ApexCasing/dossier-audit-explainer.html';
+const CANVAS = { width: 1920, height: 1080 };
+const DARK_THEME = { mode: 'dark', paper: '#1c1a16', ink: '#efe7d2', accent: '#e2434f', accent2: '#e3a83c', shadow: 'rgba(0,0,0,0.6)' };
+const VOICE = 'am_santa'; // "Jolly, booming" — deliberately incongruous with the skeptical content
 
-function dossierLayer(tag, duration, title, commands) {
+function dossierLayer(tag, commands, opts = {}) {
   return {
     type: 'html-record', src: `${DOSSIER_SRC}?tag=${tag}`, audioSync: true,
-    waitFor: '[data-ready="1"]', duration, fps: 30,
-    viewport: { width: 1920, height: 1080 }, x: 0, y: 0, width: 1920, height: 1080, fit: 'cover',
-    data: { title, theme: THEME, commands },
+    waitFor: '[data-ready="1"]', duration: opts.duration || 60, fps: 30, cursor: false,
+    viewport: CANVAS, x: 0, y: 0, width: CANVAS.width, height: CANVAS.height, fit: 'cover',
+    data: { title: opts.title || '', canvas: CANVAS, theme: DARK_THEME, commands },
   };
 }
 
-module.exports = () => ({
+const CAPTIONS = {
+  style: 'highlight', position: 'bottom', fontSize: 46, color: '#ffffff',
+  highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 3, maxWidth: 0.78,
+};
+
+// ── SCENE: cold open (pexels cutaway #1) ────────────────────────────────
+const scene0 = {
+  tts: { text: "This... is the F-35B.", voice: VOICE, emotion: 'neutral' },
+  captions: CAPTIONS,
+  layers: [
+    { type: 'background', color: '#0a0a0a' },
+    { type: 'pexels-video', query: 'fighter jet flying sky', orientation: 'landscape', resultIndex: 0,
+      x: 0, y: 0, width: CANVAS.width, height: CANVAS.height, fit: 'cover', kenBurns: 'zoom-in', kenBurnsAmount: 0.1 },
+  ],
+};
+
+// ── SCENE 1: dossier intro + very short mechanics ───────────────────────
+const s1cmds = [
+  { id: 's_title', type: 'sticker', text: 'F-35B', x: 960, y: 150, size: 110, rotate: -2, trigger: { atSeconds: 0 } },
+  { id: 'lbl_sub', type: 'label', text: 'CASE FILE: LIGHTNING II (STOVL)', x: 960, y: 230, size: 26, trigger: { afterId: 's_title', offset: 0.2 } },
+  { id: 'pan_in', type: 'panZoom', toScale: 1.08, toX: 0, toY: -30, duration: 1.4, trigger: { afterId: 'lbl_sub', offset: 0.2 } },
+  { id: 'i_fan', type: 'icon', icon: 'mdi:fan', x: 650, y: 430, size: 130, bg: 'circle', color: DARK_THEME.accent2, trigger: { wordText: 'fan', occurrence: 1 } },
+  { id: 'i_nozzle', type: 'icon', icon: 'mdi:rotate-3d-variant', x: 1270, y: 430, size: 130, bg: 'circle', color: DARK_THEME.accent, trigger: { wordText: 'nozzle', occurrence: 1 } },
+  { id: 'i_vents', type: 'icon', icon: 'mdi:arrow-left-right-bold', x: 960, y: 600, size: 100, bg: 'square', trigger: { wordText: 'wings', occurrence: 1 } },
+  { id: 'pan_out', type: 'panZoom', toScale: 1, toX: 0, toY: 0, duration: 1.2, trigger: { wordText: 'balanced', occurrence: 1 } },
+  { id: 'lbl_pay', type: 'label', text: 'so, what are you actually paying for this?', x: 960, y: 780, size: 32, color: DARK_THEME.accent, trigger: { wordText: 'paying', occurrence: 1 } },
+];
+
+// ── SCENE: cutaway #2 ────────────────────────────────────────────────────
+const scene2 = {
+  tts: { text: "Because trust me, it gets expensive fast.", voice: VOICE, emotion: 'neutral' },
+  captions: CAPTIONS,
+  layers: [
+    { type: 'background', color: '#0a0a0a' },
+    { type: 'pexels-video', query: 'aircraft hangar maintenance', orientation: 'landscape', resultIndex: 0,
+      x: 0, y: 0, width: CANVAS.width, height: CANVAS.height, fit: 'cover', kenBurns: 'pan-right', kenBurnsAmount: 0.09 },
+  ],
+};
+
+// ── SCENE 3: defects pt.1 — cost + readiness (+ native chart layer) ─────
+const s3cmds = [
+  { id: 's_title3', type: 'sticker', text: 'THE COST', x: 960, y: 130, size: 72, rotate: -1, trigger: { atSeconds: 0 } },
+  { id: 'pan_cost', type: 'panZoom', toScale: 1.12, toX: -260, toY: 20, duration: 1.3, trigger: { afterId: 's_title3', offset: 0.3 } },
+  { id: 'led_start', type: 'ledgerLine', label: 'PROGRAM START', value: '1996', x: 560, y: 320, width: 520, size: 26, trigger: { wordText: '1996', occurrence: 1 } },
+  { id: 'led_end', type: 'ledgerLine', label: 'PLANNED RETIREMENT', value: '2088', x: 560, y: 390, width: 520, size: 26, trigger: { wordText: '2088', occurrence: 1 } },
+  { id: 'st_cost', type: 'stamp', text: '$2.1 TRILLION', x: 560, y: 540, size: 56, rotate: -4, trigger: { wordText: 'trillion', occurrence: 1 } },
+  { id: 'lbl_costsub', type: 'label', text: 'most expensive weapons program ever built', x: 560, y: 630, size: 22, trigger: { afterId: 'st_cost', offset: 0.2 } },
+  { id: 'pan_ready', type: 'panZoom', toScale: 1.12, toX: 260, toY: -40, duration: 1.3, trigger: { wordText: 'reliable', occurrence: 1 } },
+  { id: 'lbl_readytitle', type: 'label', text: 'MISSION READINESS', x: 1400, y: 260, size: 24, trigger: { afterId: 'pan_ready', offset: 0.3 } },
+  { id: 'st_onein4', type: 'stamp', text: 'ONE IN FOUR', x: 960, y: 820, size: 44, rotate: 3, color: DARK_THEME.accent, trigger: { wordText: 'four', occurrence: 1 } },
+  { id: 'pan_hold', type: 'panZoom', toScale: 1, toX: 0, toY: 0, duration: 1.2, trigger: { wordText: 'accountable', occurrence: 1 } },
+];
+
+// ── SCENE 4: defects pt.2 — ballast/radar, cooling, delivery delays ─────
+const s4cmds = [
+  { id: 's_title4', type: 'sticker', text: 'THE PROBLEMS', x: 960, y: 130, size: 64, rotate: -1, trigger: { atSeconds: 0 } },
+  { id: 'pan_radar', type: 'panZoom', toScale: 1.15, toX: -300, toY: 0, duration: 1.2, trigger: { afterId: 's_title4', offset: 0.3 } },
+  { id: 'i_radar', type: 'icon', icon: 'mdi:radar', x: 520, y: 400, size: 130, bg: 'circle', trigger: { wordText: 'radar', occurrence: 1 } },
+  { id: 're_radar', type: 'redact', target: 'i_radar', duration: 0.5, trigger: { afterId: 'i_radar', offset: 0.35 } },
+  { id: 'lbl_ballast', type: 'label', text: 'ballast, not radar', x: 520, y: 520, size: 24, trigger: { wordText: 'ballast', occurrence: 1 } },
+  { id: 'pan_cool', type: 'panZoom', toScale: 1.15, toX: 300, toY: 0, duration: 1.2, trigger: { wordText: 'worry', occurrence: 1 } },
+  { id: 'led_cooling', type: 'ledgerLine', label: 'COOLING CAPACITY', value: '32 kW', x: 1400, y: 350, width: 420, size: 24, trigger: { wordText: 'kilowatts', occurrence: 1 } },
+  { id: 'led_needed', type: 'ledgerLine', label: 'BLOCK 4 NEEDS', value: 'UP TO 80 kW', x: 1400, y: 420, width: 420, size: 24, color: DARK_THEME.accent, trigger: { wordText: 'eighty', occurrence: 1 } },
+  { id: 'pan_center4', type: 'panZoom', toScale: 1, toX: 0, toY: 0, duration: 1.2, trigger: { wordText: '2031', occurrence: 1 } },
+  { id: 'st_delay', type: 'stamp', text: 'BLOCK 4 \u2192 2031', x: 960, y: 600, size: 42, rotate: -6, color: DARK_THEME.accent, trigger: { afterId: 'pan_center4', offset: 0.2 } },
+  { id: 'led_late', type: 'ledgerLine', label: 'AVG DELIVERY DELAY (2024)', value: '238 DAYS', x: 960, y: 760, width: 680, size: 26, trigger: { wordText: 'days', occurrence: 1 } },
+  { id: 'lbl_final3', type: 'label', text: "you already paid. it still can't do its full job.", x: 960, y: 850, size: 26, color: DARK_THEME.accent, trigger: { wordText: 'job', occurrence: 1 } },
+];
+
+// ── SCENE: cutaway #3 ────────────────────────────────────────────────────
+const scene5 = {
+  tts: { text: "Alright, that's a lot to take in. But don't count this jet out just yet.", voice: VOICE, emotion: 'neutral' },
+  captions: CAPTIONS,
+  layers: [
+    { type: 'background', color: '#0a0a0a' },
+    { type: 'pexels-video', query: 'fighter jets formation flying', orientation: 'landscape', resultIndex: 0,
+      x: 0, y: 0, width: CANVAS.width, height: CANVAS.height, fit: 'cover', kenBurns: 'zoom-out', kenBurnsAmount: 0.1 },
+  ],
+};
+
+// ── SCENE 6: pivot + advantages + close ──────────────────────────────────
+const s6cmds = [
+  { id: 's_title6', type: 'sticker', text: 'THE VERDICT', x: 960, y: 140, size: 70, rotate: -1, trigger: { atSeconds: 0 } },
+  { id: 'pan_wide6', type: 'panZoom', toScale: 1.1, toX: 0, toY: -20, duration: 1.3, trigger: { afterId: 's_title6', offset: 0.3 } },
+  { id: 'st_notbad', type: 'stamp', text: 'NOT THAT BAD', x: 960, y: 330, size: 50, rotate: -3, color: DARK_THEME.accent2, trigger: { wordText: 'wrong', occurrence: 1 } },
+  { id: 'i_stovl', type: 'icon', icon: 'mdi:arrow-down-bold-circle', x: 600, y: 500, size: 120, bg: 'circle', color: DARK_THEME.accent2, trigger: { wordText: 'runway', occurrence: 1 } },
+  { id: 'lbl_stovl', type: 'label', text: 'no other jet in production can do this', x: 600, y: 610, size: 24, trigger: { afterId: 'i_stovl', offset: 0.2 } },
+  { id: 'i_harrier', type: 'icon', icon: 'mdi:history', x: 1320, y: 500, size: 110, bg: 'circle', trigger: { wordText: 'harrier', occurrence: 1 } },
+  { id: 'lbl_harrier', type: 'label', text: 'evolution of the Harrier idea', x: 1320, y: 600, size: 24, trigger: { afterId: 'i_harrier', offset: 0.2 } },
+  { id: 'pan_qb', type: 'panZoom', toScale: 1.15, toX: 0, toY: 40, duration: 1.2, trigger: { wordText: 'quarterback', occurrence: 1 } },
+  { id: 'i_qb', type: 'icon', icon: 'mdi:radar', x: 960, y: 730, size: 120, bg: 'circle', color: DARK_THEME.accent2, trigger: { afterId: 'pan_qb', offset: 0.2 } },
+  { id: 'lbl_qb', type: 'label', text: 'shares data with everything nearby', x: 960, y: 840, size: 24, trigger: { afterId: 'i_qb', offset: 0.2 } },
+  { id: 'pan_final6', type: 'panZoom', toScale: 1, toX: 0, toY: 0, duration: 1.4, trigger: { wordText: 'marines', occurrence: 1 } },
+  { id: 'led_marines', type: 'ledgerLine', label: 'MARINE CORPS', value: 'OPERATES OFF SMALLER SHIPS', x: 960, y: 780, width: 760, size: 24, trigger: { afterId: 'pan_final6', offset: 0.3 } },
+  { id: 'st_final', type: 'stamp', text: 'BRILLIANT AND FRAGILE', x: 960, y: 850, size: 44, rotate: 2, color: DARK_THEME.accent, trigger: { wordText: 'both', occurrence: 1 } },
+];
+
+module.exports = {
   output: {
-    title: 'f35-brilliant-or-fragile-landscape', format: 'landscape',
+    title: 'f35b-brilliant-or-fragile-longform', format: 'landscape',
     width: 1920, height: 1080,
     fps: 30, crf: 20, preset: 'medium',
     bgMusicVol: 0.07, bgMusic: { mood: 'dark' },
-    postProcess: { grain: true, grainStrength: 0.02, vignette: true, vignetteStrength: 0.4 },
+    postProcess: { grain: true, grainStrength: 0.02, vignette: false },
   },
   defaults: { voice: VOICE, speed: 1.0, transition: 'fade' },
   scenes: [
-
-    // ── SCENE 1 — HOOK (pexels-video, ~15s) ─────────────────────────────
-    {
-      tts: {
-        text: "So for those of you who don't know — this is the F-35. Stealth fighter, sensor fusion, and honestly, the most expensive piece of military hardware humanity has ever built. Today we're going to talk about what it actually gets right, and what it's still getting very wrong.",
-        voice: VOICE, emotion: 'neutral',
-      },
-      transition: 'fade', transitionDuration: 0.3,
-      captions: { style: 'highlight', position: 'bottom', fontSize: 50, color: '#ffffff', highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 4, maxWidth: 0.8 },
+    scene0,
+    { tts: { text: "Alright, for those of you who don't know, let me introduce you to the F-35B Lightning II. Look at this thing, this is the version of the F-35 that can take off in under two hundred feet, hover in midair like a helicopter, and set itself straight down on a ship or a road. How does it pull that off? Real quick: a fan behind the cockpit blows air straight down, the engine's rear nozzle swivels down too, and small vents in the wings keep it balanced. Three separate systems, working together, in real time. That's the setup. Now let's talk about what you're actually paying for.", voice: VOICE, emotion: 'neutral' },
+      captions: CAPTIONS, layers: [ dossierLayer('f35b2-s1', s1cmds, { duration: 55, title: 'CASE FILE 01' }) ] },
+    scene2,
+    { tts: { text: "Here's where I have to be honest with you. This program has been running since 1996, and the Pentagon wants to keep flying these jets all the way until 2088. Add it all up, and you're looking at over two trillion dollars, the most expensive weapons program human beings have ever built. So, does that kind of money buy you a reliable jet? Not really. Back in 2021, sixty-seven percent of the fleet was mission capable. By 2025, that number had dropped to forty-four percent. And if you're only counting jets that can do everything they're supposed to do, you're down to twenty-five percent. That's one in four. You paid trillions, and three out of four jets can't fully do their job on any given day. And government auditors say the Pentagon hasn't even consistently held the manufacturer accountable for any of it.", voice: VOICE, emotion: 'neutral' },
+      captions: CAPTIONS,
       layers: [
-        { type: 'stock-image', query: 'F-35 Lightning II fighter jet', source: 'serpapi', orientation: 'landscape', imageIndex: 0, x: 0, y: 0, width: 1920, height: 1080, fit: 'cover', kenBurns: 'zoom-in', kenBurnsAmount: 0.14 },
-        { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
-      ],
-    },
-
-    // ── SCENE 2 — DOSSIER — mechanism pt.1: stealth (~30s) ──────────────
-    // Landscape layout: icon LEFT column, labels RIGHT column, side by side.
-    {
-      tts: {
-        text: "Let's start simple. The whole idea behind the F-35 is that it's built to be almost invisible to radar. Its shape, its coating, even the way its panels line up — all of it is designed to scatter radar waves instead of reflecting them straight back. On paper, that means an enemy radar operator might never even know it's there until it's already too late.",
-        voice: VOICE, emotion: 'neutral',
-      },
-      captions: { style: 'highlight', position: 'bottom', fontSize: 50, color: '#ffffff', highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 4, maxWidth: 0.8 },
-      layers: [ dossierLayer('f35-s2', 30, 'THE PITCH — STEALTH', [
-        { id: 'i_stealth', type: 'icon', icon: 'mdi:radar', x: 650, y: 480, size: 170, bg: 'circle', trigger: { atSeconds: 0 } },
-        { id: 'lbl_shape', type: 'label', text: 'shape + coating scatter radar waves', x: 1350, y: 440, size: 30, trigger: { wordText: 'coating', occurrence: 1 } },
-        { id: 'i_invisible', type: 'icon', icon: 'mdi:eye-off', x: 650, y: 750, size: 140, bg: 'circle', color: THEME.accent2, trigger: { wordText: 'invisible', occurrence: 1 } },
-        { id: 'lbl_late', type: 'label', text: 'too late by the time they see you', x: 1350, y: 720, size: 30, trigger: { wordText: 'late', occurrence: 1 } },
-        { id: 'pz1', type: 'panZoom', toScale: 1.08, toX: -20, toY: 0, duration: 1.2, trigger: { afterId: 'lbl_late', offset: 0.2 } },
-      ]) ],
-    },
-
-    // ── SCENE 3 — NATIVE — mechanism pt.2: sensor fusion (~25s) ─────────
-    {
-      tts: {
-        text: "But stealth is only half the pitch. Every F-35 in the sky is constantly sharing what it sees with every other one nearby. One jet spots a threat, and instantly, the entire formation knows exactly where it is. It's less like flying one fighter and more like flying one brain split across a dozen aircraft.",
-        voice: VOICE, emotion: 'neutral',
-      },
-      transition: 'wipe-left', transitionDuration: 0.28,
-      captions: { style: 'highlight', position: 'bottom', fontSize: 50, color: '#ffffff', highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 4, maxWidth: 0.8 },
-      layers: [
-        { type: 'gradient', gradientType: 'linear', colors: ['#050505', '#0d1a2e', '#050505'], angle: 110, vignette: true, vignetteStrength: 0.5 },
-        {
-          type: 'text', text: 'ONE JET SEES. ALL OF THEM KNOW.', x: 960, y: 220, fontSize: 62,
-          fontFamily: 'Impact, Arial Black, sans-serif', color: '#ffffff', align: 'center', maxWidth: 1600,
-          lineHeight: 1.1, gradient: ['#ffd23f', '#ff8c00'], stroke: true, strokeColor: '#000000', strokeWidth: 5,
-          glow: true, glowColor: '#ffd23f', glowBlur: 26, animation: 'pop', animDur: 0.35, startT: 0.2,
-        },
-        {
-          type: 'stat-counter', value: 1, suffix: ' SHARED PICTURE', label: 'SENSOR FUSION ACROSS THE FORMATION',
-          x: 960, y: 560, fontSize: 84, labelSize: 30, color: '#ffd23f', labelColor: '#ffffff', align: 'center',
-          glow: true, glowColor: '#ffd23f', glowBlur: 40, countDur: 1.4,
-        },
-        {
-          type: 'text', text: 'One brain, split across a dozen aircraft.', x: 960, y: 830, fontSize: 42,
-          fontFamily: 'Arial Black, Impact, sans-serif', color: '#ffffff', align: 'center', maxWidth: 1400,
-          lineHeight: 1.3, stroke: true, strokeColor: '#000000', strokeWidth: 4, animation: 'fade', animDur: 0.35, startT: 1.6,
-        },
-      ],
-    },
-
-    // ── SCENE 4 — DOSSIER — defects pt.1: program cost (~40s) ───────────
-    {
-      tts: {
-        text: "Now here's where things get messy. This program has been running since 1996. The Pentagon plans to keep flying these jets until 2088 — that's a ninety-four year commitment to one aircraft family. Total lifecycle cost: over two point one trillion dollars. That makes it, without argument, the single most expensive weapons program human beings have ever built.",
-        voice: VOICE, emotion: 'neutral',
-      },
-      captions: { style: 'highlight', position: 'bottom', fontSize: 50, color: '#ffffff', highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 4, maxWidth: 0.8 },
-      layers: [ dossierLayer('f35-s4', 40, 'THE MONEY', [
-        { id: 'led_start', type: 'ledgerLine', label: 'PROGRAM START', value: '1996', x: 560, y: 380, width: 620, size: 30, trigger: { wordText: '1996', occurrence: 1 } },
-        { id: 'led_end', type: 'ledgerLine', label: 'PLANNED RETIREMENT', value: '2088', x: 560, y: 460, width: 620, size: 30, trigger: { wordText: '2088', occurrence: 1 } },
-        { id: 'led_span', type: 'ledgerLine', label: 'COMMITMENT LENGTH', value: '94 YEARS', x: 560, y: 540, width: 620, size: 30, color: THEME.accent2, trigger: { wordText: 'family', occurrence: 1 } },
-        { id: 'i_money', type: 'icon', icon: 'mdi:cash-multiple', x: 1400, y: 400, size: 130, bg: 'circle', color: THEME.accent, trigger: { wordText: 'cost', occurrence: 1 } },
-        { id: 'st_cost', type: 'stamp', text: '$2.1 TRILLION', x: 1400, y: 620, size: 54, rotate: -4, trigger: { wordText: 'trillion', occurrence: 1 } },
-        { id: 'lbl_cost', type: 'label', text: 'most expensive weapons program ever built', x: 1400, y: 720, size: 24, trigger: { afterId: 'st_cost', offset: 0.2 } },
-        { id: 'pz2', type: 'panZoom', toScale: 1.1, toX: 20, toY: 0, duration: 1.0, trigger: { afterId: 'lbl_cost', offset: 0.3 } },
-      ]) ],
-    },
-
-    // ── SCENE 5 — NATIVE — defects pt.1b: readiness (~40s) ──────────────
-    {
-      tts: {
-        text: "So for two trillion dollars, you'd think these things would actually work when you need them. In 2021, sixty-seven percent of the fleet was mission capable. By 2025, that number had fallen to forty-four percent. And fully mission capable — meaning able to do everything it's designed to do — dropped to just twenty-five percent. One in four jets, ready for everything.",
-        voice: VOICE, emotion: 'neutral',
-      },
-      transition: 'zoom-cut', transitionDuration: 0.25,
-      captions: { style: 'highlight', position: 'bottom', fontSize: 50, color: '#ffffff', highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 4, maxWidth: 0.8 },
-      layers: [
-        { type: 'gradient', gradientType: 'linear', colors: ['#050505', '#1a0d0d', '#050505'], angle: 110, vignette: true, vignetteStrength: 0.55 },
-        {
-          type: 'text', text: 'TWO TRILLION DOLLARS. HOW WELL DOES IT WORK?', x: 960, y: 190, fontSize: 46,
-          fontFamily: 'Arial Black, Impact, sans-serif', color: '#ffffff', align: 'center', maxWidth: 1700,
-          lineHeight: 1.2, stroke: true, strokeColor: '#000000', strokeWidth: 5, animation: 'pop', animDur: 0.35, startT: 0.1,
-        },
-        { type: 'stat-counter', value: 67, suffix: '%', label: 'MISSION CAPABLE — 2021', x: 420, y: 620, fontSize: 84, labelSize: 24, color: '#ffd23f', labelColor: '#ffffff', align: 'center', glow: true, glowColor: '#ffd23f', glowBlur: 40, countDur: 1.0 },
-        { type: 'stat-counter', value: 44, suffix: '%', label: 'MISSION CAPABLE — 2025', x: 960, y: 620, fontSize: 84, labelSize: 24, color: '#ff8c00', labelColor: '#ffffff', align: 'center', glow: true, glowColor: '#ff8c00', glowBlur: 40, countDur: 1.0 },
-        { type: 'stat-counter', value: 25, suffix: '%', label: 'FULLY CAPABLE — 1 IN 4', x: 1500, y: 620, fontSize: 84, labelSize: 24, color: '#b3242f', labelColor: '#ffffff', align: 'center', glow: true, glowColor: '#b3242f', glowBlur: 40, countDur: 1.0 },
-      ],
-    },
-
-    // ── SCENE 6 — DOSSIER — defects pt.2: ballast/radar gag (~35s) ──────
-    {
-      tts: {
-        text: "It gets stranger. In 2025, six brand new F-35s were delivered to the Marine Corps with ballast bolted in exactly where the new radar was supposed to go — because the software running it wasn't finished yet. These jets could fly. They just couldn't fight.",
-        voice: VOICE, emotion: 'neutral',
-      },
-      captions: { style: 'highlight', position: 'bottom', fontSize: 50, color: '#ffffff', highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 4, maxWidth: 0.8 },
-      layers: [ dossierLayer('f35-s6', 35, 'IT GETS STRANGER', [
-        { id: 'led_six', type: 'ledgerLine', label: 'NEW JETS DELIVERED (2025)', value: '6 AIRCRAFT', x: 960, y: 230, width: 680, size: 28, trigger: { wordText: 'six', occurrence: 1 } },
-        { id: 'i_radar', type: 'icon', icon: 'mdi:radar', x: 620, y: 500, size: 150, bg: 'circle', trigger: { wordText: 'radar', occurrence: 1 } },
-        { id: 're_radar', type: 'redact', target: 'i_radar', duration: 0.5, trigger: { wordText: 'ballast', occurrence: 1 } },
-        { id: 'lbl_ballast', type: 'label', text: 'ballast bolted in — not radar', x: 620, y: 650, size: 26, trigger: { afterId: 're_radar', offset: 0.2 } },
-        { id: 'st_fight', type: 'stamp', text: 'COULD FLY. COULD NOT FIGHT.', x: 1350, y: 550, size: 38, rotate: -5, trigger: { wordText: 'fight', occurrence: 1 } },
-        { id: 'pz3', type: 'panZoom', toScale: 1.08, toX: -10, toY: 0, duration: 1.0, trigger: { afterId: 'st_fight', offset: 0.2 } },
-      ]) ],
-    },
-
-    // ── SCENE 7 — NATIVE — defects pt.2b: cooling/Block4/delays (~40s) ──
-    {
-      tts: {
-        text: "And the problems keep stacking. The plane's cooling system is already maxed out at thirty-two kilowatts, but the electronics planned for the next decade need up to eighty. There's simply no room left inside a jet that's already been pushed to its limit. The next major software update, called Block 4, has already slipped to 2031. And in 2024 alone, every single F-35 delivered arrived late — by an average of two hundred and thirty-eight days each.",
-        voice: VOICE, emotion: 'neutral',
-      },
-      transition: 'glitch', transitionDuration: 0.24,
-      captions: { style: 'highlight', position: 'bottom', fontSize: 50, color: '#ffffff', highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 4, maxWidth: 0.8 },
-      layers: [
-        {
-          type: 'stock-image-sequence',
-          queries: ['fighter jet electronics circuit board', 'aircraft cockpit avionics panel', 'military aircraft maintenance hangar'],
-          source: 'serpapi', fit: 'cover', orientation: 'landscape',
-          kenBurnsSequence: [
-            { kenBurns: 'zoom-in', kenBurnsAmount: 0.3 },
-            { kenBurns: 'rotate-cw', kenBurnsAmount: 0.26, rotateDeg: 8 },
-            { kenBurns: 'pan-left', kenBurnsAmount: 0.26 },
-          ],
-          x: 0, y: 0, width: 1920, height: 1080,
-        },
-        { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
-        { type: 'stat-counter', value: 32, suffix: ' kW', label: 'COOLING — ALREADY MAXED', x: 560, y: 300, fontSize: 74, labelSize: 22, color: '#ffd23f', labelColor: '#ffffff', align: 'center', glow: true, glowColor: '#ffd23f', glowBlur: 36, countDur: 1.0 },
-        { type: 'stat-counter', value: 80, suffix: ' kW', label: 'NEEDED — FUTURE ELECTRONICS', x: 1360, y: 300, fontSize: 74, labelSize: 22, color: '#b3242f', labelColor: '#ffffff', align: 'center', glow: true, glowColor: '#b3242f', glowBlur: 36, countDur: 1.0 },
-        {
-          type: 'text', text: 'BLOCK 4 → 2031', x: 960, y: 560, fontSize: 60,
-          fontFamily: 'Impact, Arial Black, sans-serif', color: '#ffffff', align: 'center', maxWidth: 900,
-          gradient: ['#ffd23f', '#ff8c00'], stroke: true, strokeColor: '#000000', strokeWidth: 5,
-          glow: true, glowColor: '#ffd23f', glowBlur: 24, animation: 'pop', animDur: 0.35, startT: 1.6,
-        },
-        { type: 'stat-counter', value: 238, suffix: ' DAYS', label: 'AVERAGE DELIVERY DELAY — 2024', x: 960, y: 830, fontSize: 74, labelSize: 24, color: '#ff8c00', labelColor: '#ffffff', align: 'center', glow: true, glowColor: '#ff8c00', glowBlur: 36, countDur: 1.0 },
-      ],
-    },
-
-    // ── SCENE 8 — PIVOT (pexels-video, ~10s) ─────────────────────────────
-    {
-      tts: {
-        text: "Now — don't get me wrong. This jet isn't garbage. Not even close.",
-        voice: VOICE, emotion: 'neutral',
-      },
-      transition: 'zoom-cut', transitionDuration: 0.25,
-      captions: { style: 'highlight', position: 'bottom', fontSize: 50, color: '#ffffff', highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 4, maxWidth: 0.8 },
-      layers: [
-        { type: 'pexels-video', query: 'fighter jet flying clouds', orientation: 'landscape', loop: true, x: 0, y: 0, width: 1920, height: 1080, fit: 'cover' },
-        { type: 'overlay', color: 'rgba(0,0,0,0.3)' },
-      ],
-    },
-
-    // ── SCENE 9 — DOSSIER — advantages pt.1 (~30s) ───────────────────────
-    {
-      tts: {
-        text: "Nothing else flying today is built to be this hard to detect. In wargames against older fourth-generation fighters, F-35 pilots see the enemy and take the shot first, almost every single time — often before the other side even realizes they're in a fight.",
-        voice: VOICE, emotion: 'neutral',
-      },
-      captions: { style: 'highlight', position: 'bottom', fontSize: 50, color: '#ffffff', highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 4, maxWidth: 0.8 },
-      layers: [ dossierLayer('f35-s9', 30, 'WHAT IT GETS RIGHT', [
-        { id: 'i_stealth2', type: 'icon', icon: 'mdi:shield-check', x: 650, y: 500, size: 170, bg: 'circle', color: THEME.accent2, trigger: { atSeconds: 0 } },
-        { id: 'lbl_hard', type: 'label', text: 'hardest jet in the sky to detect', x: 1350, y: 440, size: 28, trigger: { wordText: 'detect', occurrence: 1 } },
-        { id: 'led_kill', type: 'ledgerLine', label: 'SEE & SHOOT FIRST', value: 'NEARLY EVERY TIME', x: 1350, y: 560, width: 620, size: 25, trigger: { wordText: 'time', occurrence: 1 } },
-        { id: 'pz4', type: 'panZoom', toScale: 1.08, toX: 20, toY: 0, duration: 1.0, trigger: { afterId: 'led_kill', offset: 0.2 } },
-        { id: 'lbl_fight', type: 'label', text: 'often before the enemy knows it\'s a fight', x: 1350, y: 660, size: 24, trigger: { wordText: 'fight', occurrence: 1 } },
-      ]) ],
-    },
-
-    // ── SCENE 10 — NATIVE — advantages pt.2: 19 nations (~25s) ──────────
-    {
-      tts: {
-        text: "And it's not just America betting on this jet. Nineteen different countries have signed on to fly it. When that many air forces commit that much money to one aircraft, that's its own kind of proof this thing works when it actually counts.",
-        voice: VOICE, emotion: 'neutral',
-      },
-      transition: 'wipe-right', transitionDuration: 0.28,
-      captions: { style: 'highlight', position: 'bottom', fontSize: 50, color: '#ffffff', highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 4, maxWidth: 0.8 },
-      layers: [
-        { type: 'gradient', gradientType: 'linear', colors: ['#050505', '#0d1a2e', '#050505'], angle: 110, vignette: true, vignetteStrength: 0.5 },
-        { type: 'stat-counter', value: 19, suffix: ' NATIONS', label: 'FLY THE F-35', x: 960, y: 480, fontSize: 100, labelSize: 32, color: '#ffd23f', labelColor: '#ffffff', align: 'center', glow: true, glowColor: '#ffd23f', glowBlur: 46, countDur: 1.4 },
-        {
-          type: 'text', text: 'That much money, that many air forces — that\'s proof it works.', x: 960, y: 760, fontSize: 40,
-          fontFamily: 'Arial Black, Impact, sans-serif', color: '#ffffff', align: 'center', maxWidth: 1500,
-          lineHeight: 1.3, stroke: true, strokeColor: '#000000', strokeWidth: 4, animation: 'fade', animDur: 0.35, startT: 1.8,
-        },
-      ],
-    },
-
-    // ── SCENE 11 — DOSSIER — verdict + CTA (~20s) ────────────────────────
-    {
-      tts: {
-        text: "So, brilliant, or fragile? Honestly — both, at exactly the same time. Subscribe for more machines that are just as impressive as they are messy.",
-        voice: VOICE, emotion: 'neutral',
-      },
-      captions: { style: 'highlight', position: 'bottom', fontSize: 50, color: '#ffffff', highlightColor: '#ffd23f', bgColor: 'rgba(0,0,0,0.55)', wordsPerChunk: 4, maxWidth: 0.8 },
-      layers: [ dossierLayer('f35-s11', 20, 'THE VERDICT', [
-        { id: 'st_final', type: 'stamp', text: 'BRILLIANT & FRAGILE', x: 960, y: 440, size: 54, rotate: -4, trigger: { wordText: 'time', occurrence: 1 } },
-        { id: 'lbl_final', type: 'label', text: 'both, at exactly the same time', x: 960, y: 550, size: 26, trigger: { afterId: 'st_final', offset: 0.2 } },
-        { id: 'lbl_sub', type: 'label', text: '🔔 Subscribe for more', x: 960, y: 720, size: 36, trigger: { wordText: 'subscribe', occurrence: 1 } },
-        { id: 'pz5', type: 'panZoom', toScale: 1.05, duration: 0.9, trigger: { afterId: 'lbl_sub', offset: 0.2 } },
-      ]) ],
-    },
+        dossierLayer('f35b2-s3', s3cmds, { duration: 65, title: 'CASE FILE 02' }),
+        { type: 'chart', chartType: 'bar', x: 1150, y: 330, width: 600, height: 430, animDur: 1.4,
+          data: [ { value: 67, label: 'MC \u201921' }, { value: 44, label: 'MC \u201925' }, { value: 25, label: 'FMC \u201925' } ],
+          colors: [DARK_THEME.accent2, DARK_THEME.accent2, DARK_THEME.accent] },
+      ] },
+    { tts: { text: "It gets worse. In 2025, six brand new F-35Bs got delivered to the Marine Corps with ballast bolted in where the radar was supposed to go, because the software wasn't ready. Think about that, a brand new fighter jet, and you're handed one with weights instead of a radar. And here's the part that should really worry you: the cooling system on this jet is already maxed out at thirty-two kilowatts, but the electronics planned for the next decade need up to eighty. There's no room left to grow, engineers used it all up. So the next big upgrade, Block 4, just got pushed back to 2031. And in 2024, every single delivered jet showed up late, by an average of two hundred thirty-eight days. This is a jet you already paid for, sitting on the ground unable to do its full job.", voice: VOICE, emotion: 'neutral' },
+      captions: CAPTIONS, layers: [ dossierLayer('f35b2-s4', s4cmds, { duration: 65, title: 'CASE FILE 03' }) ] },
+    scene5,
+    { tts: { text: "Now, however, and I want to be fair with you here, this plane ain't that bad. Don't get me wrong. Nothing else in production on Earth can do what this jet does: land vertically on a road or a small ship deck, no runway required. That's a real, working evolution of the old Harrier idea, and nobody else has matched it. It also shares what it sees with everything around it in real time, so it acts less like a lone fighter and more like a quarterback for the whole battlefield. And for the Marines, it means real air power off ships that aren't full aircraft carriers. So is it brilliant, or is it fragile? Judging by everything you just heard, I'd say it's both, and you deserve to know that before anyone tells you it's simple.", voice: VOICE, emotion: 'neutral' },
+      captions: CAPTIONS, layers: [ dossierLayer('f35b2-s6', s6cmds, { duration: 65, title: 'CASE FILE 04' }) ] },
   ],
-});
+};
