@@ -1,63 +1,113 @@
 // config.asmr-sleep-1min.js
-// ~72s "fall asleep" ASMR short: whispered TTS narration over a synthesized
-// rain+brushing ASMR bed (gently 8D-spatialized), just TWO Pexels stock
-// clips (down from five — each clip's frames are extracted once, capped at
-// maxDuration, then looped for the rest of its scene, instead of extracting
-// a full-length clip per scene) for the narrated portion, then a closing
-// scene that switches to the ApexCasing/asmr-visualizer.html reactive
-// template — narration stops, only the breathing glow + soft ripples
-// (still synced to the same asmr bed) carry the last few seconds.
+// ~72s "tingles to fall asleep" ASMR short. No engine changes involved —
+// every sound here is defined right in this config via `customTextures`
+// (discrete only — the engine already supported this before any of the
+// ASMR work this session), placed with explicit `triggers` at irregular
+// times with real silence between them. That's deliberate: real tingling
+// ASMR is NOT a continuous bed — it's sparse, varied triggers separated
+// by gaps, and no two hits sound identical (each custom texture still
+// randomizes its own pitch per hit via defaultEventFields, even though
+// the trigger *time* is fixed).
 //
-// Demonstrates, together: whisper voiceFX, TTS volume + 8D voiceFX,
-// output.asmr (rain/brushing combo bed) with a dedicated bgVolume, explicit
-// `triggers` for a few deliberately-placed soft taps, TWO capped/looped
-// pexels-video scenes, AND an ApexCasing scene.
+// Six distinct sounds cycle through the video, never back-to-back:
+//   tapWood     — soft low wooden tap
+//   tapGlass    — higher glassy click with a touch of ring
+//   scratch     — quick fingernail-style scratch
+//   brushStroke — one soft broadband brush pass
+//   micBump     — very low soft thud
+//   crinkle     — the engine's built-in crinkle (reused as-is)
 //
 // Run with:  VIDEO_CONFIG=config.asmr-sleep-1min.js node engine-ci.js
 // (needs PEXELS_API_KEY set)
 
 module.exports = {
     output: {
-        title:  'asmr-fall-asleep',
+        title:  'asmr-tingles-sleep',
         format: 'portrait',
         fps:    30,
         crf:    23,
         preset: 'fast',
 
-        // Ambient bed for the whole video — soft rain + a very soft, slow
-        // "brushing" texture, plus a handful of deliberately-placed, very
-        // soft taps spread across the video (near each scene change, and
-        // one more late in the closing casing scene). `duration` matches
-        // the new total (72s) so the bed loops seamlessly across it.
-        // `bgVolume` sets the final level once this bed becomes the
-        // video's background audio — separate from vol above, which only
-        // balances the layers against each other before that final mix.
         asmr: {
             type: 'combo',
             duration: 72,
-            seed: 11,
-            bgVolume: 0.32,
+            seed: 21,
+            bgVolume: 0.55, // no continuous bed competing with it, so this can sit higher
+            spatial8D: { rate: 0.05, depth: 0.5 }, // slow orbit — still felt between hits, not just during them
+
+            customTextures: {
+                tapWood: {
+                    kind: 'discrete',
+                    scheduleEvents() { return []; }, // unused — every hit below comes from `triggers`
+                    defaultEventFields(rng) { return { pitch: 220 + rng() * 230 }; },
+                    burstSource(ev) {
+                        const f = ev.pitch;
+                        return `anoisesrc=d=0.08:color=white:r=44100,bandpass=f=${f.toFixed(0)}:width_type=h:width=${(f * 1.3).toFixed(0)},` +
+                               `afade=t=out:st=0.015:d=0.06,volume=${(0.75 * ev.gain).toFixed(3)}`;
+                    },
+                    eventType: 'tap', // matches asmr-visualizer.html's built-in 'tap' color
+                },
+                tapGlass: {
+                    kind: 'discrete',
+                    scheduleEvents() { return []; },
+                    defaultEventFields(rng) { return { pitch: 2200 + rng() * 1800 }; },
+                    burstSource(ev) {
+                        const f = ev.pitch;
+                        return `sine=f=${f.toFixed(0)}:d=0.3:r=44100,` +
+                               `aecho=0.55:0.4:40:0.25,afade=t=out:st=0.04:d=0.26,volume=${(0.3 * ev.gain).toFixed(3)}`;
+                    },
+                    eventType: 'clink',
+                },
+                scratch: {
+                    kind: 'discrete',
+                    scheduleEvents() { return []; },
+                    defaultEventFields(rng) { return { pitch: 3000 + rng() * 3000 }; },
+                    burstSource(ev) {
+                        const f = ev.pitch;
+                        return `anoisesrc=d=0.14:color=white:r=44100,bandpass=f=${f.toFixed(0)}:width_type=h:width=${(f * 1.1).toFixed(0)},` +
+                               `afade=t=in:st=0:d=0.01,afade=t=out:st=0.05:d=0.09,volume=${(0.45 * ev.gain).toFixed(3)}`;
+                    },
+                    eventType: 'stroke',
+                },
+                brushStroke: {
+                    kind: 'discrete',
+                    scheduleEvents() { return []; },
+                    defaultEventFields(rng) { return { pitch: 2000 + rng() * 1500 }; },
+                    burstSource(ev) {
+                        const f = ev.pitch;
+                        return `anoisesrc=d=0.35:color=pink:r=44100,bandpass=f=${f.toFixed(0)}:width_type=h:width=${(f * 1.6).toFixed(0)},` +
+                               `afade=t=in:st=0:d=0.08,afade=t=out:st=0.18:d=0.17,volume=${(0.4 * ev.gain).toFixed(3)}`;
+                    },
+                    eventType: 'swell',
+                },
+                micBump: {
+                    kind: 'discrete',
+                    scheduleEvents() { return []; },
+                    defaultEventFields() { return { pitch: 90 }; },
+                    burstSource(ev) {
+                        return `anoisesrc=d=0.16:color=brown:r=44100,lowpass=f=180,` +
+                               `afade=t=in:st=0:d=0.02,afade=t=out:st=0.06:d=0.1,volume=${(0.55 * ev.gain).toFixed(3)}`;
+                    },
+                    eventType: 'squelch',
+                },
+            },
+
+            // Sparse, irregular, never the same sound twice in a row —
+            // real gaps of silence between clusters (4-7s), which is what
+            // actually reads as ASMR triggers rather than a soundtrack.
             layers: [
-                { type: 'rain',     vol: 0.4  },
-                { type: 'brushing', vol: 0.18 },
-                { type: 'tapping',  vol: 0.12, triggers: [
-                    { t: 14, intensity: 0.3  },
-                    { t: 29, intensity: 0.25 },
-                    { t: 44, intensity: 0.3  },
-                    { t: 59, intensity: 0.25 },
-                    { t: 68, intensity: 0.2  },
-                ]},
+                { type: 'tapWood',     vol: 0.7, triggers: [{ t: 3 }, { t: 3.3 }, { t: 50 }, { t: 50.3 }, { t: 50.6 }] },
+                { type: 'tapGlass',    vol: 0.6, triggers: [{ t: 22 }, { t: 64 }] },
+                { type: 'scratch',     vol: 0.55, triggers: [{ t: 14 }, { t: 14.5 }, { t: 57 }] },
+                { type: 'brushStroke', vol: 0.5, triggers: [{ t: 9 }, { t: 42 }, { t: 42.7 }, { t: 70 }] },
+                { type: 'micBump',     vol: 0.5, triggers: [{ t: 37 }] },
+                { type: 'crinkle',     vol: 0.6, triggers: [{ t: 28 }, { t: 28.3 }, { t: 64.4 }] },
             ],
-            spatial8D: { rate: 0.05, depth: 0.6 },
         },
     },
 
-    // Shared TTS voice styling for every narrated scene below — whispered,
-    // slowed down, and turned down so it sits under the ambient bed
-    // instead of fighting it. `whisper` preset already includes
-    // volume: 0.6; nudging it a little further down here since the asmr
-    // bed is also present (the preset's default assumes no separate bed
-    // under it).
+    // Whispered narration — just twice, per your earlier note not to
+    // over-talk on ASMR content. Everything else is silence + triggers.
     defaults: {
         voice: 'af_heart',
         speed: 0.82,
@@ -66,17 +116,10 @@ module.exports = {
     },
 
     scenes: [
-        // ── Scene 1 (0-30s) — ONE Pexels clip, capped + looped ──────────
-        // maxDuration: 6 keeps frame extraction to ~6s worth of PNGs no
-        // matter how long the scene runs; loop (default true) replays
-        // that short window seamlessly for the full 30s.
+        // ── Scene 1 (0-30s) — one whispered line, one Pexels clip ───────
         {
             duration: 30,
-            tts: {
-                text: "Let your eyes grow heavy... there's nowhere else you need to be. "
-                    + "Every breath is slower than the last... soft, and warm, and safe.",
-                pauseAfter: 1.4,
-            },
+            tts: { text: "Just relax... let every little sound carry the tension away.", pauseAfter: 1.2 },
             layers: [
                 { type: 'pexels-video', query: 'rain on window night', orientation: 'portrait',
                   maxDuration: 6, loop: true,
@@ -84,14 +127,9 @@ module.exports = {
             ],
         },
 
-        // ── Scene 2 (30-60s) — the other Pexels clip ─────────────────────
+        // ── Scene 2 (30-60s) — no narration, pure triggers + visuals ────
         {
             duration: 30,
-            tts: {
-                text: "The world outside can wait until morning... just rest, right here. "
-                    + "Above you, the stars are quiet too... watching, gentle, patient.",
-                pauseAfter: 1.4,
-            },
             layers: [
                 { type: 'pexels-video', query: 'cozy blanket bed soft light', orientation: 'portrait',
                   maxDuration: 6, loop: true,
@@ -99,10 +137,7 @@ module.exports = {
             ],
         },
 
-        // ── Closing scene (60-72s) — ApexCasing, final line, then quiet ──
-        // Narration finishes early in this scene; after that, only the
-        // breathing amplitude-reactive glow and the soft ripple at t=68s
-        // (from the asmr trigger above) carry the video to its end.
+        // ── Closing scene (60-72s) — ApexCasing, second whispered line ──
         {
             duration: 12,
             tts: { text: "Let go now... drift... you're already halfway to sleep.", pauseAfter: 0.6 },
