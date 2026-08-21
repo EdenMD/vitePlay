@@ -1,10 +1,17 @@
 // config.asmr-sleep-1min.js
-// 1-minute "fall asleep" ASMR short: whispered TTS narration over a
-// synthesized rain+brushing ASMR bed (gently 8D-spatialized), with five
-// Pexels stock clips cycling underneath as calming visuals.
+// ~72s "fall asleep" ASMR short: whispered TTS narration over a synthesized
+// rain+brushing ASMR bed (gently 8D-spatialized), five Pexels stock clips
+// for the narrated portion, then a closing scene that switches to the
+// ApexCasing/asmr-visualizer.html reactive template — narration stops,
+// and only the breathing glow + soft ripples (still synced to the same
+// asmr bed) carry the last few seconds. Still comfortably "short" length.
 //
 // Demonstrates, together: whisper voiceFX, TTS volume + 8D voiceFX,
-// output.asmr (rain/brushing combo bed), and multiple pexels-video scenes.
+// output.asmr (rain/brushing combo bed) with a dedicated bgVolume so the
+// bed's background level is set right in the asmr block (not the generic
+// bgMusicVol default), explicit `triggers` for a few deliberately-placed
+// soft taps timed to each scene change instead of continuous random
+// tapping, multiple pexels-video scenes, AND an ApexCasing scene.
 //
 // Run with:  VIDEO_CONFIG=config.asmr-sleep-1min.js node engine-ci.js
 // (needs PEXELS_API_KEY set)
@@ -18,26 +25,41 @@ module.exports = {
         preset: 'fast',
 
         // Ambient bed for the whole video — soft rain + a very soft,
-        // slow "brushing" texture underneath for a blanket-like warmth.
-        // Gentle 8D orbit (slow — 0.05Hz ≈ 20s per pass) so it's immersive
-        // on headphones without being disorienting for sleep content.
+        // slow "brushing" texture, plus a handful of deliberately-placed,
+        // very soft taps: four at each Pexels scene change (11.5s, 23.5s,
+        // 35.5s, 47.5s), and one more at 63s during the closing casing
+        // scene, so the ApexCasing visualizer has something to react to
+        // right before the video ends. `duration` matches the new total
+        // (72s) so the bed loops seamlessly across the whole thing.
+        // `bgVolume` sets the final level once this bed becomes the
+        // video's background audio — separate from vol above, which only
+        // balances the layers against each other before that final mix.
         asmr: {
             type: 'combo',
-            duration: 60,          // matches total video length exactly
+            duration: 72,
             seed: 11,
+            bgVolume: 0.32,
             layers: [
                 { type: 'rain',     vol: 0.4  },
                 { type: 'brushing', vol: 0.18 },
+                { type: 'tapping',  vol: 0.12, triggers: [
+                    { t: 11.5, intensity: 0.3  },
+                    { t: 23.5, intensity: 0.25 },
+                    { t: 35.5, intensity: 0.3  },
+                    { t: 47.5, intensity: 0.25 },
+                    { t: 63,   intensity: 0.2  },
+                ]},
             ],
             spatial8D: { rate: 0.05, depth: 0.6 },
         },
     },
 
-    // Shared TTS voice styling for every scene below — whispered, slowed
-    // down, and turned down so it sits under the ambient bed instead of
-    // fighting it. `whisper` preset already includes volume: 0.6; nudging
-    // it a little further down here since the asmr bed is also present
-    // (the preset's default assumes no separate bed under it).
+    // Shared TTS voice styling for every narrated scene below — whispered,
+    // slowed down, and turned down so it sits under the ambient bed
+    // instead of fighting it. `whisper` preset already includes
+    // volume: 0.6; nudging it a little further down here since the asmr
+    // bed is also present (the preset's default assumes no separate bed
+    // under it).
     defaults: {
         voice: 'af_heart',
         speed: 0.82,
@@ -84,6 +106,24 @@ module.exports = {
             layers: [
                 { type: 'pexels-video', query: 'soft clouds slow motion sky', orientation: 'portrait',
                   maxDuration: 12, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover' },
+            ],
+        },
+
+        // ── Closing scene — ApexCasing, no narration ────────────────────
+        // Narration ends; only the breathing amplitude-reactive glow and
+        // the soft ripple at t=63s (from the asmr trigger above) carry the
+        // last 12 seconds, so the video itself goes quiet the way you'd
+        // want the room to.
+        {
+            duration: 12,
+            layers: [
+                {
+                    type: 'html-record',
+                    src: 'ApexCasing/asmr-visualizer.html',
+                    audioSync: true,
+                    width: 1080, height: 1920,
+                    data: { theme: 'water', label: '' },
+                },
             ],
         },
     ],
