@@ -1,155 +1,314 @@
-// config.asmr-sleep-1min.js
-// ~72s "tingles to fall asleep" ASMR short. No engine changes involved —
-// every sound here is defined right in this config via `customTextures`
-// (discrete only — the engine already supported this before any of the
-// ASMR work this session), placed with explicit `triggers` at irregular
-// times with real silence between them. That's deliberate: real tingling
-// ASMR is NOT a continuous bed — it's sparse, varied triggers separated
-// by gaps, and no two hits sound identical (each custom texture still
-// randomizes its own pitch per hit via defaultEventFields, even though
-// the trigger *time* is fixed).
-//
-// Six distinct sounds cycle through the video, never back-to-back:
-//   tapWood     — soft low wooden tap
-//   tapGlass    — higher glassy click with a touch of ring
-//   scratch     — quick fingernail-style scratch
-//   brushStroke — one soft broadband brush pass
-//   micBump     — very low soft thud
-//   crinkle     — the engine's built-in crinkle (reused as-is)
-//
-// Run with:  VIDEO_CONFIG=config.asmr-sleep-1min.js node engine-ci.js
-// (needs PEXELS_API_KEY set)
-
-module.exports = {
+// ============================================================
+//  APEX VIDEO ENGINE — DROP 18 — GIRANDONI AIR RIFLE
+//  Custom hook this drop — no gunpowder, no combat record to
+//  reuse the standard "most conflicts" hook line.
+//  Target: ~45-50 seconds | 4 scenes | no bgMusic
+// ============================================================
+const config = {
     output: {
-        title:  'asmr-tingles-sleep',
-        format: 'portrait',
-        fps:    30,
-        crf:    23,
-        preset: 'fast',
-
-        asmr: {
-            type: 'combo',
-            duration: 72,
-            seed: 21,
-            bgVolume: 0.55, // no continuous bed competing with it, so this can sit higher
-            spatial8D: { rate: 0.05, depth: 0.5 }, // slow orbit — still felt between hits, not just during them
-
-            customTextures: {
-                tapWood: {
-                    kind: 'discrete',
-                    scheduleEvents() { return []; }, // unused — every hit below comes from `triggers`
-                    defaultEventFields(rng) { return { pitch: 220 + rng() * 230 }; },
-                    burstSource(ev) {
-                        const f = ev.pitch;
-                        return `anoisesrc=d=0.08:color=white:r=44100,bandpass=f=${f.toFixed(0)}:width_type=h:width=${(f * 1.3).toFixed(0)},` +
-                               `afade=t=out:st=0.015:d=0.06,volume=${(0.75 * ev.gain).toFixed(3)}`;
-                    },
-                    eventType: 'tap', // matches asmr-visualizer.html's built-in 'tap' color
-                },
-                tapGlass: {
-                    kind: 'discrete',
-                    scheduleEvents() { return []; },
-                    defaultEventFields(rng) { return { pitch: 2200 + rng() * 1800 }; },
-                    burstSource(ev) {
-                        const f = ev.pitch;
-                        return `sine=f=${f.toFixed(0)}:d=0.3:r=44100,` +
-                               `aecho=0.55:0.4:40:0.25,afade=t=out:st=0.04:d=0.26,volume=${(0.3 * ev.gain).toFixed(3)}`;
-                    },
-                    eventType: 'clink',
-                },
-                scratch: {
-                    kind: 'discrete',
-                    scheduleEvents() { return []; },
-                    defaultEventFields(rng) { return { pitch: 3000 + rng() * 3000 }; },
-                    burstSource(ev) {
-                        const f = ev.pitch;
-                        return `anoisesrc=d=0.14:color=white:r=44100,bandpass=f=${f.toFixed(0)}:width_type=h:width=${(f * 1.1).toFixed(0)},` +
-                               `afade=t=in:st=0:d=0.01,afade=t=out:st=0.05:d=0.09,volume=${(0.45 * ev.gain).toFixed(3)}`;
-                    },
-                    eventType: 'stroke',
-                },
-                brushStroke: {
-                    kind: 'discrete',
-                    scheduleEvents() { return []; },
-                    defaultEventFields(rng) { return { pitch: 2000 + rng() * 1500 }; },
-                    burstSource(ev) {
-                        const f = ev.pitch;
-                        return `anoisesrc=d=0.35:color=pink:r=44100,bandpass=f=${f.toFixed(0)}:width_type=h:width=${(f * 1.6).toFixed(0)},` +
-                               `afade=t=in:st=0:d=0.08,afade=t=out:st=0.18:d=0.17,volume=${(0.4 * ev.gain).toFixed(3)}`;
-                    },
-                    eventType: 'swell',
-                },
-                micBump: {
-                    kind: 'discrete',
-                    scheduleEvents() { return []; },
-                    defaultEventFields() { return { pitch: 90 }; },
-                    burstSource(ev) {
-                        return `anoisesrc=d=0.16:color=brown:r=44100,lowpass=f=180,` +
-                               `afade=t=in:st=0:d=0.02,afade=t=out:st=0.06:d=0.1,volume=${(0.55 * ev.gain).toFixed(3)}`;
-                    },
-                    eventType: 'squelch',
-                },
-            },
-
-            // Sparse, irregular, never the same sound twice in a row —
-            // real gaps of silence between clusters (4-7s), which is what
-            // actually reads as ASMR triggers rather than a soundtrack.
-            layers: [
-                { type: 'tapWood',     vol: 0.7, triggers: [{ t: 3 }, { t: 3.3 }, { t: 50 }, { t: 50.3 }, { t: 50.6 }] },
-                { type: 'tapGlass',    vol: 0.6, triggers: [{ t: 22 }, { t: 64 }] },
-                { type: 'scratch',     vol: 0.55, triggers: [{ t: 14 }, { t: 14.5 }, { t: 57 }] },
-                { type: 'brushStroke', vol: 0.5, triggers: [{ t: 9 }, { t: 42 }, { t: 42.7 }, { t: 70 }] },
-                { type: 'micBump',     vol: 0.5, triggers: [{ t: 37 }] },
-                { type: 'crinkle',     vol: 0.6, triggers: [{ t: 28 }, { t: 28.3 }, { t: 64.4 }] },
-            ],
+        title:      'drop-18-girandoni',
+        format:     'portrait',
+        fps:        30,
+        crf:        24,
+        preset:     'ultrafast',
+        cleanup:    true,
+        postProcess: {
+            grain:            true,
+            grainStrength:    0.028,
+            vignette:         true,
+            vignetteStrength: 0.58,
         },
     },
-
-    // Whispered narration — just twice, per your earlier note not to
-    // over-talk on ASMR content. Everything else is silence + triggers.
     defaults: {
-        voice: 'af_heart',
-        speed: 0.82,
-        voiceFX: { whisper: true, volume: 0.45 },
-        effectStrength: 1.1,
+        voice:              'bm_george',
+        transition:         'fade',
+        transitionDuration: 0.3,
     },
-
     scenes: [
-        // ── Scene 1 (0-30s) — one whispered line, one Pexels clip ───────
-        {
-            duration: 30,
-            tts: { text: "Just relax... let every little sound carry the tension away.", pauseAfter: 1.2 },
-            layers: [
-                { type: 'pexels-video', query: 'rain on window night', orientation: 'portrait',
-                  maxDuration: 6, loop: true,
-                  x: 0, y: 0, width: 1080, height: 1920, fit: 'cover' },
-            ],
-        },
 
-        // ── Scene 2 (30-60s) — no narration, pure triggers + visuals ────
+        // ── SCENE 1 — CUSTOM HOOK (~11 sec) ──────────────────────
         {
-            duration: 30,
-            layers: [
-                { type: 'pexels-video', query: 'cozy blanket bed soft light', orientation: 'portrait',
-                  maxDuration: 6, loop: true,
-                  x: 0, y: 0, width: 1080, height: 1920, fit: 'cover' },
-            ],
-        },
-
-        // ── Closing scene (60-72s) — ApexCasing, second whispered line ──
-        {
-            duration: 12,
-            tts: { text: "Let go now... drift... you're already halfway to sleep.", pauseAfter: 0.6 },
+            tts: {
+                text:       'One rifle fired twenty rounds without a single puff of smoke, without a single sound of gunpowder, over two hundred years before anyone thought that was possible. It never used gunpowder at all.',
+                speed:      0.9,
+                emotion:    'dramatic',
+                pauseAfter: 0.4,
+            },
+            transition:         'zoom-cut',
+            transitionDuration: 0.2,
+            captions: {
+                style:          'highlight',
+                position:       'bottom',
+                fontSize:       60,
+                color:          '#ffffff',
+                highlightColor: '#f5c518',
+                wordsPerChunk:  3,
+                strokeColor:    'rgba(0,0,0,1)',
+                strokeWidth:    7,
+            },
             layers: [
                 {
-                    type: 'html-record',
-                    src: 'ApexCasing/asmr-visualizer.html',
-                    audioSync: true,
-                    width: 1080, height: 1920,
-                    data: { theme: 'water', label: '' },
+                    type:           'stock-image',
+                    query:          'Girandoni air rifle antique',
+                    source:         'serpapi',
+                    orientation:    'portrait',
+                    imageIndex:     0,
+                    x: 0, y: 0, width: 1080, height: 1920,
+                    fit:            'cover',
+                    kenBurns:       'zoom-in',
+                    kenBurnsAmount: 0.13,
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
+                {
+                    type:       'text',
+                    text:       'THE RIFLE\nWITH NO\nGUNPOWDER',
+                    x:          540,
+                    y:          700,
+                    fontSize:   82,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
+                    fontWeight: 'bold',
+                    color:      '#ffffff',
+                    align:      'center',
+                    maxWidth:   940,
+                    lineHeight: 1.1,
+                    gradient:   ['#f5c518', '#ff8c00'],
+                    stroke:     true,
+                    strokeColor:'#000000',
+                    strokeWidth: 6,
+                    glow:       true,
+                    glowColor:  '#f5c518',
+                    glowBlur:   36,
+                    animation:  'pop',
+                    animDur:    0.4,
+                    startT:     0.2,
+                    hookLayer:  true,
+                },
+            ],
+        },
+
+        // ── SCENE 2 — THE PERSON (~9 sec) ────────────────────────
+        {
+            tts: {
+                text:       'Bartolomeo Girardoni. A watchmaker from a small Tyrolean mountain town — not a soldier, not a career gunsmith. Just a man who applied clockmaker precision to a weapon nobody else could build.',
+                speed:      0.9,
+                emotion:    'dramatic',
+                pauseAfter: 0.4,
+            },
+            transition:         'wipe-left',
+            transitionDuration: 0.28,
+            captions: {
+                style:          'highlight',
+                position:       'bottom',
+                fontSize:       60,
+                color:          '#ffffff',
+                highlightColor: '#f5c518',
+                wordsPerChunk:  3,
+                strokeColor:    'rgba(0,0,0,1)',
+                strokeWidth:    7,
+            },
+            layers: [
+                {
+                    type:           'stock-image',
+                    query:          'antique watchmaker workshop tools',
+                    source:         'serpapi',
+                    orientation:    'portrait',
+                    imageIndex:     0,
+                    x: 0, y: 0, width: 1080, height: 1920,
+                    fit:            'cover',
+                    kenBurns:       'pan-up',
+                    kenBurnsAmount: 0.2,
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.55)' },
+                {
+                    type:       'split-reveal',
+                    text:       'A WATCHMAKER\nBUILT THIS.',
+                    x:          540,
+                    y:          420,
+                    fontSize:   72,
+                    fontFamily: 'Impact, Arial Black, sans-serif',
+                    color:      '#ffffff',
+                    align:      'center',
+                    splitGap:   8,
+                    animDur:    0.4,
+                    gradient:   ['#f5c518', '#ff8c00'],
+                    glow:       true,
+                    glowColor:  '#f5c518',
+                    glowBlur:   30,
+                    startT:     0.2,
+                },
+                {
+                    type:       'text',
+                    text:       'Not a soldier.\nJust precision.',
+                    x:          540,
+                    y:          620,
+                    fontSize:   50,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
+                    color:      '#ffffff',
+                    align:      'center',
+                    maxWidth:   860,
+                    lineHeight: 1.3,
+                    stroke:     true,
+                    strokeColor:'#000000',
+                    strokeWidth: 4,
+                    animation:  'fade',
+                    animDur:    0.35,
+                    startT:     0.6,
+                },
+            ],
+        },
+
+        // ── SCENE 3 — DESIGN PHILOSOPHY (~16 sec) ────────────────
+        {
+            tts: {
+                text:       'His philosophy was silence as a weapon. Compressed air instead of gunpowder meant no smoke, no muzzle flash, no deafening blast. It could fire twenty rounds in under a minute, while a musket of the same era barely managed three — and remained accurate even in pouring rain, when every gunpowder weapon around it failed.',
+                speed:      0.9,
+                emotion:    'dramatic',
+                pauseAfter: 0.5,
+            },
+            transition:         'glitch',
+            transitionDuration: 0.26,
+            captions: {
+                style:          'highlight',
+                position:       'bottom',
+                fontSize:       60,
+                color:          '#ffffff',
+                highlightColor: '#f5c518',
+                wordsPerChunk:  3,
+                strokeColor:    'rgba(0,0,0,1)',
+                strokeWidth:    7,
+            },
+            layers: [
+                {
+                    type:           'stock-image',
+                    query:          'antique air rifle mechanism',
+                    source:         'serpapi',
+                    orientation:    'portrait',
+                    imageIndex:     0,
+                    x: 0, y: 0, width: 1080, height: 1920,
+                    fit:            'cover',
+                    kenBurns:       'drift',
+                    kenBurnsAmount: 0.16,
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.52)' },
+                {
+                    type:       'text',
+                    text:       'NO SMOKE.\nNO FLASH.\nNO SOUND.',
+                    x:          540,
+                    y:          650,
+                    fontSize:   78,
+                    fontFamily: 'Impact, Arial Black, sans-serif',
+                    color:      '#ffffff',
+                    align:      'center',
+                    maxWidth:   880,
+                    lineHeight: 1.15,
+                    gradient:   ['#f5c518', '#ff8c00'],
+                    stroke:     true,
+                    strokeColor:'#000000',
+                    strokeWidth: 5,
+                    glow:       true,
+                    glowColor:  '#f5c518',
+                    glowBlur:   24,
+                    animation:  'pop',
+                    animDur:    0.35,
+                    startT:     0.3,
+                },
+                {
+                    type:       'text',
+                    text:       '20 shots a minute —\nworked even in the rain.',
+                    x:          540,
+                    y:          1000,
+                    fontSize:   46,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
+                    color:      '#ffffff',
+                    align:      'center',
+                    maxWidth:   900,
+                    lineHeight: 1.25,
+                    stroke:     true,
+                    strokeColor:'#000000',
+                    strokeWidth: 4,
+                    animation:  'fade',
+                    animDur:    0.35,
+                    startT:     1.6,
+                },
+            ],
+        },
+
+        // ── SCENE 4 — PUNCH + CTA (~12 sec) ──────────────────────
+        {
+            tts: {
+                text:       'This exact rifle went west with Lewis and Clark — not to fight, but to bluff. They fired it for tribe after tribe, let them believe its magazine was endless, and never once let anyone see it reload. It may have kept the entire expedition alive without firing a shot in anger.',
+                speed:      0.9,
+                emotion:    'dramatic',
+                pauseAfter: 0.7,
+            },
+            transition:         'zoom-cut',
+            transitionDuration: 0.2,
+            captions: {
+                style:          'highlight',
+                position:       'bottom',
+                fontSize:       60,
+                color:          '#ffffff',
+                highlightColor: '#f5c518',
+                wordsPerChunk:  3,
+                strokeColor:    'rgba(0,0,0,1)',
+                strokeWidth:    7,
+            },
+            layers: [
+                {
+                    type:           'stock-image',
+                    query:          'Girandoni air rifle antique',
+                    source:         'serpapi',
+                    orientation:    'portrait',
+                    imageIndex:     1,
+                    x: 0, y: 0, width: 1080, height: 1920,
+                    fit:            'cover',
+                    kenBurns:       'zoom-out',
+                    kenBurnsAmount: 0.16,
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
+                {
+                    type:       'text',
+                    text:       'NEVER FIRED\nIN ANGER.',
+                    x:          540,
+                    y:          420,
+                    fontSize:   74,
+                    fontFamily: 'Impact, Arial Black, sans-serif',
+                    color:      '#ffffff',
+                    align:      'center',
+                    maxWidth:   940,
+                    lineHeight: 1.2,
+                    gradient:   ['#f5c518', '#ff8c00'],
+                    stroke:     true,
+                    strokeColor:'#000000',
+                    strokeWidth: 5,
+                    glow:       true,
+                    glowColor:  '#f5c518',
+                    glowBlur:   26,
+                    animation:  'slide-up',
+                    animDur:    0.34,
+                    startT:     0.3,
+                },
+                {
+                    type:        'notification-card',
+                    x:           540,
+                    y:           1370,
+                    width:       860,
+                    title:       '🔔 Subscribe for more',
+                    body:        'Gun history most people never hear',
+                    bgColor:     'rgba(245,197,24,0.14)',
+                    borderColor: '#f5c518',
+                    titleColor:  '#f5c518',
+                    bodyColor:   '#ffffff',
+                    fontSize:    34,
+                    bodySize:    27,
+                    borderRadius:18,
+                    animation:   'slide-up',
+                    animDur:     0.35,
+                    startT:      1.6,
                 },
             ],
         },
     ],
 };
+
+module.exports = config;
