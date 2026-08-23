@@ -1,12 +1,12 @@
 // ============================================================
-//  APEX VIDEO ENGINE — DROP 18 — GIRANDONI AIR RIFLE
-//  Custom hook this drop — no gunpowder, no combat record to
-//  reuse the standard "most conflicts" hook line.
+//  APEX VIDEO ENGINE — DROP 19 — DESTROYER WASHDOWN SYSTEM
+//  Custom hook — this is a ship system, not a weapon designer
+//  story, so the standard gun hook doesn't apply.
 //  Target: ~45-50 seconds | 4 scenes | no bgMusic
 // ============================================================
 const config = {
     output: {
-        title:      'drop-18-girandoni',
+        title:      'drop-19-destroyer-washdown',
         format:     'portrait',
         fps:        30,
         crf:        24,
@@ -26,10 +26,10 @@ const config = {
     },
     scenes: [
 
-        // ── SCENE 1 — CUSTOM HOOK (~11 sec) ──────────────────────
+        // ── SCENE 1 — CUSTOM HOOK (~10 sec) ──────────────────────
         {
             tts: {
-                text:       'One rifle fired twenty rounds without a single puff of smoke, without a single sound of gunpowder, over two hundred years before anyone thought that was possible. It never used gunpowder at all.',
+                text:       'Warships are built to survive a nuclear attack — not by hiding from the fallout, but by drowning it. Every exposed surface gets flooded with seawater before the radiation ever gets the chance to settle.',
                 speed:      0.9,
                 emotion:    'dramatic',
                 pauseAfter: 0.4,
@@ -48,23 +48,20 @@ const config = {
             },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'Girandoni air rifle antique',
-                    source:         'serpapi',
+                    type:           'pexels-video',
+                    query:          'navy destroyer ship deck spray',
                     orientation:    'portrait',
-                    imageIndex:     0,
+                    loop:           true,
                     x: 0, y: 0, width: 1080, height: 1920,
                     fit:            'cover',
-                    kenBurns:       'zoom-in',
-                    kenBurnsAmount: 0.13,
                 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
+                { type: 'overlay', color: 'rgba(0,0,0,0.5)' },
                 {
                     type:       'text',
-                    text:       'THE RIFLE\nWITH NO\nGUNPOWDER',
+                    text:       'HOW WARSHIPS\nSURVIVE\nNUCLEAR FALLOUT',
                     x:          540,
                     y:          700,
-                    fontSize:   82,
+                    fontSize:   72,
                     fontFamily: 'Arial Black, Impact, sans-serif',
                     fontWeight: 'bold',
                     color:      '#ffffff',
@@ -86,10 +83,10 @@ const config = {
             ],
         },
 
-        // ── SCENE 2 — THE PERSON (~9 sec) ────────────────────────
+        // ── SCENE 2 — WHY IT WAS BUILT (~11 sec) ─────────────────
         {
             tts: {
-                text:       'Bartolomeo Girardoni. A watchmaker from a small Tyrolean mountain town — not a soldier, not a career gunsmith. Just a man who applied clockmaker precision to a weapon nobody else could build.',
+                text:       'It was built during the Cold War, when the U.S. Navy realized a single nuclear, chemical, or biological strike could contaminate an entire ship in seconds — and there was no way to scrub it clean before the crew breathed it in.',
                 speed:      0.9,
                 emotion:    'dramatic',
                 pauseAfter: 0.4,
@@ -109,22 +106,22 @@ const config = {
             layers: [
                 {
                     type:           'stock-image',
-                    query:          'antique watchmaker workshop tools',
+                    query:          'Cold War navy warship',
                     source:         'serpapi',
                     orientation:    'portrait',
                     imageIndex:     0,
                     x: 0, y: 0, width: 1080, height: 1920,
                     fit:            'cover',
                     kenBurns:       'pan-up',
-                    kenBurnsAmount: 0.2,
+                    kenBurnsAmount: 0.18,
                 },
                 { type: 'overlay', color: 'rgba(0,0,0,0.55)' },
                 {
                     type:       'split-reveal',
-                    text:       'A WATCHMAKER\nBUILT THIS.',
+                    text:       'A COLD WAR\nPROBLEM.',
                     x:          540,
                     y:          420,
-                    fontSize:   72,
+                    fontSize:   80,
                     fontFamily: 'Impact, Arial Black, sans-serif',
                     color:      '#ffffff',
                     align:      'center',
@@ -138,14 +135,14 @@ const config = {
                 },
                 {
                     type:       'text',
-                    text:       'Not a soldier.\nJust precision.',
+                    text:       'Contamination in seconds.\nNo way to clean it fast enough.',
                     x:          540,
-                    y:          620,
-                    fontSize:   50,
+                    y:          650,
+                    fontSize:   42,
                     fontFamily: 'Arial Black, Impact, sans-serif',
                     color:      '#ffffff',
                     align:      'center',
-                    maxWidth:   860,
+                    maxWidth:   880,
                     lineHeight: 1.3,
                     stroke:     true,
                     strokeColor:'#000000',
@@ -157,10 +154,10 @@ const config = {
             ],
         },
 
-        // ── SCENE 3 — DESIGN PHILOSOPHY (~16 sec) ────────────────
+        // ── SCENE 3 — HOW IT WORKS (~15 sec) ─────────────────────
         {
             tts: {
-                text:       'His philosophy was silence as a weapon. Compressed air instead of gunpowder meant no smoke, no muzzle flash, no deafening blast. It could fire twenty rounds in under a minute, while a musket of the same era barely managed three — and remained accurate even in pouring rain, when every gunpowder weapon around it failed.',
+                text:       'The solution: hundreds of nozzles covering every deck, wall, and surface, all firing at once. Pumps drag seawater straight from the ocean the ship is floating on and turn it into a moving wall of water — washing fallout, chemical agents, or biological contamination overboard before it can ever settle or seep inside.',
                 speed:      0.9,
                 emotion:    'dramatic',
                 pauseAfter: 0.5,
@@ -179,27 +176,32 @@ const config = {
             },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'antique air rifle mechanism',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
+                    type:     'stock-image-sequence',
+                    queries: [
+                        'navy ship deck sprinkler system',
+                        'warship washdown system spraying',
+                        'navy ship fire hose nozzle',
+                    ],
+                    source:   'serpapi',
+                    fit:      'cover',
+                    kenBurnsSequence: [
+                        { kenBurns: 'zoom-in',   kenBurnsAmount: 0.3 },
+                        { kenBurns: 'rotate-cw', kenBurnsAmount: 0.26, rotateDeg: 8 },
+                        { kenBurns: 'pan-left',  kenBurnsAmount: 0.26 },
+                    ],
                     x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'drift',
-                    kenBurnsAmount: 0.16,
                 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.52)' },
+                { type: 'overlay', color: 'rgba(0,0,0,0.42)' },
                 {
                     type:       'text',
-                    text:       'NO SMOKE.\nNO FLASH.\nNO SOUND.',
+                    text:       'THE ENTIRE SHIP.\nEVERY NOZZLE.\nAT ONCE.',
                     x:          540,
                     y:          650,
-                    fontSize:   78,
+                    fontSize:   72,
                     fontFamily: 'Impact, Arial Black, sans-serif',
                     color:      '#ffffff',
                     align:      'center',
-                    maxWidth:   880,
+                    maxWidth:   900,
                     lineHeight: 1.15,
                     gradient:   ['#f5c518', '#ff8c00'],
                     stroke:     true,
@@ -214,10 +216,10 @@ const config = {
                 },
                 {
                     type:       'text',
-                    text:       '20 shots a minute —\nworked even in the rain.',
+                    text:       'Seawater pumped from\nthe ocean below.',
                     x:          540,
                     y:          1000,
-                    fontSize:   46,
+                    fontSize:   44,
                     fontFamily: 'Arial Black, Impact, sans-serif',
                     color:      '#ffffff',
                     align:      'center',
@@ -236,10 +238,10 @@ const config = {
         // ── SCENE 4 — PUNCH + CTA (~12 sec) ──────────────────────
         {
             tts: {
-                text:       'This exact rifle went west with Lewis and Clark — not to fight, but to bluff. They fired it for tribe after tribe, let them believe its magazine was endless, and never once let anyone see it reload. It may have kept the entire expedition alive without firing a shot in anger.',
+                text:       'The same system doubles as one of the ship\'s main firefighting tools. And now, the Navy is looking at using that same raw water pressure for something nobody designed it for — knocking enemy drones straight out of the sky.',
                 speed:      0.9,
                 emotion:    'dramatic',
-                pauseAfter: 0.7,
+                pauseAfter: 0.6,
             },
             transition:         'zoom-cut',
             transitionDuration: 0.2,
@@ -255,23 +257,20 @@ const config = {
             },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'Girandoni air rifle antique',
-                    source:         'serpapi',
+                    type:           'pexels-video',
+                    query:          'navy destroyer ship deck spray',
                     orientation:    'portrait',
-                    imageIndex:     1,
+                    loop:           true,
                     x: 0, y: 0, width: 1080, height: 1920,
                     fit:            'cover',
-                    kenBurns:       'zoom-out',
-                    kenBurnsAmount: 0.16,
                 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
+                { type: 'overlay', color: 'rgba(0,0,0,0.55)' },
                 {
                     type:       'text',
-                    text:       'NEVER FIRED\nIN ANGER.',
+                    text:       'BUILT FOR FALLOUT.\nNOW A DRONE\nDEFENSE, TOO.',
                     x:          540,
                     y:          420,
-                    fontSize:   74,
+                    fontSize:   62,
                     fontFamily: 'Impact, Arial Black, sans-serif',
                     color:      '#ffffff',
                     align:      'center',
@@ -294,13 +293,13 @@ const config = {
                     y:           1370,
                     width:       860,
                     title:       '🔔 Subscribe for more',
-                    body:        'Gun history most people never hear',
+                    body:        'Military tech most people never hear about',
                     bgColor:     'rgba(245,197,24,0.14)',
                     borderColor: '#f5c518',
                     titleColor:  '#f5c518',
                     bodyColor:   '#ffffff',
-                    fontSize:    34,
-                    bodySize:    27,
+                    fontSize:    32,
+                    bodySize:    26,
                     borderRadius:18,
                     animation:   'slide-up',
                     animDur:     0.35,
