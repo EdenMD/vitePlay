@@ -1,638 +1,282 @@
-// ============================================================
-//  APEX Video Engine v2.4 — Anime Fairy Tale Config
-//  "A THOUSAND MILES OF STARS" — Part 1
-//  Format: Portrait — TikTok / Reels / Shorts
-//  Duration: ~75 seconds
+// config.humanoid-robots-fail.js
+// "Why Humanoid Robots Will Fail as Soldiers" (Part 1)
+// Uses ApexCasing/paper-sticker-explainer.html — the real slot-based
+// casing, not a simple overlay. Every distinct visual concept named in
+// the script gets its own fetched SerpAPI image (24 total), laid out as
+// a multi-photo "board" per scene rather than one full-bleed photo each
+// time — the Ohio-class file's repeated banner-photo pattern was the
+// exact thing flagged as weak, so this leans into the slot grid instead.
 //
-//  STORY:
-//  Lena lives in a snow-covered northern village.
-//  Kai lives on a warm southern island by the ocean.
-//  They find each other through letters — slow, handwritten,
-//  months apart. Part 1 ends the moment Lena reads his letter
-//  and realises — he has never seen snow. And somehow, that
-//  breaks her heart open.
+// CAMERA: panZoom is used hard and often — a tight zoom (scale ~2.2-2.6)
+// onto whichever photo/sticker just appeared, then a zoom-out to
+// scale:1 to reveal the whole board before the next beat, matching the
+// "zoom in hard on what's appearing, zoom out to see the whole board"
+// technique described. The zoomTo() helper below computes the exact
+// toX/toY for a given slot by mirroring the casing's own slotToXY math
+// (COL_W:360, ROW_H:241, TOP_Y:150) — not eyeballed numbers.
 //
-//  VOICE: af_sarah — warm, intimate, fairy-tale narrator
-//  AI IMAGES: all ai-image layers — anime portrait style
-//  CAPTIONS: used only on narration-heavy scenes
-//  NO html-record — pure native engine
-//  NO list-reveal, NO particles, NO avatar
-//  NO dissolve transition
-// ============================================================
+// SCRIPT: used exactly as given, six sections (Hook, Scene 2-5, Ending)
+// mapped 1:1 to six video scenes. Short punch-lines in the original
+// (e.g. "Two arms. / Two legs. / A head.") are read as flowing prose —
+// that formatting was for script readability, not meant as six separate
+// TTS scenes.
+//
+// SERPAPI: fetched directly in this config (this file's own
+// fetchImage/urlToBase64), same working mechanism as the Ohio-class
+// reference — SERPAPI_API_KEY must be set. If SerpAPI is still rate-
+// limited from earlier, fetchImage returns null per-query and that slot
+// is simply skipped (checked below) rather than breaking the render.
+//
+// Run with:  VIDEO_CONFIG=config.humanoid-robots-fail.js node engine-ci.js
 
-module.exports = {
+const https = require('https');
+const http = require('http');
 
-  output: {
-    title:      'thousand-miles-stars-pt1',
-    format:     'portrait',
-    fps:        30,
-    crf:        22,
-    preset:     'fast',
-    bgMusic:    { mood: 'calm' },
-    bgMusicVol: 0.11,
-    cleanup:    true,
-    postProcess: {
-      grain:              true,
-      grainStrength:      0.016,
-      vignette:           true,
-      vignetteStrength:   0.42,
-      colorGrade:         '#020308',
-      colorGradeStrength: 0.09,
-    },
-  },
+async function fetchImage(query, index = 0) {
+    const key = process.env.SERPAPI_API_KEY;
+    if (!key) { console.warn('[Humanoid] SERPAPI_API_KEY not set — skipping:', query); return null; }
+    try {
+        const searchUrl = `https://serpapi.com/search.json?engine=google_images&q=${encodeURIComponent(query)}&ijn=0&num=30&safe=active&api_key=${key}`;
+        const data = await fetchJSON(searchUrl);
+        const results = (data?.images_results || []).filter(r => r.original && !r.original.startsWith('x-raw-image'));
+        if (!results.length) return null;
+        const pick = results[index % results.length];
+        if (!pick?.original) return null;
+        console.log(`[Humanoid] Downloading: ${pick.original.slice(0, 70)}`);
+        const b64 = await urlToBase64(pick.original);
+        return b64 ? `data:image/jpeg;base64,${b64}` : null;
+    } catch (e) {
+        console.warn(`[Humanoid] fetchImage failed for "${query}":`, e.message?.slice(0, 80));
+        return null;
+    }
+}
 
-  defaults: {
-    voice:              'af_sarah',
-    transition:         'fade',
-    transitionDuration: 0.45,
-  },
+function fetchJSON(url) {
+    return new Promise((resolve, reject) => {
+        const lib = url.startsWith('https') ? https : http;
+        lib.get(url, { headers: { 'User-Agent': 'ApexEngine/2.0' } }, (res) => {
+            let raw = ''; res.on('data', d => raw += d);
+            res.on('end', () => { try { resolve(JSON.parse(raw)); } catch (e) { reject(e); } });
+        }).on('error', reject).setTimeout(15000, function () { this.destroy(); reject(new Error('Timeout')); });
+    });
+}
 
-  scenes: [
+function urlToBase64(imageUrl) {
+    return new Promise((resolve) => {
+        const lib = imageUrl.startsWith('https') ? https : http;
+        const req = lib.get(imageUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ApexEngine/2.0)', 'Accept': 'image/*' }, timeout: 12000 }, (res) => {
+            if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) { urlToBase64(res.headers.location).then(resolve); return; }
+            if (res.statusCode !== 200) { resolve(null); return; }
+            const chunks = []; res.on('data', c => chunks.push(c));
+            res.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+        });
+        req.on('error', () => resolve(null));
+        req.on('timeout', () => { req.destroy(); resolve(null); });
+    });
+}
 
-    // ─────────────────────────────────────────────────────────
-    // SCENE 1 — TITLE CARD
-    // Fairy tale opening. Snow village. Sets the world.
-    // Slow Ken Burns. No captions — title text carries it.
-    // ─────────────────────────────────────────────────────────
-    {
-      tts: {
-        text:       'Once upon a time — though not so long ago — there was a girl who had never left the snow. And a boy who had never felt cold. And somehow, impossibly, they found each other.',
-        pauseAfter: 0.6,
-      },
-      transition:         'fade',
-      transitionDuration:  0.55,
-      layers: [
-        {
-          type:           'ai-image',
-          prompt:         'snowy village at night, warm glowing windows, pine trees covered in snow, northern sky full of stars, soft magical atmosphere, wide cinematic landscape, anime style watercolor background art, no people, meinamix',
-          model:          'meinamix',
-          steps:          8,
-          genWidth:       512,
-          genHeight:      768,
-          x: 0, y: 0, width: 1080, height: 1920,
-          fit:            'cover',
-          kenBurns:       'zoom-in',
-          kenBurnsAmount: 0.14,
-        },
-        { type: 'overlay', color: 'rgba(0,0,8,0.35)' },
-
-        // Series title — fairy tale style
-        {
-          type:       'text',
-          text:       '✦ A Thousand Miles\nof Stars ✦',
-          x:          540,
-          y:          310,
-          fontSize:   72,
-          fontFamily: 'Georgia, Arial, sans-serif',
-          color:      '#ffffff',
-          align:      'center',
-          maxWidth:   900,
-          lineHeight: 1.20,
-          shadow:     true,
-          shadowBlur: 40,
-          shadowColor:'rgba(100,150,255,0.60)',
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.70)',
-          strokeWidth: 4,
-          animation:  'fade',
-          animDur:    0.80,
-          startT:     0.0,
-        },
-
-        // Part badge
-        {
-          type:       'text',
-          text:       'PART ONE',
-          x:          540,
-          y:          468,
-          fontSize:   30,
-          fontFamily: 'Arial, sans-serif',
-          color:      'rgba(200,220,255,0.65)',
-          align:      'center',
-          maxWidth:   400,
-          animation:  'fade',
-          animDur:    0.60,
-          startT:     0.50,
-        },
-
-        // Opening narration — bottom of frame, italic fairy tale style
-        {
-          type:       'text',
-          text:       '"Once upon a time —\nthough not so long ago."',
-          x:          540,
-          y:          1360,
-          fontSize:   44,
-          fontFamily: 'Georgia, Arial, sans-serif',
-          color:      'rgba(255,255,255,0.88)',
-          align:      'center',
-          maxWidth:   880,
-          lineHeight: 1.30,
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.85)',
-          strokeWidth: 5,
-          shadow:     true,
-          shadowBlur: 28,
-          shadowColor:'rgba(0,0,0,0.95)',
-          animation:  'slide-up',
-          animDur:    0.55,
-          startT:     0.60,
-        },
-
-        { type: 'progress-bar', x: 54, y: 1855, width: 972, height: 5,
-          color: '#aaccff', color2: '#6688cc',
-          trackColor: 'rgba(255,255,255,0.06)' },
-      ],
-    },
-
-    // ─────────────────────────────────────────────────────────
-    // SCENE 2 — LENA'S WORLD
-    // Introduce the girl. Cold world. Beautiful but lonely.
-    // Close portrait. Captions ON — her world needs words.
-    // ─────────────────────────────────────────────────────────
-    {
-      tts: {
-        text:       "Her name was Lena. She lived in a village so far north that the sun forgot it for three months every year. She had learned to love the dark. The silence. The way snow made everything feel hushed and safe. But sometimes, late at night, she wondered if the whole world was as quiet as hers.",
-        pauseAfter: 0.50,
-      },
-      captions: {
-        style:          'highlight',
-        position:       'bottom',
-        fontSize:        46,
-        color:           '#ddeeff',
-        highlightColor:  '#aaccff',
-        bgColor:         'rgba(0,0,15,0.58)',
-        wordsPerChunk:   3,
-        fontFamily:      'Arial Black, Impact, sans-serif',
-        padding:         18,
-        borderRadius:    12,
-        strokeColor:     'rgba(0,0,0,0.96)',
-        strokeWidth:     5,
-        yOffset:         -18,
-      },
-      transition:         'fade',
-      transitionDuration:  0.45,
-      layers: [
-        {
-          type:           'ai-image',
-          prompt:         '1girl, pale skin, silver white hair, blue grey eyes, wearing thick knitted sweater, standing at frosted window watching snow fall outside, soft candlelight from behind, lonely beautiful expression, close-up portrait above shoulders, no hands, cozy cold northern atmosphere, watercolor anime style, anything-v5',
-          model:          'anything-v5',
-          steps:          8,
-          genWidth:       512,
-          genHeight:      768,
-          x: 0, y: 0, width: 1080, height: 1920,
-          fit:            'cover',
-          kenBurns:       'zoom-in',
-          kenBurnsAmount: 0.10,
-        },
-        { type: 'overlay', color: 'rgba(0,0,12,0.38)' },
-
-        // Character name reveal
-        {
-          type:       'text',
-          text:       'LENA',
-          x:          540,
-          y:          295,
-          fontSize:   96,
-          fontFamily: 'Georgia, Impact, sans-serif',
-          color:      '#ffffff',
-          align:      'center',
-          maxWidth:   800,
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.80)',
-          strokeWidth: 6,
-          shadow:     true,
-          shadowBlur: 38,
-          shadowColor:'rgba(100,140,255,0.55)',
-          animation:  'fade',
-          animDur:    0.65,
-          startT:     0.0,
-        },
-
-        {
-          type:       'text',
-          text:       'The girl who lived in the snow.',
-          x:          540,
-          y:          415,
-          fontSize:   34,
-          fontFamily: 'Georgia, Arial, sans-serif',
-          color:      'rgba(180,210,255,0.80)',
-          align:      'center',
-          maxWidth:   800,
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.80)',
-          strokeWidth: 3,
-          animation:  'fade',
-          animDur:    0.55,
-          startT:     0.50,
-        },
-
-        { type: 'progress-bar', x: 54, y: 1855, width: 972, height: 5,
-          color: '#aaccff', color2: '#6688cc',
-          trackColor: 'rgba(255,255,255,0.06)' },
-      ],
-    },
-
-    // ─────────────────────────────────────────────────────────
-    // SCENE 3 — KAI'S WORLD
-    // Introduce the boy. Warm ocean. Full of life.
-    // Contrast with Scene 2 — warm palette vs cold palette.
-    // ─────────────────────────────────────────────────────────
-    {
-      tts: {
-        text:       "His name was Kai. He lived on a small island where it was always warm. Where the ocean was so blue it made you feel like crying. He had never worn a coat. Never seen his breath fog in the air. He wrote stories about places he had never been — and kept them in a drawer.",
-        pauseAfter: 0.50,
-      },
-      captions: {
-        style:          'highlight',
-        position:       'bottom',
-        fontSize:        46,
-        color:           '#ffeedd',
-        highlightColor:  '#ffcc88',
-        bgColor:         'rgba(10,5,0,0.58)',
-        wordsPerChunk:   3,
-        fontFamily:      'Arial Black, Impact, sans-serif',
-        padding:         18,
-        borderRadius:    12,
-        strokeColor:     'rgba(0,0,0,0.96)',
-        strokeWidth:     5,
-        yOffset:         -18,
-      },
-      transition:         'fade',
-      transitionDuration:  0.45,
-      layers: [
-        {
-          type:           'ai-image',
-          prompt:         '1boy, warm dark skin, short curly black hair, bright warm brown eyes, wearing loose white shirt, standing on ocean cliff at golden hour, tropical island behind him, sea breeze in hair, gentle confident expression, close-up portrait above shoulders, no hands, warm golden light, anime style, meinamix',
-          model:          'meinamix',
-          steps:          8,
-          genWidth:       512,
-          genHeight:      768,
-          x: 0, y: 0, width: 1080, height: 1920,
-          fit:            'cover',
-          kenBurns:       'pan-up',
-          kenBurnsAmount: 0.10,
-        },
-        { type: 'overlay', color: 'rgba(5,2,0,0.32)' },
-
-        {
-          type:       'text',
-          text:       'KAI',
-          x:          540,
-          y:          295,
-          fontSize:   96,
-          fontFamily: 'Georgia, Impact, sans-serif',
-          color:      '#ffffff',
-          align:      'center',
-          maxWidth:   800,
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.80)',
-          strokeWidth: 6,
-          shadow:     true,
-          shadowBlur: 38,
-          shadowColor:'rgba(255,180,80,0.55)',
-          animation:  'fade',
-          animDur:    0.65,
-          startT:     0.0,
-        },
-
-        {
-          type:       'text',
-          text:       'The boy who lived in the warmth.',
-          x:          540,
-          y:          415,
-          fontSize:   34,
-          fontFamily: 'Georgia, Arial, sans-serif',
-          color:      'rgba(255,220,160,0.82)',
-          align:      'center',
-          maxWidth:   800,
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.80)',
-          strokeWidth: 3,
-          animation:  'fade',
-          animDur:    0.55,
-          startT:     0.50,
-        },
-
-        { type: 'progress-bar', x: 54, y: 1855, width: 972, height: 5,
-          color: '#ffcc88', color2: '#ff8844',
-          trackColor: 'rgba(255,255,255,0.06)' },
-      ],
-    },
-
-    // ─────────────────────────────────────────────────────────
-    // SCENE 4 — THE LETTER ARRIVES
-    // How they found each other. A letter in a bottle.
-    // Fairy tale logic — no explanation needed.
-    // No captions — one strong text line carries the scene.
-    // ─────────────────────────────────────────────────────────
-    {
-      tts: {
-        text:       "One winter morning, Lena found a bottle on the frozen shore. Inside it — a single folded page. Written in handwriting she had never seen. It said — hello. I wrote this because I needed someone who has never met me to read it. I hope the sea chooses wisely.",
-        pauseAfter: 0.55,
-      },
-      transition:         'zoom-in',
-      transitionDuration:  0.40,
-      layers: [
-        {
-          type:           'ai-image',
-          prompt:         '1girl, pale skin, silver white hair, kneeling on frozen snowy beach, holding a glass bottle with paper inside, wide eyes full of wonder and disbelief, cold morning light, breath visible in cold air, close-up portrait above waist, no hands clearly detailed, magical realism anime style, anything-v5',
-          model:          'anything-v5',
-          steps:          8,
-          genWidth:       512,
-          genHeight:      768,
-          x: 0, y: 0, width: 1080, height: 1920,
-          fit:            'cover',
-          kenBurns:       'zoom-in',
-          kenBurnsAmount: 0.12,
-        },
-        { type: 'overlay', color: 'rgba(0,0,10,0.40)' },
-
-        // The letter's opening line — the only text needed
-        {
-          type:       'text',
-          text:       '"Hello.\nI hope the sea\nchooses wisely."',
-          x:          540,
-          y:          720,
-          fontSize:   60,
-          fontFamily: 'Georgia, Arial, sans-serif',
-          color:      '#ffffff',
-          align:      'center',
-          maxWidth:   880,
-          lineHeight: 1.30,
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.90)',
-          strokeWidth: 6,
-          shadow:     true,
-          shadowBlur: 36,
-          shadowColor:'rgba(0,0,0,0.98)',
-          animation:  'fade',
-          animDur:    0.70,
-          startT:     0.40,
-        },
-
-        { type: 'progress-bar', x: 54, y: 1855, width: 972, height: 5,
-          color: '#aaccff', color2: '#6688cc',
-          trackColor: 'rgba(255,255,255,0.06)' },
-      ],
-    },
-
-    // ─────────────────────────────────────────────────────────
-    // SCENE 5 — SHE WRITES BACK
-    // Lena at her desk by candlelight. Writing.
-    // Captions ON — this moment needs her voice.
-    // ─────────────────────────────────────────────────────────
-    {
-      tts: {
-        text:       "She sat at her small desk for three hours before she wrote a single word back. She did not know what to say to a stranger. She only knew she did not want to say nothing. So she wrote — the snow here is so loud when it falls that sometimes I think it is trying to tell me something. Can you hear it from where you are?",
-        pauseAfter: 0.50,
-      },
-      captions: {
-        style:          'highlight',
-        position:       'bottom',
-        fontSize:        46,
-        color:           '#ddeeff',
-        highlightColor:  '#aaccff',
-        bgColor:         'rgba(0,0,15,0.58)',
-        wordsPerChunk:   3,
-        fontFamily:      'Arial Black, Impact, sans-serif',
-        padding:         18,
-        borderRadius:    12,
-        strokeColor:     'rgba(0,0,0,0.96)',
-        strokeWidth:     5,
-        yOffset:         -18,
-      },
-      transition:         'fade',
-      transitionDuration:  0.45,
-      layers: [
-        {
-          type:           'ai-image',
-          prompt:         '1girl, pale skin, silver white hair, sitting at wooden desk by candlelight late at night, writing a letter with a pen, soft warm candle glow on face, focused expression, snow visible outside small window, close-up portrait above shoulders, no hands on desk visible clearly, cozy intimate atmosphere, anime style, flux-anime',
-          model:          'flux-anime',
-          steps:          8,
-          genWidth:       512,
-          genHeight:      768,
-          x: 0, y: 0, width: 1080, height: 1920,
-          fit:            'cover',
-          kenBurns:       'zoom-in',
-          kenBurnsAmount: 0.08,
-        },
-        { type: 'overlay', color: 'rgba(0,0,8,0.36)' },
-
-        // What she wrote — sits in upper third
-        {
-          type:       'text',
-          text:       '"Can you hear the snow\nfrom where you are?"',
-          x:          540,
-          y:          308,
-          fontSize:   52,
-          fontFamily: 'Georgia, Arial, sans-serif',
-          color:      '#ffffff',
-          align:      'center',
-          maxWidth:   880,
-          lineHeight: 1.28,
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.90)',
-          strokeWidth: 6,
-          shadow:     true,
-          shadowBlur: 34,
-          shadowColor:'rgba(0,0,0,0.98)',
-          animation:  'fade',
-          animDur:    0.65,
-          startT:     0.0,
-        },
-
-        { type: 'progress-bar', x: 54, y: 1855, width: 972, height: 5,
-          color: '#aaccff', color2: '#6688cc',
-          trackColor: 'rgba(255,255,255,0.06)' },
-      ],
-    },
-
-    // ─────────────────────────────────────────────────────────
-    // SCENE 6 — HIS REPLY
-    // Months later. The letter arrives.
-    // Kai's warm world. His handwriting on the page.
-    // No captions — his words are the only visual needed.
-    // ─────────────────────────────────────────────────────────
-    {
-      tts: {
-        text:       "Three months later — his letter arrived. She read it standing in the snow, not even bothering to go inside first. He wrote — I have never seen snow. I do not know its sound. But I have sat by the ocean in the dark and I think maybe it sounds the same as the waves at 3am. Like the world breathing. Is that close?",
-        pauseAfter: 0.55,
-      },
-      transition:         'fade',
-      transitionDuration:  0.45,
-      postProcess: {
-        grain:            true,
-        grainStrength:    0.020,
-        vignette:         true,
-        vignetteStrength: 0.48,
-        colorGrade:       '#050300',
-        colorGradeStrength: 0.10,
-      },
-      layers: [
-        {
-          type:           'ai-image',
-          prompt:         '1girl, pale skin, silver hair, standing outside in heavy snowfall reading a letter, coat dusted with snow, expression shifting from surprise to something tender, snowflakes settling on her eyelashes, close-up portrait, no hands clearly detailed, magical winter moment, emotional anime style, meinamix',
-          model:          'meinamix',
-          steps:          8,
-          genWidth:       512,
-          genHeight:      768,
-          x: 0, y: 0, width: 1080, height: 1920,
-          fit:            'cover',
-          kenBurns:       'zoom-in',
-          kenBurnsAmount: 0.10,
-        },
-        { type: 'overlay', color: 'rgba(0,0,10,0.42)' },
-
-        // His words — the emotional peak of Part 1
-        {
-          type:       'text',
-          text:       '"I have never seen snow.\nBut maybe it sounds\nlike waves at 3am.\nIs that close?"',
-          x:          540,
-          y:          650,
-          fontSize:   50,
-          fontFamily: 'Georgia, Arial, sans-serif',
-          color:      '#ffffff',
-          align:      'center',
-          maxWidth:   900,
-          lineHeight: 1.35,
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.92)',
-          strokeWidth: 6,
-          shadow:     true,
-          shadowBlur: 38,
-          shadowColor:'rgba(0,0,0,0.98)',
-          animation:  'fade',
-          animDur:    0.75,
-          startT:     0.30,
-        },
-
-        { type: 'progress-bar', x: 54, y: 1855, width: 972, height: 5,
-          color: '#ffcc88', color2: '#aaccff',
-          trackColor: 'rgba(255,255,255,0.06)' },
-      ],
-    },
-
-    // ─────────────────────────────────────────────────────────
-    // SCENE 7 — THE CLIFFHANGER
-    // She stands there in the snow. Something shifted.
-    // The moment she realises she wants to meet him.
-    // Image sequence — two characters, two worlds, side by side.
-    // ─────────────────────────────────────────────────────────
-    {
-      tts: {
-        text:       "She stood there until the letter was wet from the snow falling on it. She read it four more times. And then — for the first time in her life — she wished she lived somewhere else. Not because she hated her world. But because she wanted to show it to him. Part Two drops soon.",
-        pauseAfter: 0.70,
-      },
-      transition:         'fade',
-      transitionDuration:  0.55,
-      postProcess: {
-        grain:            true,
-        grainStrength:    0.022,
-        vignette:         true,
-        vignetteStrength: 0.55,
-        colorGrade:       '#030308',
-        colorGradeStrength: 0.12,
-      },
-      layers: [
-        // Image sequence — Lena cold, Kai warm, alternating
-        {
-          type:           'image-sequence',
-          srcs: [
-            'work/ai-images/scene-1-layer-0.png',
-            'work/ai-images/scene-2-layer-0.png',
-          ],
-          cutEvery:       4.0,
-          kenBurns:       'zoom-in',
-          kenBurnsAmount: 0.10,
-          fit:            'cover',
-          x: 0, y: 0, width: 1080, height: 1920,
-        },
-        { type: 'overlay', color: 'rgba(0,0,0,0.50)' },
-
-        // The emotional close
-        {
-          type:       'text',
-          text:       'She wanted to\nshow it to him.',
-          x:          540,
-          y:          680,
-          fontSize:   76,
-          fontFamily: 'Georgia, Impact, sans-serif',
-          color:      '#ffffff',
-          align:      'center',
-          maxWidth:   900,
-          lineHeight: 1.18,
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.90)',
-          strokeWidth: 7,
-          shadow:     true,
-          shadowBlur: 44,
-          shadowColor:'rgba(0,0,0,1.0)',
-          animation:  'fade',
-          animDur:    0.70,
-          startT:     0.0,
-        },
-
-        // Part 2 teaser
-        {
-          type:       'text',
-          text:       '✦  PART 2 COMING  ✦',
-          x:          540,
-          y:          1270,
-          fontSize:   36,
-          fontFamily: 'Georgia, Arial, sans-serif',
-          color:      'rgba(200,210,255,0.85)',
-          align:      'center',
-          maxWidth:   700,
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.80)',
-          strokeWidth: 3,
-          shadow:     true,
-          shadowBlur: 20,
-          animation:  'fade',
-          animDur:    0.60,
-          startT:     0.65,
-        },
-
-        // Comment bait
-        {
-          type:       'text',
-          text:       'What do you think Lena writes back? 👇',
-          x:          540,
-          y:          1362,
-          fontSize:   32,
-          fontFamily: 'Arial Black, sans-serif',
-          color:      'rgba(255,220,180,0.78)',
-          align:      'center',
-          maxWidth:   880,
-          stroke:     true,
-          strokeColor:'rgba(0,0,0,0.80)',
-          strokeWidth: 3,
-          animation:  'slide-up',
-          animDur:    0.45,
-          startT:     0.80,
-        },
-
-        // Ticker — story recap
-        {
-          type:       'ticker',
-          text:       'A girl in the snow  •  A boy by the ocean  •  A letter in a bottle  •  "Can you hear the snow from where you are?"  •  Part 2 coming soon  •',
-          y:          1758,
-          height:     62,
-          speed:      125,
-          bgColor:    'rgba(0,0,0,0.90)',
-          textColor:  '#ffffff',
-          label:      'PART 1',
-          labelBg:    '#334466',
-          fontSize:   28,
-          borderColor:'rgba(150,180,255,0.18)',
-        },
-
-        { type: 'progress-bar', x: 54, y: 1855, width: 972, height: 5,
-          color: '#aaccff', color2: '#ffcc88',
-          trackColor: 'rgba(255,255,255,0.06)' },
-      ],
-    },
-
-  ],
-
+// ── panZoom camera helper — mirrors the casing's own slotToXY math ─────────
+const COL_W = 360, ROW_H = 241, TOP_Y = 150;
+const SLOT_CENTERS = {
+    'top-left': [180, 270.5], 'top-center': [540, 270.5], 'top-right': [900, 270.5],
+    'mid-left': [180, 511.5], 'mid-center': [540, 511.5], 'mid-right': [900, 511.5],
+    'low-left': [180, 752.5], 'low-center': [540, 752.5], 'low-right': [900, 752.5],
+    'bot-left': [180, 993.5], 'bot-center': [540, 993.5], 'bot-right': [900, 993.5],
+    'deep-left': [180, 1234.5], 'deep-center': [540, 1234.5], 'deep-right': [900, 1234.5],
+    'banner-top': [540, 270.5], 'banner-mid': [540, 752.5], 'banner-low': [540, 1234.5],
 };
+function zoomTo(slot, scale) {
+    const c = SLOT_CENTERS[slot] || [540, 960];
+    return { toScale: scale, toX: -scale * (c[0] - 540), toY: -scale * (c[1] - 960) };
+}
+const ZOOM_OUT = { toScale: 1, toX: 0, toY: 0 };
+
+const THEME = { paper: '#eef0e6', ink: '#1b1c1e', accent: '#ff5a3c', accent2: '#2f7cf6', shadow: 'rgba(20,16,10,0.35)' };
+const CASING = './ApexCasing/paper-sticker-explainer.html';
+
+module.exports = (async () => {
+    console.log('[Humanoid] Pre-fetching 24 SerpAPI images...');
+
+    const [
+        // HOOK
+        imgSmoke, imgRobotWalk, imgRobotLimbs, imgRobotCarry,
+        // SCENE 2 — the human body
+        imgSkeleton, imgWheels, imgTracks, imgDroneRotor, imgCameraLens,
+        // SCENE 3 — two legs
+        imgBalance, imgFallen, imgTrackedTerrain, imgDroneFlying,
+        // SCENE 4 — the hands
+        imgHandFingers, imgRoboClaw, imgSurveilCam, imgCargoPlatform,
+        // SCENE 5 — the real advantage
+        imgQuadruped, imgUnusualRobot, imgLabPrototype,
+        // ENDING
+        imgMud, imgExplosion, imgDamagedEquip, imgCleanLab,
+    ] = await Promise.all([
+        fetchImage('battlefield smoke dust'), fetchImage('humanoid military robot walking'),
+        fetchImage('humanoid robot two arms two legs'), fetchImage('robot soldier carrying equipment'),
+
+        fetchImage('human skeleton bones joints'), fetchImage('military robot wheels'),
+        fetchImage('military robot tracks terrain'), fetchImage('military drone rotors flying'),
+        fetchImage('surveillance camera lens'),
+
+        fetchImage('humanoid robot balance walking'), fetchImage('humanoid robot fallen ground'),
+        fetchImage('tracked military robot rough terrain'), fetchImage('military drone flying fast'),
+
+        fetchImage('human hand fingers closeup'), fetchImage('robotic claw mechanical'),
+        fetchImage('military robot camera surveillance'), fetchImage('military robot cargo platform wheels'),
+
+        fetchImage('quadruped robot dog military'), fetchImage('unusual robot design military'),
+        fetchImage('military robot prototype laboratory'),
+
+        fetchImage('battlefield mud rain'), fetchImage('explosion smoke debris battlefield'),
+        fetchImage('damaged military equipment'), fetchImage('robot demonstration lab clean'),
+    ]);
+
+    console.log('[Humanoid] Images ready. Building scenes...');
+
+    function casingLayer(tag, title, commands) {
+        return {
+            type: 'html-record', src: `${CASING}?tag=${tag}`, audioSync: true, cursor: false,
+            waitFor: '[data-ready="1"]', fps: 30,
+            viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+            data: { title, theme: THEME, commands },
+        };
+    }
+
+    return {
+        output: { title: 'humanoid-robots-fail-part1', format: 'portrait', fps: 30, crf: 22, preset: 'medium' },
+        defaults: { voice: 'bm_george', transition: 'fade', transitionDuration: 0.35 },
+
+        scenes: [
+
+            // ══ HOOK ═══════════════════════════════════════════════════════
+            {
+                tts: { text: "Imagine the future of warfare. A battlefield covered in smoke. Through the dust comes a machine that looks almost human. Two arms. Two legs. A head. It walks like a person. It carries equipment like a person. It was supposedly built to fight alongside humans. It looks like the soldier of the future. But there's a problem. The human body might be one of the worst possible designs for a military robot. And that's where the humanoid robot fantasy begins to fall apart.", voice: 'bm_george', pauseAfter: 0.4 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: THEME.paper },
+                    casingLayer('robots-hook', 'THE HUMANOID FANTASY', [
+                        { id: 'p_smoke', type: 'photo', src: imgSmoke, slot: 'banner-top', width: 1080, height: 620, pinStyle: 'none', trigger: { atSeconds: 0.1 } },
+                        { id: 'pz_smoke', type: 'panZoom', ...zoomTo('banner-top', 1.5), duration: 1.2, trigger: { afterId: 'p_smoke', offset: 0.1 } },
+                        { id: 'hook1', type: 'sticker', text: 'THE FUTURE\nOF WARFARE?', slot: 'banner-top', size: 62, bg: 'rgba(255,255,255,0.85)', trigger: { wordText: 'warfare', occurrence: 1 } },
+                        { id: 'p_walk', type: 'photo', src: imgRobotWalk, slot: 'mid-left', width: 460, height: 460, caption: 'walks like a person', trigger: { wordText: 'human', occurrence: 1 } },
+                        { id: 'pz_walk', type: 'panZoom', ...zoomTo('mid-left', 2.3), duration: 1.0, trigger: { afterId: 'p_walk', offset: 0.15 } },
+                        { id: 'p_limbs', type: 'photo', src: imgRobotLimbs, slot: 'mid-right', width: 460, height: 460, caption: 'two arms, two legs', trigger: { wordText: 'head', occurrence: 1 } },
+                        { id: 'pz_limbs', type: 'panZoom', ...zoomTo('mid-right', 2.3), duration: 1.0, trigger: { afterId: 'p_limbs', offset: 0.15 } },
+                        { id: 'p_carry', type: 'photo', src: imgRobotCarry, slot: 'low-center', width: 500, height: 400, caption: 'carries equipment', trigger: { wordText: 'equipment', occurrence: 1 } },
+                        { id: 'pz_reveal1', type: 'panZoom', ...ZOOM_OUT, duration: 1.3, trigger: { afterId: 'p_carry', offset: 0.3 } },
+                        { id: 'hook2', type: 'sticker', text: 'THE WORST POSSIBLE\nDESIGN?', slot: 'banner-bot', size: 52, color: THEME.accent, bg: 'rgba(255,255,255,0.9)', trigger: { wordText: 'worst', occurrence: 1 } },
+                    ]),
+                ],
+            },
+
+            // ══ SCENE 2 — THE HUMAN BODY ═══════════════════════════════════
+            {
+                tts: { text: "Think about what a soldier's body actually has to do. It has to balance on two relatively small feet. It has to constantly correct its posture. It has hundreds of bones and joints. It has incredibly complicated hands. And all of this exists because evolution built humans for a general-purpose world. But a machine doesn't need to evolve. Engineers can design it specifically for the job. If you need something to carry enormous weight, give it wheels. If you need something to cross rough terrain, give it tracks. If you need something to fly over obstacles, give it wings or rotors. And if you need something to look through a window... you don't necessarily need to build a robot with a face.", voice: 'bm_george', pauseAfter: 0.4 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: THEME.paper },
+                    casingLayer('robots-s2', 'THE HUMAN BODY, RE-EXAMINED', [
+                        { id: 's2_title', type: 'sticker', text: 'BUILT FOR EVERYTHING.\nOPTIMIZED FOR NOTHING.', slot: 'banner-top', size: 46, trigger: { atSeconds: 0 } },
+                        { id: 'p_skel', type: 'photo', src: imgSkeleton, slot: 'mid-center', width: 520, height: 520, caption: 'hundreds of bones and joints', trigger: { wordText: 'joints', occurrence: 1 } },
+                        { id: 'pz_skel', type: 'panZoom', ...zoomTo('mid-center', 2.4), duration: 1.1, trigger: { afterId: 'p_skel', offset: 0.15 } },
+                        { id: 'lbl_evo', type: 'label', text: 'evolution builds for everything, engineering builds for one job', slot: 'banner-mid', size: 32, trigger: { wordText: 'evolve', occurrence: 1 } },
+                        { id: 'pz_out2', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'lbl_evo', offset: 0.3 } },
+                        { id: 'p_wheels', type: 'photo', src: imgWheels, slot: 'low-left', width: 340, height: 340, caption: 'wheels: weight', trigger: { wordText: 'wheels', occurrence: 1 } },
+                        { id: 'pz_wheels', type: 'panZoom', ...zoomTo('low-left', 2.5), duration: 0.9, trigger: { afterId: 'p_wheels', offset: 0.1 } },
+                        { id: 'p_tracks', type: 'photo', src: imgTracks, slot: 'low-center', width: 340, height: 340, caption: 'tracks: terrain', trigger: { wordText: 'tracks', occurrence: 1 } },
+                        { id: 'pz_tracks', type: 'panZoom', ...zoomTo('low-center', 2.5), duration: 0.9, trigger: { afterId: 'p_tracks', offset: 0.1 } },
+                        { id: 'p_rotor', type: 'photo', src: imgDroneRotor, slot: 'low-right', width: 340, height: 340, caption: 'rotors: flight', trigger: { wordText: 'rotors', occurrence: 1 } },
+                        { id: 'pz_rotor', type: 'panZoom', ...zoomTo('low-right', 2.5), duration: 0.9, trigger: { afterId: 'p_rotor', offset: 0.1 } },
+                        { id: 'p_cam', type: 'photo', src: imgCameraLens, slot: 'deep-center', width: 380, height: 300, caption: 'no face required', trigger: { wordText: 'face', occurrence: 1 } },
+                        { id: 'pz_out3', type: 'panZoom', ...ZOOM_OUT, duration: 1.3, trigger: { afterId: 'p_cam', offset: 0.3 } },
+                    ]),
+                ],
+            },
+
+            // ══ SCENE 3 — TWO LEGS ═════════════════════════════════════════
+            {
+                tts: { text: "Two-legged locomotion is especially interesting. Humans are remarkably good at walking. But we're good at it because our brains, nervous systems and muscles have spent millions of years evolving to solve the problem. A humanoid robot has to reproduce that stability mechanically. Every step involves sensors, motors, balance calculations and constant corrections. One bad step... one damaged joint... one slippery surface... and the machine can go from standing to several hundred kilograms of metal hitting the ground. A tracked vehicle doesn't have this problem. A wheeled robot doesn't have this problem. A drone certainly doesn't.", voice: 'bm_george', pauseAfter: 0.4 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: THEME.paper },
+                    casingLayer('robots-s3', 'THE BALANCE PROBLEM', [
+                        { id: 'p_bal', type: 'photo', src: imgBalance, slot: 'banner-top', width: 1080, height: 560, pinStyle: 'none', trigger: { atSeconds: 0.1 } },
+                        { id: 'pz_bal', type: 'panZoom', ...zoomTo('banner-top', 1.6), duration: 1.2, trigger: { afterId: 'p_bal', offset: 0.15 } },
+                        { id: 's3_title', type: 'sticker', text: 'STABILITY, MADE\nMECHANICAL', slot: 'banner-top', size: 50, bg: 'rgba(255,255,255,0.85)', trigger: { wordText: 'mechanically', occurrence: 1 } },
+                        { id: 'p_fall', type: 'photo', src: imgFallen, slot: 'mid-center', width: 560, height: 460, caption: 'one bad step', trigger: { wordText: 'ground', occurrence: 1 } },
+                        { id: 'pz_fall', type: 'panZoom', ...zoomTo('mid-center', 2.2), duration: 1.1, trigger: { afterId: 'p_fall', offset: 0.15 } },
+                        { id: 'pz_out4', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'p_fall', offset: 1.0 } },
+                        { id: 'p_track2', type: 'photo', src: imgTrackedTerrain, slot: 'low-left', width: 460, height: 400, caption: 'tracked: no problem', trigger: { wordText: 'tracked', occurrence: 1 } },
+                        { id: 'pz_track2', type: 'panZoom', ...zoomTo('low-left', 2.3), duration: 1.0, trigger: { afterId: 'p_track2', offset: 0.1 } },
+                        { id: 'p_drone2', type: 'photo', src: imgDroneFlying, slot: 'low-right', width: 460, height: 400, caption: 'a drone: certainly not', trigger: { wordText: 'certainly', occurrence: 1 } },
+                        { id: 'pz_drone2', type: 'panZoom', ...zoomTo('low-right', 2.3), duration: 1.0, trigger: { afterId: 'p_drone2', offset: 0.1 } },
+                        { id: 'pz_out5', type: 'panZoom', ...ZOOM_OUT, duration: 1.2, trigger: { afterId: 'p_drone2', offset: 0.4 } },
+                    ]),
+                ],
+            },
+
+            // ══ SCENE 4 — THE HANDS ════════════════════════════════════════
+            {
+                tts: { text: "Then there are the hands. Human hands are extraordinary. Five fingers. Multiple joints. Fine motor control. Tactile sensing. They're incredibly useful. But they're also incredibly complicated. And complicated mechanisms mean more things that can break. A military robot doesn't necessarily need a human hand. If its job is surveillance, give it cameras. If its job is carrying equipment, give it a cargo platform. If its job is manipulating something, build the arm specifically for that task. The more specialized the machine becomes... the less reason there is for it to look human.", voice: 'bm_george', pauseAfter: 0.4 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: THEME.paper },
+                    casingLayer('robots-s4', 'THE HANDS PROBLEM', [
+                        { id: 'p_hand', type: 'photo', src: imgHandFingers, slot: 'mid-left', width: 480, height: 480, caption: 'extraordinary, and fragile', trigger: { wordText: 'extraordinary', occurrence: 1 } },
+                        { id: 'pz_hand', type: 'panZoom', ...zoomTo('mid-left', 2.4), duration: 1.0, trigger: { afterId: 'p_hand', offset: 0.15 } },
+                        { id: 'p_claw', type: 'photo', src: imgRoboClaw, slot: 'mid-right', width: 480, height: 480, caption: 'more parts, more to break', trigger: { wordText: 'break', occurrence: 1 } },
+                        { id: 'pz_claw', type: 'panZoom', ...zoomTo('mid-right', 2.4), duration: 1.0, trigger: { afterId: 'p_claw', offset: 0.15 } },
+                        { id: 'arrow_hands', type: 'arrow', x1: 340, y1: 400, x2: 740, y2: 400, curve: 40, color: THEME.accent, trigger: { afterId: 'p_claw', offset: 0.3 } },
+                        { id: 'pz_out6', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: 'arrow_hands', offset: 0.4 } },
+                        { id: 'p_cam2', type: 'photo', src: imgSurveilCam, slot: 'low-left', width: 340, height: 340, caption: 'surveillance: cameras', trigger: { wordText: 'cameras', occurrence: 1 } },
+                        { id: 'pz_cam2', type: 'panZoom', ...zoomTo('low-left', 2.5), duration: 0.9, trigger: { afterId: 'p_cam2', offset: 0.1 } },
+                        { id: 'p_cargo', type: 'photo', src: imgCargoPlatform, slot: 'low-right', width: 340, height: 340, caption: 'carrying: a platform', trigger: { wordText: 'platform', occurrence: 1 } },
+                        { id: 'pz_cargo', type: 'panZoom', ...zoomTo('low-right', 2.5), duration: 0.9, trigger: { afterId: 'p_cargo', offset: 0.1 } },
+                        { id: 'lbl_spec', type: 'label', text: 'the more specialized, the less human it needs to look', slot: 'banner-low', size: 32, trigger: { wordText: 'specialized', occurrence: 1 } },
+                        { id: 'pz_out7', type: 'panZoom', ...ZOOM_OUT, duration: 1.2, trigger: { afterId: 'lbl_spec', offset: 0.3 } },
+                    ]),
+                ],
+            },
+
+            // ══ SCENE 5 — THE REAL ADVANTAGE ═══════════════════════════════
+            {
+                tts: { text: "This is the fundamental problem with humanoid military robots. They're trying to copy a machine that already exists. Us. But evolution optimized the human body for survival in an environment where there was no alternative. Engineering has no such limitation. An engineer can say: forget the legs. Forget the hands. Forget the human proportions. Build the machine that actually performs the mission. And that's exactly why the battlefield is likely to be filled with machines that look nothing like us.", voice: 'bm_george', pauseAfter: 0.4 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: THEME.paper },
+                    casingLayer('robots-s5', 'FORGET THE HUMAN SHAPE', [
+                        { id: 's5_title', type: 'sticker', text: '"FORGET THE LEGS.\nFORGET THE HANDS."', slot: 'banner-top', size: 48, trigger: { wordText: 'legs', occurrence: 2 } },
+                        { id: 'p_quad', type: 'photo', src: imgQuadruped, slot: 'mid-left', width: 480, height: 460, caption: 'built for the mission', trigger: { wordText: 'mission', occurrence: 1 } },
+                        { id: 'pz_quad', type: 'panZoom', ...zoomTo('mid-left', 2.3), duration: 1.0, trigger: { afterId: 'p_quad', offset: 0.15 } },
+                        { id: 'p_unusual', type: 'photo', src: imgUnusualRobot, slot: 'mid-right', width: 480, height: 460, caption: 'nothing like us', trigger: { wordText: 'nothing', occurrence: 1 } },
+                        { id: 'pz_unusual', type: 'panZoom', ...zoomTo('mid-right', 2.3), duration: 1.0, trigger: { afterId: 'p_unusual', offset: 0.15 } },
+                        { id: 'p_lab', type: 'photo', src: imgLabPrototype, slot: 'low-center', width: 520, height: 400, caption: '', trigger: { afterId: 'p_unusual', offset: 0.5 } },
+                        { id: 'pz_out8', type: 'panZoom', ...ZOOM_OUT, duration: 1.3, trigger: { afterId: 'p_lab', offset: 0.3 } },
+                    ]),
+                ],
+            },
+
+            // ══ ENDING ═════════════════════════════════════════════════════
+            {
+                tts: { text: "But even if engineers solve the walking problem... there's a much bigger problem waiting for humanoid robots. The battlefield itself. Because laboratories are clean. Battlefields aren't. Mud. Dust. Rain. Heat. Cold. Explosions. Debris. Damage. And machines that are impressive in a demonstration have to survive all of it. That's Part 2. Because the real question isn't: can a humanoid robot walk? The real question is: can it survive?", voice: 'bm_george', pauseAfter: 0.5 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#161616' },
+                    casingLayer('robots-ending', 'THE REAL QUESTION', [
+                        { id: 'p_clean', type: 'photo', src: imgCleanLab, slot: 'mid-left', width: 460, height: 460, caption: 'laboratories are clean', trigger: { wordText: 'clean', occurrence: 1 } },
+                        { id: 'pz_clean', type: 'panZoom', ...zoomTo('mid-left', 2.3), duration: 1.0, trigger: { afterId: 'p_clean', offset: 0.15 } },
+                        { id: 'p_mud', type: 'photo', src: imgMud, slot: 'mid-right', width: 460, height: 460, caption: 'battlefields aren\'t', trigger: { wordText: 'mud', occurrence: 1 } },
+                        { id: 'pz_mud', type: 'panZoom', ...zoomTo('mid-right', 2.3), duration: 1.0, trigger: { afterId: 'p_mud', offset: 0.15 } },
+                        { id: 'p_explo', type: 'photo', src: imgExplosion, slot: 'banner-mid', width: 1080, height: 500, pinStyle: 'none', trigger: { wordText: 'explosions', occurrence: 1 } },
+                        { id: 'pz_explo', type: 'panZoom', ...zoomTo('banner-mid', 1.5), duration: 1.1, trigger: { afterId: 'p_explo', offset: 0.15 } },
+                        { id: 'p_damaged', type: 'photo', src: imgDamagedEquip, slot: 'low-center', width: 480, height: 380, caption: 'damage', trigger: { wordText: 'damage', occurrence: 1 } },
+                        { id: 'pz_out9', type: 'panZoom', ...ZOOM_OUT, duration: 1.2, trigger: { afterId: 'p_damaged', offset: 0.3 } },
+                        { id: 'final_q', type: 'sticker', text: 'CAN IT\nSURVIVE?', slot: 'banner-bot', size: 78, color: '#ffffff', bg: 'rgba(0,0,0,0.7)', trigger: { wordText: 'survive', occurrence: 2 } },
+                        { id: 'circle_q', type: 'circle', target: 'final_q', color: THEME.accent, trigger: { afterId: 'final_q', offset: 0.3 } },
+                    ]),
+                ],
+            },
+
+        ],
+    };
+})();
