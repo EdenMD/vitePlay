@@ -1,139 +1,571 @@
-// =============================================================================
-// config.composition-7-rules.js — "7 Secret Rules for Great Compositions"
-// A short (~2 min) educational video using the new
-// ApexCasing/lesson-rules-explainer.html template.
-// =============================================================================
+// config.xuedizi-weapon.js
+// "The Blood-Dripper — Ancient China's Most Terrifying Weapon"
+// 4 scenes: Hook → The Weapon → The Legend → CTA
+// Full-canvas visuals, blur after 2.5 seconds, word triggers.
+// Voice: am_fenrir (deep, dramatic, playful).
+// ANALOGIES: "Bird cage of death", "Uber Eats but for heads", "Tinder swipe left = death".
 //
-// VOICE: af_kore — "Crisp, articulate — Education, tutorials, step-by-step
-// content" per Voices.md. Chosen specifically for "calm and easily
-// understandable": it's clearer/more measured than the bright/energetic
-// voices (af_bella, af_sky) and more naturally instructional than the
-// documentary-weight voices (am_adam, bm_george) used in other configs
-// this session.
+// ROBUST IMAGE FETCHING: Automatically retries indices 0→1→2→3→4 until success.
 //
-// STRUCTURE: one scene, one continuous narration. Only ONE rule card is
-// ever dominant on screen — each new rule's trigger fires both an `erase`
-// on the previous rule's elements AND the next `ruleCard`/progress update
-// at the same moment (multiple commands can share an identical trigger;
-// the engine fires everything that's ready each frame), so the board
-// reads like a clean slide deck advancing one card at a time rather than
-// stacking up clutter.
-//
-// A small progress pill ("RULE X OF 7") is created once and updated in
-// place via `replace` on every subsequent rule — see the template's
-// header doc for how 'replace' understands a progress-kind target.
-//
-// Two rules (4 and 6 — the ones that most benefit from a concrete example
-// rather than just being told the rule) get a `beforeAfter` card: a weak
-// example sentence struck through, then a stronger rewrite revealed in
-// green a beat later.
-//
-// CONTENT NOTE: the seven rules below are standard, widely-taught writing
-// pedagogy (outline first, hook the reader, one idea per paragraph, show
-// don't tell, vary sentence length, use strong verbs, proofread aloud) —
-// original phrasing, not sourced from or quoting any specific textbook or
-// curriculum.
-//
-// Run with:  VIDEO_CONFIG=config.composition-7-rules.js node engine-ci.js
+// RUN: VIDEO_CONFIG=config.xuedizi-weapon.js node engine-ci.js
 
-'use strict';
+const https = require('https');
+const http = require('http');
 
-const LESSON_SRC = './lesson-rules-explainer.html';
-const VOICE = 'af_kore';
+// ── Fetch image with fallback to higher indices ──────────────────────────
+async function fetchImage(baseQuery, maxAttempts = 5) {
+    const key = process.env.SERPAPI_API_KEY;
+    if (!key) {
+        console.warn('[XuediziConfig] SERPAPI_API_KEY not set — skipping photos');
+        return null;
+    }
 
-const NARRATION = "Great compositions don't happen by accident, they follow a few simple habits, and I'm going to show you seven of them right now. Rule one: plan before you write. Before your pen even touches the page, sketch a quick outline, a beginning, a middle, and an end. Five minutes of planning saves you from getting lost halfway through. Rule two: hook your reader immediately. Don't open by restating the topic. Open with a question, a surprising detail, or a moment of action, something that makes your reader want the next sentence. Rule three: one idea per paragraph. Give every paragraph a clear topic sentence, then support it with details. If a paragraph is doing two jobs, split it into two. Rule four: show, don't just tell. Instead of writing it was a nice day, try sunlight spilled through the window and warmed the old wooden floor. Specific details let your reader see it, not just read it. Rule five: vary your sentence length. A string of short sentences feels choppy. A string of long ones feels exhausting. Mix them, and your writing gets a natural rhythm. Rule six: use strong verbs. Instead of she was very happy, try she beamed. Cut words like very and really, and let one strong verb do the work of three weak ones. Rule seven: always proofread out loud. Reading your composition aloud catches run-on sentences, awkward phrasing, and mistakes your eyes skip right over on a silent read. Master these seven, and your compositions won't just be correct, they'll actually be worth reading.";
+    // Try different indices (0, 1, 2, 3, 4) until we get a working image
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+            const query = `${baseQuery}`;
+            const searchUrl =
+                `https://serpapi.com/search.json` +
+                `?engine=google_images` +
+                `&q=${encodeURIComponent(query)}` +
+                `&ijn=${attempt}&num=20&safe=active` +
+                `&api_key=${key}`;
 
-const commands = [];
+            console.log(`[XuediziConfig] Searching: "${query}" (attempt ${attempt + 1})`);
+            const data = await fetchJSON(searchUrl);
+            const results = (data?.images_results || []).filter(r => r.original && !r.original.startsWith('x-raw-image'));
+            if (!results.length) {
+                console.log(`[XuediziConfig] No results for attempt ${attempt + 1}`);
+                continue;
+            }
 
-// ── Rule 1 ────────────────────────────────────────────────────────────────
-commands.push(
-  { id: 'prog', type: 'progress', current: 1, total: 7, x: 540, y: 130, trigger: { wordText: 'plan', occurrence: 1 } },
-  { id: 'r1', type: 'ruleCard', number: 1, title: 'Plan Before You Write', tip: 'Sketch a quick outline: a beginning, a middle, and an end.', x: 540, y: 760, trigger: { afterId: 'prog', offset: 0 } },
-);
+            const pick = results[0];
+            if (!pick?.original) {
+                console.log(`[XuediziConfig] No original URL for attempt ${attempt + 1}`);
+                continue;
+            }
 
-// ── Rule 2 ────────────────────────────────────────────────────────────────
-commands.push(
-  { id: 'erase_r1', type: 'erase', target: 'r1', trigger: { wordText: 'hook', occurrence: 1 } },
-  { id: 'prog2', type: 'replace', target: 'prog', current: 2, trigger: { wordText: 'hook', occurrence: 1 } },
-  { id: 'r2', type: 'ruleCard', number: 2, title: 'Hook Your Reader Immediately', tip: "Open with a question or a surprise, not a restated topic.", x: 540, y: 760, trigger: { wordText: 'hook', occurrence: 1 } },
-);
+            console.log(`[XuediziConfig] Downloading: ${pick.original.slice(0, 70)}`);
+            const b64 = await urlToBase64(pick.original);
+            if (b64) {
+                const mime = b64.startsWith('/9j/') || b64.startsWith('iVBOR') ? 'image/jpeg' : 'image/jpeg';
+                console.log(`[XuediziConfig] ✅ Success on attempt ${attempt + 1}`);
+                return `data:${mime};base64,${b64}`;
+            }
+            console.log(`[XuediziConfig] ❌ Failed to download attempt ${attempt + 1}, retrying...`);
+        } catch (e) {
+            console.warn(`[XuediziConfig] Attempt ${attempt + 1} failed:`, e.message?.slice(0, 60));
+        }
+    }
 
-// ── Rule 3 ────────────────────────────────────────────────────────────────
-commands.push(
-  { id: 'erase_r2', type: 'erase', target: 'r2', trigger: { wordText: 'paragraph', occurrence: 1 } },
-  { id: 'prog3', type: 'replace', target: 'prog', current: 3, trigger: { wordText: 'paragraph', occurrence: 1 } },
-  { id: 'r3', type: 'ruleCard', number: 3, title: 'One Idea Per Paragraph', tip: 'A clear topic sentence, then supporting details. That\u2019s it.', x: 540, y: 760, trigger: { wordText: 'paragraph', occurrence: 1 } },
-  { id: 'i_split', type: 'icon', icon: 'mdi:call-split', x: 540, y: 1150, size: 90, bg: 'circle', color: '#2f6fed', trigger: { wordText: 'split', occurrence: 1 } },
-  { id: 'erase_split', type: 'erase', target: 'i_split', trigger: { wordText: 'show', occurrence: 2 } },
-);
+    console.warn(`[XuediziConfig] ❌ All ${maxAttempts} attempts failed for: "${baseQuery}"`);
+    return null;
+}
 
-// ── Rule 4 (with before/after example) ──────────────────────────────────
-commands.push(
-  { id: 'erase_r3', type: 'erase', target: 'r3', trigger: { wordText: 'show', occurrence: 2 } },
-  { id: 'prog4', type: 'replace', target: 'prog', current: 4, trigger: { wordText: 'show', occurrence: 2 } },
-  { id: 'r4', type: 'ruleCard', number: 4, title: "Show, Don't Just Tell", tip: 'Specific detail lets your reader see it, not just read it.', x: 540, y: 700, trigger: { wordText: 'show', occurrence: 2 } },
-  { id: 'ba4', type: 'beforeAfter', before: 'It was a nice day.', after: 'Sunlight spilled through the window and warmed the old wooden floor.', x: 540, y: 1150, width: 820, afterDelay: 1.0, trigger: { afterId: 'r4', offset: 0.6 } },
-);
+function fetchJSON(url) {
+    return new Promise((resolve, reject) => {
+        const lib = url.startsWith('https') ? https : http;
+        lib.get(url, { headers: { 'User-Agent': 'ApexEngine/2.0' } }, (res) => {
+            let raw = '';
+            res.on('data', d => raw += d);
+            res.on('end', () => { try { resolve(JSON.parse(raw)); } catch (e) { reject(e); } });
+        }).on('error', reject).setTimeout(15000, function () { this.destroy(); reject(new Error('Timeout')); });
+    });
+}
 
-// ── Rule 5 ────────────────────────────────────────────────────────────────
-commands.push(
-  { id: 'erase_r4', type: 'erase', target: 'r4', trigger: { wordText: 'vary', occurrence: 1 } },
-  { id: 'erase_ba4', type: 'erase', target: 'ba4', trigger: { wordText: 'vary', occurrence: 1 } },
-  { id: 'prog5', type: 'replace', target: 'prog', current: 5, trigger: { wordText: 'vary', occurrence: 1 } },
-  { id: 'r5', type: 'ruleCard', number: 5, title: 'Vary Your Sentence Length', tip: 'Mix short and long sentences for a natural rhythm.', x: 540, y: 760, trigger: { wordText: 'vary', occurrence: 1 } },
-  { id: 'i_choppy', type: 'icon', icon: 'mdi:waveform', x: 350, y: 1150, size: 90, bg: 'square', color: '#e2574c', trigger: { wordText: 'choppy', occurrence: 1 } },
-  { id: 'i_rhythm', type: 'icon', icon: 'mdi:wave', x: 730, y: 1150, size: 90, bg: 'square', color: '#1f9d55', trigger: { wordText: 'rhythm', occurrence: 1 } },
-  { id: 'erase_choppy', type: 'erase', target: 'i_choppy', trigger: { wordText: 'strong', occurrence: 1 } },
-  { id: 'erase_rhythm', type: 'erase', target: 'i_rhythm', trigger: { wordText: 'strong', occurrence: 1 } },
-);
+function urlToBase64(imageUrl) {
+    return new Promise((resolve) => {
+        const lib = imageUrl.startsWith('https') ? https : http;
+        const req = lib.get(imageUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ApexEngine/2.0)', 'Accept': 'image/*' },
+            timeout: 12000,
+        }, (res) => {
+            if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+                urlToBase64(res.headers.location).then(resolve);
+                return;
+            }
+            if (res.statusCode !== 200) { resolve(null); return; }
+            const chunks = [];
+            res.on('data', c => chunks.push(c));
+            res.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+        });
+        req.on('error', () => resolve(null));
+        req.on('timeout', () => { req.destroy(); resolve(null); });
+    });
+}
 
-// ── Rule 6 (with before/after example) ──────────────────────────────────
-commands.push(
-  { id: 'erase_r5', type: 'erase', target: 'r5', trigger: { wordText: 'strong', occurrence: 1 } },
-  { id: 'prog6', type: 'replace', target: 'prog', current: 6, trigger: { wordText: 'strong', occurrence: 1 } },
-  { id: 'r6', type: 'ruleCard', number: 6, title: 'Use Strong Verbs', tip: "Cut \u2018very\u2019 and \u2018really.\u2019 One strong verb beats three weak ones.", x: 540, y: 700, trigger: { wordText: 'strong', occurrence: 1 } },
-  { id: 'ba6', type: 'beforeAfter', before: 'She was very happy.', after: 'She beamed.', x: 540, y: 1150, width: 820, afterDelay: 1.0, trigger: { afterId: 'r6', offset: 0.6 } },
-);
+// ── Main async config ────────────────────────────────────────────────────
+module.exports = (async () => {
 
-// ── Rule 7 ────────────────────────────────────────────────────────────────
-commands.push(
-  { id: 'erase_r6', type: 'erase', target: 'r6', trigger: { wordText: 'proofread', occurrence: 1 } },
-  { id: 'erase_ba6', type: 'erase', target: 'ba6', trigger: { wordText: 'proofread', occurrence: 1 } },
-  { id: 'prog7', type: 'replace', target: 'prog', current: 7, trigger: { wordText: 'proofread', occurrence: 1 } },
-  { id: 'r7', type: 'ruleCard', number: 7, title: 'Always Proofread Out Loud', tip: 'Catches run-ons and awkward phrasing your eyes skip over.', x: 540, y: 760, trigger: { wordText: 'proofread', occurrence: 1 } },
-  { id: 'i_aloud', type: 'icon', icon: 'mdi:volume-high', x: 540, y: 1150, size: 90, bg: 'circle', color: '#2f6fed', trigger: { wordText: 'aloud', occurrence: 1 } },
-);
+    console.log('[XuediziConfig] Pre-fetching images from SerpAPI (with fallback)...');
 
-// ── Close ─────────────────────────────────────────────────────────────────
-commands.push(
-  { id: 'erase_r7', type: 'erase', target: 'r7', trigger: { wordText: 'reading', occurrence: 1 } },
-  { id: 'erase_aloud', type: 'erase', target: 'i_aloud', trigger: { wordText: 'reading', occurrence: 1 } },
-  { id: 'erase_prog', type: 'erase', target: 'prog', trigger: { wordText: 'reading', occurrence: 1 } },
-  { id: 'r_final', type: 'sticker', text: 'MASTER ALL 7', x: 540, y: 800, size: 62, rotate: -1, trigger: { wordText: 'reading', occurrence: 1 } },
-  { id: 'lbl_final', type: 'label', text: 'and your writing will actually be worth reading.', x: 540, y: 900, size: 30, trigger: { afterId: 'r_final', offset: 0.3 } },
-);
+    // ── Pre-fetch all images with fallback to higher indices ──────────────
+    const [
+        imgXuedizi,
+        imgXuediziArt,
+        imgXuediziModern,
+        imgAncientWeapons,
+        imgEmperor
+    ] = await Promise.all([
+        fetchImage('血滴子 ancient Chinese weapon', 0),
+        fetchImage('血滴子 historical drawing', 0),
+        fetchImage('血滴子 weapon replica modern', 0),
+        fetchImage('ancient Chinese weapons collection', 0),
+        fetchImage('Qing Dynasty emperor Yongzheng', 0),
+    ]);
 
-module.exports = {
-  output: {
-    title: 'composition-7-secret-rules', format: 'portrait', fps: 30, crf: 20, preset: 'medium',
-    bgMusicVol: 0.06, bgMusic: { mood: 'calm' },
-  },
-  defaults: { voice: VOICE, speed: 1.0, transition: 'fade' },
-  scenes: [
-    {
-      tts: { text: NARRATION, voice: VOICE, emotion: 'neutral' },
-      captions: {
-        style: 'highlight', position: 'bottom', fontSize: 52, color: '#1c2230',
-        highlightColor: '#2f6fed', bgColor: 'rgba(255,255,255,0.85)', wordsPerChunk: 3, maxWidth: 0.88,
-      },
-      layers: [
-        {
-          type: 'html-record', src: `${LESSON_SRC}?tag=composition-7-rules-v1`, audioSync: true,
-          waitFor: '[data-ready="1"]',  fps: 30,
-          viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-          data: { title: '7 SECRET RULES FOR GREAT COMPOSITIONS', commands },
+    console.log('[XuediziConfig] Images ready. Building config...');
+
+    const commonTheme = {
+        paper: '#2a1a1a',  // Dark red/paper background for ancient Chinese theme
+        ink: '#e8d5c4',
+        accent: '#c0392b',  // Blood red
+        accent2: '#d4a017', // Gold
+        shadow: 'rgba(0,0,0,0.7)',
+    };
+
+    return {
+        output: {
+            title: 'xuedizi-weapon',
+            format: 'portrait',
+            fps: 30,
+            crf: 23,
+            preset: 'medium',
         },
-      ],
-    },
-  ],
-};
+        defaults: {
+            voice: 'am_fenrir',  // Deep, dramatic, playful
+            transition: 'fade',
+            transitionDuration: 0.35,
+        },
+
+        scenes: [
+
+            // ── Scene 0 — HOOK ──────────────────────────────────────────────
+            {
+                tts: {
+                    text: "Imagine a weapon that looks like a bird cage. Now imagine that bird cage flies through the air, lands on someone's head, and... well, the head doesn't come back. That's the blood-dripper. The most terrifying weapon you've never heard of. Let's find out why.",
+                    voice: 'am_fenrir',
+                    pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#2a1a1a' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=xuedizi-hook',
+                        audioSync: true,
+                        cursor: false,
+                        waitFor: '[data-ready="1"]',
+                        fps: 30,
+                        viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: '血滴子 — BLOOD DRIPPER',
+                            theme: commonTheme,
+                            commands: [
+                                // ── FULL-CANVAS WEAPON PHOTO ──
+                                {
+                                    id: 'photo_hook',
+                                    type: 'photo',
+                                    src: imgXuedizi || imgXuediziArt,
+                                    slot: 'banner-top',
+                                    width: 1080,
+                                    height: 1920,
+                                    rotate: 0,
+                                    pinStyle: 'none',
+                                    caption: '',
+                                    trigger: { atSeconds: 0.1 },
+                                },
+                                // ── DARK OVERLAY ──
+                                {
+                                    id: 'overlay1',
+                                    type: 'sticker',
+                                    text: '',
+                                    slot: 'banner-top',
+                                    size: 1,
+                                    bg: 'rgba(0,0,0,0.55)',
+                                    color: 'transparent',
+                                    stroke: 'transparent',
+                                    rotate: 0,
+                                    trigger: { afterId: 'photo_hook', offset: 0.1 },
+                                },
+                                // ── HOOK TEXT ──
+                                {
+                                    id: 'hook_text',
+                                    type: 'sticker',
+                                    text: 'THE BLOOD-DRIPPER\nANCIENT CHINA\'S\nDEADLIEST SECRET',
+                                    slot: 'banner-mid',
+                                    size: 68,
+                                    color: '#e8d5c4',
+                                    stroke: '#2a1a1a',
+                                    bg: 'rgba(42,26,26,0.65)',
+                                    rotate: 0,
+                                    trigger: { wordText: 'blood-dripper', occurrence: 1 },
+                                },
+                                // ── FUNNY SUBTITLE ──
+                                {
+                                    id: 'sub_text',
+                                    type: 'label',
+                                    text: 'Bird cage of death 🐦💀',
+                                    slot: 'low-center',
+                                    size: 44,
+                                    color: '#c0392b',
+                                    rotate: 0,
+                                    trigger: { afterId: 'hook_text', offset: 0.4 },
+                                },
+                                // ── BLUR THE HOOK PHOTO after 2.5 seconds ──
+                                {
+                                    id: 'blur_hook',
+                                    type: 'blur',
+                                    target: 'photo_hook',
+                                    amount: 8,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_hook', offset: 2.5 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 1 — THE WEAPON ──────────────────────────────────────
+            {
+                tts: {
+                    text: "So what is it? The blood-dripper, or xue di zi, is a metal cage with blades on the inside. You throw it like a frisbee. It lands on someone's head. Then you pull the chain. The blades snap shut. The head comes off. Clean. Fast. Terrifying. It's basically Uber Eats but for heads.",
+                    voice: 'am_fenrir',
+                    pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#2a1a1a' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=xuedizi-s1',
+                        audioSync: true,
+                        cursor: false,
+                        waitFor: '[data-ready="1"]',
+                        fps: 30,
+                        viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: 'THE WEAPON',
+                            theme: commonTheme,
+                            commands: [
+                                // ── FULL-CANVAS WEAPON CLOSE-UP ──
+                                {
+                                    id: 'photo_weapon',
+                                    type: 'photo',
+                                    src: imgXuediziModern || imgXuedizi,
+                                    slot: 'banner-top',
+                                    width: 1080,
+                                    height: 1920,
+                                    rotate: 0,
+                                    pinStyle: 'none',
+                                    caption: '',
+                                    trigger: { atSeconds: 0.1 },
+                                },
+                                // ── OVERLAY ──
+                                {
+                                    id: 'overlay2',
+                                    type: 'sticker',
+                                    text: '',
+                                    slot: 'banner-top',
+                                    size: 1,
+                                    bg: 'rgba(0,0,0,0.45)',
+                                    color: 'transparent',
+                                    stroke: 'transparent',
+                                    rotate: 0,
+                                    trigger: { afterId: 'photo_weapon', offset: 0.1 },
+                                },
+                                // ── TITLE ──
+                                {
+                                    id: 's1',
+                                    type: 'sticker',
+                                    text: 'THE BLOOD-DRIPPER',
+                                    slot: 'banner-top',
+                                    size: 58,
+                                    color: '#e8d5c4',
+                                    stroke: '#2a1a1a',
+                                    bg: 'rgba(42,26,26,0.6)',
+                                    rotate: -1,
+                                    trigger: { wordText: 'blood-dripper', occurrence: 1 },
+                                },
+                                // ── "METAL CAGE WITH BLADES" ──
+                                {
+                                    id: 'stat1',
+                                    type: 'sticker',
+                                    text: 'METAL CAGE\n+ BLADES',
+                                    slot: 'mid-left',
+                                    size: 44,
+                                    color: '#c0392b',
+                                    stroke: '#2a1a1a',
+                                    bg: 'rgba(0,0,0,0.6)',
+                                    rotate: -2,
+                                    trigger: { wordText: 'cage', occurrence: 1 },
+                                },
+                                // ── "THROW IT LIKE A FRISBEE" ──
+                                {
+                                    id: 'analogy1',
+                                    type: 'sticker',
+                                    text: '= FRISBEE 🥏',
+                                    slot: 'mid-right',
+                                    size: 44,
+                                    color: '#d4a017',
+                                    stroke: '#2a1a1a',
+                                    bg: 'rgba(0,0,0,0.6)',
+                                    rotate: 2,
+                                    trigger: { wordText: 'frisbee', occurrence: 1 },
+                                },
+                                // ── "UBER EATS FOR HEADS" ──
+                                {
+                                    id: 'analogy2',
+                                    type: 'sticker',
+                                    text: 'UBER EATS\nBUT FOR HEADS 🍽️',
+                                    slot: 'low-center',
+                                    size: 44,
+                                    color: '#c0392b',
+                                    stroke: '#2a1a1a',
+                                    bg: 'rgba(0,0,0,0.65)',
+                                    rotate: 0,
+                                    trigger: { wordText: 'eats', occurrence: 1 },
+                                },
+                                // ── BLUR MAIN PHOTO after 2.5 seconds ──
+                                {
+                                    id: 'blur_weapon',
+                                    type: 'blur',
+                                    target: 'photo_weapon',
+                                    amount: 8,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_weapon', offset: 2.5 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 2 — THE LEGEND ──────────────────────────────────────
+            {
+                tts: {
+                    text: "Now here's where it gets wild. The blood-dripper is linked to the Qing Dynasty. Emperor Yongzheng supposedly had a team of assassins who used it. Imagine being an official in the 1700s and seeing a bird cage fly toward your face. That's not a weapon. That's a psychological horror film.",
+                    voice: 'am_fenrir',
+                    pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#2a1a1a' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=xuedizi-s2',
+                        audioSync: true,
+                        cursor: false,
+                        waitFor: '[data-ready="1"]',
+                        fps: 30,
+                        viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: 'THE LEGEND',
+                            theme: commonTheme,
+                            commands: [
+                                // ── FULL-CANVAS EMPEROR PHOTO ──
+                                {
+                                    id: 'photo_emperor',
+                                    type: 'photo',
+                                    src: imgEmperor || imgAncientWeapons,
+                                    slot: 'banner-top',
+                                    width: 1080,
+                                    height: 1920,
+                                    rotate: 0,
+                                    pinStyle: 'none',
+                                    caption: '',
+                                    trigger: { atSeconds: 0.1 },
+                                },
+                                // ── OVERLAY ──
+                                {
+                                    id: 'overlay3',
+                                    type: 'sticker',
+                                    text: '',
+                                    slot: 'banner-top',
+                                    size: 1,
+                                    bg: 'rgba(0,0,0,0.50)',
+                                    color: 'transparent',
+                                    stroke: 'transparent',
+                                    rotate: 0,
+                                    trigger: { afterId: 'photo_emperor', offset: 0.1 },
+                                },
+                                // ── TITLE ──
+                                {
+                                    id: 's4',
+                                    type: 'sticker',
+                                    text: 'QING DYNASTY\nSECRET WEAPON',
+                                    slot: 'banner-top',
+                                    size: 54,
+                                    color: '#e8d5c4',
+                                    stroke: '#2a1a1a',
+                                    bg: 'rgba(42,26,26,0.6)',
+                                    rotate: -1,
+                                    trigger: { wordText: 'qing', occurrence: 1 },
+                                },
+                                // ── "EMPEROR YONGZHENG" ──
+                                {
+                                    id: 'stat4',
+                                    type: 'sticker',
+                                    text: 'EMPEROR YONGZHENG\n👑',
+                                    slot: 'mid-left',
+                                    size: 44,
+                                    color: '#d4a017',
+                                    stroke: '#2a1a1a',
+                                    bg: 'rgba(0,0,0,0.6)',
+                                    rotate: -2,
+                                    trigger: { wordText: 'yongzheng', occurrence: 1 },
+                                },
+                                // ── "ASSASSIN SQUAD" ──
+                                {
+                                    id: 'stat5',
+                                    type: 'sticker',
+                                    text: 'ASSASSIN SQUAD\n🗡️',
+                                    slot: 'mid-right',
+                                    size: 44,
+                                    color: '#c0392b',
+                                    stroke: '#2a1a1a',
+                                    bg: 'rgba(0,0,0,0.6)',
+                                    rotate: 2,
+                                    trigger: { wordText: 'assassins', occurrence: 1 },
+                                },
+                                // ── FUNNY ANALOGY ──
+                                {
+                                    id: 'analogy3',
+                                    type: 'sticker',
+                                    text: '= PSYCHOLOGICAL\nHORROR FILM 😱',
+                                    slot: 'low-center',
+                                    size: 44,
+                                    color: '#c0392b',
+                                    stroke: '#2a1a1a',
+                                    bg: 'rgba(0,0,0,0.65)',
+                                    rotate: 0,
+                                    trigger: { wordText: 'horror', occurrence: 1 },
+                                },
+                                // ── BLUR MAIN PHOTO after 2.5 seconds ──
+                                {
+                                    id: 'blur_emperor',
+                                    type: 'blur',
+                                    target: 'photo_emperor',
+                                    amount: 8,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_emperor', offset: 2.5 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 3 — FINAL CTA ────────────────────────────────────────
+            {
+                tts: {
+                    text: "Was the blood-dripper real? Historians are still debating. But one thing's for sure: if you saw a bird cage flying toward your head in the 1700s, you weren't sticking around to ask questions. Subscribe for more ancient weird weapons. Next time: the flying claw.",
+                    voice: 'am_fenrir',
+                    pauseAfter: 0.2,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#2a1a1a' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=xuedizi-cta',
+                        audioSync: true,
+                        cursor: false,
+                        waitFor: '[data-ready="1"]',
+                        fps: 30,
+                        viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: 'SUBSCRIBE',
+                            theme: commonTheme,
+                            commands: [
+                                // ── FULL-CANVAS WEAPON COLLECTION ──
+                                {
+                                    id: 'photo_cta',
+                                    type: 'photo',
+                                    src: imgAncientWeapons || imgXuedizi,
+                                    slot: 'banner-top',
+                                    width: 1080,
+                                    height: 1920,
+                                    rotate: 0,
+                                    pinStyle: 'none',
+                                    caption: '',
+                                    trigger: { atSeconds: 0.1 },
+                                },
+                                // ── OVERLAY ──
+                                {
+                                    id: 'overlay4',
+                                    type: 'sticker',
+                                    text: '',
+                                    slot: 'banner-top',
+                                    size: 1,
+                                    bg: 'rgba(0,0,0,0.55)',
+                                    color: 'transparent',
+                                    stroke: 'transparent',
+                                    rotate: 0,
+                                    trigger: { afterId: 'photo_cta', offset: 0.1 },
+                                },
+                                // ── GIANT CTA ──
+                                {
+                                    id: 'cta_main',
+                                    type: 'sticker',
+                                    text: '🔔 SUBSCRIBE\nFOR MORE',
+                                    slot: 'banner-mid',
+                                    size: 80,
+                                    color: '#e8d5c4',
+                                    stroke: '#2a1a1a',
+                                    bg: 'rgba(42,26,26,0.75)',
+                                    rotate: 0,
+                                    trigger: { wordText: 'subscribe', occurrence: 1 },
+                                },
+                                // ── CIRCLE AROUND CTA ──
+                                {
+                                    id: 'sc_cta',
+                                    type: 'circle',
+                                    target: 'cta_main',
+                                    color: '#d4a017',
+                                    trigger: { afterId: 'cta_main', offset: 0.3 },
+                                },
+                                // ── BELL ICON ──
+                                {
+                                    id: 'bell_cta',
+                                    type: 'icon',
+                                    icon: 'mdi:bell-ring',
+                                    size: 120,
+                                    slot: 'low-center',
+                                    bg: 'circle',
+                                    color: '#d4a017',
+                                    trigger: { afterId: 'cta_main', offset: 0.2 },
+                                },
+                                // ── NEXT EPISODE TEASER ──
+                                {
+                                    id: 'next_episode',
+                                    type: 'label',
+                                    text: 'Next: The Flying Claw 🦅',
+                                    slot: 'bot-center',
+                                    size: 34,
+                                    color: '#c0392b',
+                                    rotate: 0,
+                                    trigger: { afterId: 'cta_main', offset: 0.5 },
+                                },
+                                // ── BLUR MAIN PHOTO after 2.5 seconds ──
+                                {
+                                    id: 'blur_cta',
+                                    type: 'blur',
+                                    target: 'photo_cta',
+                                    amount: 8,
+                                    duration: 0.6,
+                                    trigger: { afterId: 'photo_cta', offset: 2.5 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        ],
+    };
+})();
