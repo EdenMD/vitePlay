@@ -1,314 +1,264 @@
-// ============================================================
-//  APEX VIDEO ENGINE — DROP 20 — DUCK'S FOOT PISTOL
-//  Custom hook — no single credited inventor, not a combat
-//  weapon, so the standard gun hook doesn't apply.
-//  Target: ~45-50 seconds | 4 scenes | no bgMusic
-// ============================================================
-const config = {
+// config.examineai-marketing.js
+// ExamineAI (books.co.zw) — 45s portrait marketing/promo video
+//
+// This is the crossover piece: Apex Engine (video generation) selling
+// ExamineAI (the document studio + video-lesson platform), using two
+// content sources side by side —
+//   1. Real product footage: 'html-record' layers pointing straight at
+//      the LIVE site (https://books.co.zw/...), so the video shows the
+//      actual app, not a mockup.
+//   2. ApexCasing templates: 'glass-stat-card', 'data-table' and
+//      'social-post-mockup' from ./ApexCasing/, fed with ExamineAI's own
+//      numbers/copy via layer.data — no HTML edited, only data passed.
+//
+// Run with:  VIDEO_CONFIG=config.examineai-marketing.js node engine-ci.js
+// (or set the `config` input to this filename in the GitHub Actions workflow)
+
+module.exports = {
     output: {
-        title:      'drop-20-ducksfoot',
-        format:     'portrait',
-        fps:        30,
-        crf:        24,
-        preset:     'ultrafast',
-        cleanup:    true,
+        title:   'examineai-books-co-zw-promo',
+        format:  'portrait',
+        fps:     30,
+        crf:     23,
+        preset:  'medium',
+        bgMusic:    { mood: 'upbeat' },
+        bgMusicVol: 0.10,
         postProcess: {
             grain:            true,
-            grainStrength:    0.028,
+            grainStrength:    0.015,
             vignette:         true,
-            vignetteStrength: 0.58,
+            vignetteStrength: 0.30,
         },
     },
+
     defaults: {
-        voice:              'bm_george',
+        voice:              'af_bella',   // bright, clear — upbeat product energy
         transition:         'fade',
         transitionDuration: 0.3,
     },
+
     scenes: [
-
-        // ── SCENE 1 — CUSTOM HOOK (~10 sec) ──────────────────────
+        // ── Scene 1 — Hook ──────────────────────────────────────────
         {
             tts: {
-                text:       'One pistol was built to fire in every direction at once — so inaccurate it couldn\'t hit a single specific target. And that was exactly the point.',
-                speed:      0.9,
-                emotion:    'dramatic',
-                pauseAfter: 0.4,
+                text: "Stuck bouncing between ten different sites for past papers, book PDFs, and video lessons? There's one place for all of it now.",
+                voice: 'af_bella',
+                emotion: 'excited',
+                pauseAfter: 0.3,
             },
-            transition:         'zoom-cut',
-            transitionDuration: 0.2,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
+            captions: { style: 'pop', position: 'bottom', wordsPerChunk: 3, fontSize: 60 },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'ducks foot pistol antique',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
-                    x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'zoom-in',
-                    kenBurnsAmount: 0.13,
+                    type: 'gradient', gradientType: 'radial',
+                    colors: ['#1a2a6c', '#0d1230', '#050614'],
+                    vignette: true,
                 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
                 {
-                    type:       'text',
-                    text:       'THE GUN\nSHAPED LIKE\nA BIRD\'S FOOT',
-                    x:          540,
-                    y:          700,
-                    fontSize:   74,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    fontWeight: 'bold',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   940,
-                    lineHeight: 1.1,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 6,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   36,
-                    animation:  'pop',
-                    animDur:    0.4,
-                    startT:     0.2,
-                    hookLayer:  true,
+                    type: 'text', text: 'ONE APP.\nEVERY SUBJECT.', x: 540, y: 320,
+                    fontSize: 78, fontFamily: 'Arial Black, sans-serif',
+                    color: '#F8FAFC', align: 'center', hookLayer: true,
+                    stroke: true, strokeColor: '#000', strokeWidth: 5,
+                    animation: 'pop', startT: 0.1, animDur: 0.5,
+                },
+                {
+                    type: 'avatar', x: 540, y: 1400, size: 260,
+                    expression: 'excited', motion: 'slide-in-bottom', enterDur: 0.5,
+                    accentColor: '#2563eb', name: 'ExamineAI', nameColor: '#2563eb',
                 },
             ],
         },
 
-        // ── SCENE 2 — WHO CARRIED IT (~10 sec) ───────────────────
+        // ── Scene 2 — Live product tour: the home dashboard ─────────
         {
             tts: {
-                text:       'No single inventor claims this one. It was built for ship captains during Britain\'s most dangerous era at sea — when a captain could be outnumbered fifty to one by his own crew, and mutiny was a constant, real threat.',
-                speed:      0.9,
-                emotion:    'dramatic',
-                pauseAfter: 0.4,
+                text: "This is ExamineAI, live now at books dot co dot zed dot double-u. It's a library, an AI agent, and a template studio — all in one login.",
+                voice: 'af_bella',
+                pauseAfter: 0.3,
             },
-            transition:         'wipe-left',
-            transitionDuration: 0.28,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
+            captions: { style: 'fade', position: 'bottom', wordsPerChunk: 3, fontSize: 56 },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          '18th century naval ship deck',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
+                    type: 'html-record',
+                    src: 'https://books.co.zw/',
+                    duration: 8,
+                    fps: 30,
+                    viewport: { width: 1080, height: 1920 },
                     x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'pan-up',
-                    kenBurnsAmount: 0.2,
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.55)' },
-                {
-                    type:       'split-reveal',
-                    text:       'ONE MAN.\nA MUTINOUS CREW.',
-                    x:          540,
-                    y:          420,
-                    fontSize:   62,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    splitGap:   8,
-                    animDur:    0.4,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   30,
-                    startT:     0.2,
+                    fit: 'cover',
+                    waitFor: '.choice-grid',
+                    waitMs: 600,
+                    cursor: { style: 'ring', color: '#2563eb', size: 34, glow: true },
+                    interactions: [
+                        { at: 1.2, action: 'scroll', y: 500, speed: 100, easing: 'ease-in-out' },
+                        { at: 3.5, action: 'scroll', y: 950, speed: 100, easing: 'ease-in-out' },
+                        { at: 6.0, action: 'scroll', y: 300, speed: 120, easing: 'ease-in-out' },
+                    ],
                 },
                 {
-                    type:       'text',
-                    text:       'Fifty to one odds,\nevery voyage.',
-                    x:          540,
-                    y:          640,
-                    fontSize:   48,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   860,
-                    lineHeight: 1.3,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 4,
-                    animation:  'fade',
-                    animDur:    0.35,
-                    startT:     0.6,
+                    type: 'text', text: 'books.co.zw', x: 540, y: 1740,
+                    fontSize: 40, fontFamily: 'Manrope, Arial, sans-serif',
+                    color: '#F8FAFC', align: 'center',
+                    stroke: true, strokeColor: '#000', strokeWidth: 4,
+                    animation: 'fade', startT: 0.2, animDur: 0.4,
                 },
             ],
         },
 
-        // ── SCENE 3 — DESIGN PHILOSOPHY (~15 sec) ────────────────
+        // ── Scene 3 — Quick stat card (ApexCasing) ───────────────────
         {
             tts: {
-                text:       'Four barrels, splayed outward like a duck\'s webbed foot, all wired to one firing pan. Pull the trigger once, and every barrel fires simultaneously in a spread — a wall of lead across an entire crowd. Loading it, though, meant unscrewing all four barrels one at a time, packing each by hand, then shaking the whole pistol to force priming powder into every vent.',
-                speed:      0.9,
-                emotion:    'dramatic',
-                pauseAfter: 0.5,
+                text: 'Three tools built for students, in one place.',
+                voice: 'af_bella', emotion: 'happy', pauseAfter: 0.2,
             },
-            transition:         'glitch',
-            transitionDuration: 0.26,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
+            captions: false,
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'flintlock pistol mechanism antique',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     0,
+                    type: 'html-record',
+                    src: './ApexCasing/glass-stat-card.html?tag=examineai-3in1',
+                    duration: 3.5,
+                    fps: 30,
+                    viewport: { width: 1080, height: 1920 },
                     x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'drift',
-                    kenBurnsAmount: 0.16,
-                },
-                { type: 'overlay', color: 'rgba(0,0,0,0.52)' },
-                {
-                    type:       'text',
-                    text:       'ONE TRIGGER.\nFOUR BARRELS.\nONE SPREAD.',
-                    x:          540,
-                    y:          650,
-                    fontSize:   72,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   900,
-                    lineHeight: 1.15,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   24,
-                    animation:  'pop',
-                    animDur:    0.35,
-                    startT:     0.3,
-                },
-                {
-                    type:       'text',
-                    text:       'Reloading took several\nagonizing minutes.',
-                    x:          540,
-                    y:          1000,
-                    fontSize:   44,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   900,
-                    lineHeight: 1.25,
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 4,
-                    animation:  'fade',
-                    animDur:    0.35,
-                    startT:     1.8,
+                    fit: 'cover',
+                    waitFor: '[data-ready="1"]',
+                    data: {
+                        value: '3-in-1',
+                        caption: 'Library + AI Agent + Templates',
+                        gradientA: '#2563eb',
+                        gradientB: '#7c5cff',
+                    },
                 },
             ],
         },
 
-        // ── SCENE 4 — PUNCH + CTA (~13 sec) ──────────────────────
+        // ── Scene 4 — Live product tour: Video Lessons ───────────────
+        // (the video-lesson sector — the specific crossover point requested)
         {
             tts: {
-                text:       'In 1797, at the height of this pistol\'s popularity, the entire British fleet mutinied anyway — twice, in the same year. The weapon built to prevent the exact disaster it was named for couldn\'t stop it. It kept selling anyway, carried by bank guards and prison wardens for another century — feared for how it looked, more than what it could actually hit.',
-                speed:      0.9,
-                emotion:    'dramatic',
-                pauseAfter: 0.7,
+                text: "Need a video lesson instead of a wall of text? Video Lessons are organised by subject and topic — open a folder, tap a lesson, and it plays instantly.",
+                voice: 'af_bella', pauseAfter: 0.3,
             },
-            transition:         'zoom-cut',
-            transitionDuration: 0.2,
-            captions: {
-                style:          'highlight',
-                position:       'bottom',
-                fontSize:       60,
-                color:          '#ffffff',
-                highlightColor: '#f5c518',
-                wordsPerChunk:  3,
-                strokeColor:    'rgba(0,0,0,1)',
-                strokeWidth:    7,
-            },
+            captions: { style: 'fade', position: 'bottom', wordsPerChunk: 3, fontSize: 56 },
             layers: [
                 {
-                    type:           'stock-image',
-                    query:          'ducks foot pistol antique',
-                    source:         'serpapi',
-                    orientation:    'portrait',
-                    imageIndex:     1,
+                    type: 'html-record',
+                    src: 'https://books.co.zw/views/video-lessons.html',
+                    duration: 8,
+                    fps: 30,
+                    viewport: { width: 1080, height: 1920 },
                     x: 0, y: 0, width: 1080, height: 1920,
-                    fit:            'cover',
-                    kenBurns:       'zoom-out',
-                    kenBurnsAmount: 0.16,
+                    fit: 'cover',
+                    waitFor: '#vid-list',
+                    waitMs: 700,
+                    cursor: { style: 'ring', color: '#f5c518', size: 34, glow: true },
+                    interactions: [
+                        { at: 1.5, action: 'scroll', y: 400, speed: 90, easing: 'ease-in-out' },
+                        { at: 4.0, action: 'scroll', y: 800, speed: 100, easing: 'ease-in-out' },
+                        { at: 6.5, action: 'scroll', y: 200, speed: 120, easing: 'ease-in-out' },
+                    ],
                 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.58)' },
+            ],
+        },
+
+        // ── Scene 5 — Before / After comparison (ApexCasing) ─────────
+        {
+            tts: {
+                text: "Before, finding the right past paper or lesson meant hours of searching. With ExamineAI, it's instant — and your assignments and CVs get generated for you.",
+                voice: 'af_bella', pauseAfter: 0.3,
+            },
+            captions: false,
+            layers: [
                 {
-                    type:       'text',
-                    text:       'BUILT TO STOP\nMUTINY.\nFAILED TWICE.',
-                    x:          540,
-                    y:          420,
-                    fontSize:   62,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-                    color:      '#ffffff',
-                    align:      'center',
-                    maxWidth:   940,
-                    lineHeight: 1.2,
-                    gradient:   ['#f5c518', '#ff8c00'],
-                    stroke:     true,
-                    strokeColor:'#000000',
-                    strokeWidth: 5,
-                    glow:       true,
-                    glowColor:  '#f5c518',
-                    glowBlur:   26,
-                    animation:  'slide-up',
-                    animDur:    0.34,
-                    startT:     0.3,
+                    type: 'html-record',
+                    src: './ApexCasing/data-table.html?tag=examineai-before-after',
+                    duration: 7,
+                    fps: 30,
+                    viewport: { width: 1080, height: 1920 },
+                    x: 0, y: 0, width: 1080, height: 1920,
+                    fit: 'cover',
+                    waitFor: '[data-ready="1"]',
+                    data: {
+                        title: 'BEFORE vs WITH EXAMINEAI',
+                        columns: ['Before', 'ExamineAI'],
+                        highlightColumn: 1,
+                        rows: [
+                            { label: 'Past papers & books', values: ['Hours of searching', 'check'] },
+                            { label: 'Video lessons by topic', values: ['Scattered links', 'check'] },
+                            { label: 'Assignments & CVs', values: ['From scratch', 'check'] },
+                        ],
+                    },
+                },
+            ],
+        },
+
+        // ── Scene 6 — Social proof (ApexCasing) ───────────────────────
+        // NOTE: placeholder testimonial — swap in a real student quote
+        // before publishing.
+        {
+            tts: {
+                text: 'Students are already using it to study smarter, not longer.',
+                voice: 'af_bella', emotion: 'happy', pauseAfter: 0.2,
+            },
+            captions: false,
+            layers: [
+                {
+                    type: 'gradient', gradientType: 'linear',
+                    colors: ['#0d1230', '#050614'],
                 },
                 {
-                    type:        'notification-card',
-                    x:           540,
-                    y:           1370,
-                    width:       860,
-                    title:       '🔔 Subscribe for more',
-                    body:        'Gun history most people never hear',
-                    bgColor:     'rgba(245,197,24,0.14)',
-                    borderColor: '#f5c518',
-                    titleColor:  '#f5c518',
-                    bodyColor:   '#ffffff',
-                    fontSize:    34,
-                    bodySize:    27,
-                    borderRadius:18,
-                    animation:   'slide-up',
-                    animDur:     0.35,
-                    startT:      1.6,
+                    type: 'html-record',
+                    src: './ApexCasing/social-post-mockup.html?tag=examineai-testimonial',
+                    duration: 4.5,
+                    fps: 30,
+                    viewport: { width: 1080, height: 1920 },
+                    x: 0, y: 300, width: 1080, height: 1320,
+                    fit: 'contain',
+                    waitFor: '[data-ready="1"]',
+                    data: {
+                        name: 'Tinotenda M.',
+                        handle: '@tino_studies',
+                        verified: false,
+                        avatarInitials: 'TM',
+                        avatarColor: '#2563eb',
+                        text: "Found my whole Combined Science paper AND the video lesson for the topic I was stuck on, same app. books.co.zw is actually useful.",
+                        timestamp: '3h',
+                        likes: '214', reposts: '38', replies: '12',
+                    },
+                },
+            ],
+        },
+
+        // ── Scene 7 — CTA / outro ─────────────────────────────────────
+        {
+            tts: {
+                text: 'Books dot co dot zed dot double-u. Bookmark it — your whole study toolkit lives there now.',
+                voice: 'af_bella', emotion: 'excited', pauseAfter: 0.2,
+            },
+            captions: { style: 'pop', position: 'bottom', wordsPerChunk: 3, fontSize: 58 },
+            layers: [
+                {
+                    type: 'gradient', gradientType: 'radial',
+                    colors: ['#2563eb', '#0d1230', '#050614'],
+                    vignette: true,
+                },
+                {
+                    type: 'text', text: 'books.co.zw', x: 540, y: 780,
+                    fontSize: 84, fontFamily: 'Arial Black, sans-serif',
+                    color: '#F8FAFC', align: 'center', hookLayer: true,
+                    stroke: true, strokeColor: '#000', strokeWidth: 5,
+                    animation: 'pop', startT: 0.1, animDur: 0.5,
+                },
+                {
+                    type: 'text', text: 'Library · AI Agent · Templates · Video Lessons', x: 540, y: 900,
+                    fontSize: 34, color: 'rgba(255,255,255,0.85)', align: 'center',
+                    animation: 'fade', startT: 0.4, animDur: 0.4,
+                },
+                {
+                    type: 'avatar', x: 540, y: 1350, size: 280,
+                    expression: 'excited', motion: 'bounce', enterDur: 0.5,
+                    accentColor: '#f5c518', name: 'ExamineAI', nameColor: '#f5c518',
                 },
             ],
         },
     ],
 };
-
-module.exports = config;
