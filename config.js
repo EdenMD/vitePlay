@@ -1,113 +1,551 @@
-// config.active-recall-study-method.js
-// "The Study Method Top Zimbabwean Students Swear By" (Active Recall)
-// Same series style as the CV/interview videos: paper-sticker casing,
-// icon/sticker/draw-driven, no photo fetching, bm_lewis voice, same
-// THEME for brand consistency.
+// config.top3-expensive-guns.js  — v2 (pre-fetch all images)
+// Uses the new slot system (no overlap) and photo commands with pre‑fetched
+// base64 images. All SerpAPI calls happen here, not inside the template.
+// Voice: am_adam. No beat/bgMusic.
 //
-// Run with:  VIDEO_CONFIG=config.active-recall-study-method.js node engine-ci.js
+// SLOT GRID REMINDER (3 cols × 6 rows):
+//   top-left   top-center   top-right
+//   mid-left   mid-center   mid-right
+//   low-left   low-center   low-right
+//   bot-left   bot-center   bot-right
+//   deep-left  deep-center  deep-right
+//   floor-left floor-center floor-right
+//   + banner-top / banner-mid / banner-low / banner-bot (full-width)
+//
+// Each element owns one slot. Clash = auto-bumped to nearest free slot.
+//
+// RUN: VIDEO_CONFIG=config.top3-expensive-guns.js node engine-ci.js
 
-const THEME = { paper: '#f7f5ef', ink: '#1c1c1e', accent: '#e74c3c', accent2: '#27ae60', shadow: 'rgba(20,16,10,0.3)' };
-const CASING = './ApexCasing/paper-sticker-explainer.html';
+const https = require('https');
+const http = require('http');
 
-function casingLayer(tag, title, commands) {
-    return {
-        type: 'html-record', src: `${CASING}?tag=${tag}`, audioSync: true, cursor: false,
-        waitFor: '[data-ready="1"]', fps: 30,
-        viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-        data: { title, theme: THEME, commands },
-    };
+// ── Fetch one image from SerpAPI, return as base64 data URI or null ──
+async function fetchImage(query, index = 0) {
+    const key = process.env.SERPAPI_API_KEY;
+    if (!key) {
+        console.warn('[GunsConfig] SERPAPI_API_KEY not set — skipping photo:', query);
+        return null;
+    }
+
+    try {
+        const searchUrl =
+            `https://serpapi.com/search.json` +
+            `?engine=google_images` +
+            `&q=${encodeURIComponent(query)}` +
+            `&ijn=0&num=30&safe=active` +
+            `&api_key=${key}`;
+
+        const data = await fetchJSON(searchUrl);
+        const results = (data?.images_results || []).filter(r => r.original && !r.original.startsWith('x-raw-image'));
+        if (!results.length) return null;
+
+        const pick = results[index % results.length];
+        if (!pick?.original) return null;
+
+        console.log(`[GunsConfig] Downloading: ${pick.original.slice(0, 70)}`);
+        const b64 = await urlToBase64(pick.original);
+        if (!b64) return null;
+
+        const mime = b64.startsWith('/9j/') || b64.startsWith('iVBOR') ? 'image/jpeg' : 'image/jpeg';
+        return `data:${mime};base64,${b64}`;
+    } catch (e) {
+        console.warn(`[GunsConfig] fetchImage failed for "${query}":`, e.message?.slice(0, 80));
+        return null;
+    }
 }
 
-module.exports = {
-    output: { title: 'active-recall-study-method', format: 'portrait', fps: 30, crf: 22, preset: 'medium' },
-    defaults: { voice: 'bm_lewis', transition: 'fade', transitionDuration: 0.3 },
+function fetchJSON(url) {
+    return new Promise((resolve, reject) => {
+        const lib = url.startsWith('https') ? https : http;
+        lib.get(url, { headers: { 'User-Agent': 'ApexEngine/2.0' } }, (res) => {
+            let raw = '';
+            res.on('data', d => raw += d);
+            res.on('end', () => { try { resolve(JSON.parse(raw)); } catch (e) { reject(e); } });
+        }).on('error', reject).setTimeout(15000, function () { this.destroy(); reject(new Error('Timeout')); });
+    });
+}
 
-    scenes: [
+function urlToBase64(imageUrl) {
+    return new Promise((resolve) => {
+        const lib = imageUrl.startsWith('https') ? https : http;
+        const req = lib.get(imageUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ApexEngine/2.0)', 'Accept': 'image/*' },
+            timeout: 12000,
+        }, (res) => {
+            if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+                urlToBase64(res.headers.location).then(resolve);
+                return;
+            }
+            if (res.statusCode !== 200) { resolve(null); return; }
+            const chunks = [];
+            res.on('data', c => chunks.push(c));
+            res.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+        });
+        req.on('error', () => resolve(null));
+        req.on('timeout', () => { req.destroy(); resolve(null); });
+    });
+}
 
-        // ══ HOOK ═══════════════════════════════════════════════════════
-        {
-            tts: { text: "The study method top Zimbabwean students swear by.", voice: 'bm_lewis', pauseAfter: 0.4 },
-            captions: false,
-            layers: [
-                { type: 'background', color: THEME.paper },
-                casingLayer('recall-hook', 'THE STUDY METHOD', [
-                    { id: 'hook_icon', type: 'icon', icon: 'mdi:head-cog-outline', slot: 'banner-top', size: 150, bg: 'circle', color: THEME.accent2, trigger: { atSeconds: 0.1 } },
-                    { id: 'hook_title', type: 'sticker', text: 'THE METHOD TOP\nSTUDENTS SWEAR BY', slot: 'banner-mid', size: 54, trigger: { afterId: 'hook_icon', offset: 0.3 } },
-                    { id: 'hook_pz', type: 'panZoom', toScale: 1.15, toX: 0, toY: -60, duration: 1.0, trigger: { afterId: 'hook_title', offset: 0.3 } },
-                ]),
-            ],
+// ── Main async config ────────────────────────────────────────────────────
+module.exports = (async () => {
+
+    console.log('[GunsConfig] Pre-fetching images from SerpAPI...');
+
+    // Pre‑fetch all unique images (reused across scenes)
+    const [
+        imgPhalanx,
+        imgVulcan,
+        imgGau8,
+        imgLambo,
+        imgFerrari,
+        imgJet,
+        imgF16,
+        imgF22,
+        imgA10,
+    ] = await Promise.all([
+        fetchImage('Phalanx CIWS weapon system ship', 0),
+        fetchImage('M61 Vulcan Gatling cannon 20mm', 0),
+        fetchImage('A-10 Warthog GAU-8 Avenger cannon firing', 0),
+        fetchImage('Lamborghini Huracan supercar yellow', 0),
+        fetchImage('Ferrari 488 red sports car', 0),
+        fetchImage('luxury private jet aircraft Gulfstream', 0),
+        fetchImage('F-16 Fighting Falcon fighter jet', 0),
+        fetchImage('F-22 Raptor stealth fighter jet', 0),
+        fetchImage('A-10 Warthog attack aircraft', 0),
+    ]);
+
+    console.log('[GunsConfig] Images ready. Building config...');
+
+    const commonTheme = {
+        paper: '#e8dfcd', ink: '#1a1a1a',
+        accent: '#a93226', accent2: '#1a5276',
+        shadow: 'rgba(20,16,10,0.38)',
+    };
+
+    return {
+        output: {
+            title: 'top3-expensive-guns',
+            format: 'portrait',
+            fps: 30, crf: 23, preset: 'medium',
         },
+        defaults: { voice: 'am_adam', transition: 'fade', transitionDuration: 0.35 },
 
-        // ══ ACTIVE RECALL vs REREADING ═════════════════════════════════
-        {
-            tts: { text: "It's called active recall, and it beats rereading notes every time.", voice: 'bm_lewis', pauseAfter: 0.3 },
-            captions: false,
-            layers: [
-                { type: 'background', color: THEME.paper },
-                casingLayer('recall-s1', 'ACTIVE RECALL', [
-                    { id: 'reread_icon', type: 'icon', icon: 'mdi:book-open-page-variant-outline', slot: 'mid-left', size: 180, color: THEME.accent, trigger: { wordText: 'rereading', occurrence: 1 } },
-                    { id: 'reread_x', type: 'icon', icon: 'mdi:close-circle', slot: 'top-left', size: 70, color: THEME.accent, trigger: { afterId: 'reread_icon', offset: 0.1 } },
-                    { id: 'arrow1', type: 'arrow', x1: 260, y1: 560, x2: 780, y2: 560, curve: -30, color: THEME.ink, trigger: { wordText: 'active', occurrence: 1 } },
-                    { id: 'recall_icon', type: 'icon', icon: 'mdi:head-lightbulb-outline', slot: 'mid-right', size: 190, bg: 'circle', color: THEME.accent2, trigger: { afterId: 'arrow1', offset: 0.15 } },
-                    { id: 'recall_check', type: 'icon', icon: 'mdi:check-circle', slot: 'top-right', size: 70, color: THEME.accent2, trigger: { afterId: 'recall_icon', offset: 0.1 } },
-                    { id: 'label1', type: 'label', text: 'active recall beats\nrereading, every time', slot: 'low-center', size: 34, trigger: { wordText: 'time', occurrence: 1 } },
-                    { id: 'pz_out1', type: 'panZoom', toScale: 1, toX: 0, toY: 0, duration: 1.0, trigger: { afterId: 'label1', offset: 0.3 } },
-                ]),
-            ],
-        },
+        scenes: [
 
-        // ══ THE TECHNIQUE — close the book, write, check the gap ════════
-        {
-            tts: { text: "Instead of reading a chapter over and over, close the book and try to write down everything you remember. Then check what you missed. That gap is exactly what you need to study next.", voice: 'bm_lewis', pauseAfter: 0.4 },
-            captions: false,
-            layers: [
-                { type: 'background', color: THEME.paper },
-                casingLayer('recall-s2', 'HOW IT WORKS', [
-                    { id: 'book_icon', type: 'icon', icon: 'mdi:book-closed-variant', slot: 'mid-left', size: 180, color: THEME.ink, trigger: { wordText: 'book', occurrence: 1 } },
-                    { id: 'pz1', type: 'panZoom', toScale: 1.4, toX: -30, toY: -30, duration: 0.9, trigger: { afterId: 'book_icon', offset: 0.15 } },
-                    { id: 'write_icon', type: 'icon', icon: 'mdi:pencil-outline', slot: 'mid-right', size: 180, bg: 'circle', color: THEME.accent2, trigger: { wordText: 'write', occurrence: 1 } },
-                    { id: 'pz2', type: 'panZoom', toScale: 1.4, toX: 30, toY: -30, duration: 0.9, trigger: { afterId: 'write_icon', offset: 0.15 } },
-                    { id: 'gap_icon', type: 'icon', icon: 'mdi:magnify-scan', slot: 'low-center', size: 170, color: THEME.accent, trigger: { wordText: 'missed', occurrence: 1 } },
-                    { id: 'gap_label', type: 'label', text: 'the gap is exactly what\nyou need to study next', slot: 'banner-low', size: 32, trigger: { afterId: 'gap_icon', offset: 0.2 } },
-                    { id: 'pz_out2', type: 'panZoom', toScale: 1, toX: 0, toY: 0, duration: 1.1, trigger: { afterId: 'gap_label', offset: 0.3 } },
-                ]),
-            ],
-        },
+            // ── Scene 0 — HOOK ────────────────────────────────────────────
+            {
+                tts: {
+                    text: "What if I told you firing these guns for one minute costs more than a Lamborghini, a Ferrari, or even a private jet? Here are the top three most expensive weapons to fire per minute.",
+                    voice: 'am_adam', pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#e8dfcd' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-hook',
+                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]',
+                        fps: 30, viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: 'MONEY VS FIREPOWER',
+                            theme: commonTheme,
+                            commands: [
+                                // Hook sticker — full-width banner top
+                                {
+                                    id: 'hook1', type: 'sticker',
+                                    text: 'COSTS MORE THAN\nA SUPERCAR?',
+                                    slot: 'banner-top', size: 70,
+                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    rotate: -1, trigger: { atSeconds: 0.1 },
+                                },
+                                // Lamborghini image — mid left, fires when narrator says it
+                                {
+                                    id: 'img_lambo', type: 'photo',
+                                    src: imgLambo,
+                                    slot: 'mid-left', width: 320, height: 220,
+                                    caption: 'LAMBORGHINI', pinStyle: 'tape',
+                                    trigger: { wordText: 'lamborghini', occurrence: 1 },
+                                },
+                                // Ferrari image — mid center
+                                {
+                                    id: 'img_ferrari', type: 'photo',
+                                    src: imgFerrari,
+                                    slot: 'mid-center', width: 320, height: 220,
+                                    caption: 'FERRARI', pinStyle: 'tape',
+                                    trigger: { wordText: 'ferrari', occurrence: 1 },
+                                },
+                                // Private jet image — mid right
+                                {
+                                    id: 'img_jet', type: 'photo',
+                                    src: imgJet,
+                                    slot: 'mid-right', width: 320, height: 220,
+                                    caption: 'PRIVATE JET', pinStyle: 'tape',
+                                    trigger: { wordText: 'private', occurrence: 1 },
+                                },
+                                // "TOP 3" sticker — bottom banner
+                                {
+                                    id: 'hook2', type: 'sticker', text: 'TOP 3 COUNTDOWN',
+                                    slot: 'banner-bot', size: 72,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
+                                    rotate: 1,
+                                    trigger: { wordText: 'top', occurrence: 1 },
+                                },
+                                {
+                                    id: 'sc_hook', type: 'circle', target: 'hook2',
+                                    color: '#a93226',
+                                    trigger: { afterId: 'hook2', offset: 0.3 },
+                                },
+                                // Strings connecting the three car images
+                                {
+                                    id: 'str1', type: 'string',
+                                    from: { target: 'img_lambo' }, to: { target: 'img_ferrari' },
+                                    color: '#a93226', sag: 30,
+                                    trigger: { afterId: 'img_ferrari', offset: 0.3 },
+                                },
+                                {
+                                    id: 'str2', type: 'string',
+                                    from: { target: 'img_ferrari' }, to: { target: 'img_jet' },
+                                    color: '#a93226', sag: 30,
+                                    trigger: { afterId: 'img_jet', offset: 0.3 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
 
-        // ══ SPACED REPETITION — mini timeline ═══════════════════════════
-        {
-            tts: { text: "Pair it with spaced repetition. Review a topic today, then again in three days, then again in a week. Your brain holds onto information far longer this way than cramming the night before.", voice: 'bm_lewis', pauseAfter: 0.4 },
-            captions: false,
-            layers: [
-                { type: 'background', color: THEME.paper },
-                casingLayer('recall-s3', 'SPACED REPETITION', [
-                    { id: 'sr_icon', type: 'icon', icon: 'mdi:calendar-refresh-outline', slot: 'banner-top', size: 120, bg: 'circle', color: THEME.accent2, trigger: { atSeconds: 0 } },
-                    { id: 'sr_title', type: 'sticker', text: 'SPACED REPETITION', slot: 'top-center', size: 42, trigger: { wordText: 'repetition', occurrence: 1 } },
-                    { id: 't1', type: 'sticker', text: 'TODAY', slot: 'mid-left', size: 40, bg: '#ffffff', trigger: { wordText: 'today', occurrence: 1 } },
-                    { id: 'arrow_t1', type: 'arrow', x1: 340, y1: 511, x2: 460, y2: 511, curve: 0, color: THEME.ink, trigger: { afterId: 't1', offset: 0.1 } },
-                    { id: 't2', type: 'sticker', text: '+3 DAYS', slot: 'mid-center', size: 40, bg: '#ffffff', trigger: { wordText: 'three', occurrence: 1 } },
-                    { id: 'arrow_t2', type: 'arrow', x1: 700, y1: 511, x2: 820, y2: 511, curve: 0, color: THEME.ink, trigger: { afterId: 't2', offset: 0.1 } },
-                    { id: 't3', type: 'sticker', text: '+1 WEEK', slot: 'mid-right', size: 40, bg: '#ffffff', trigger: { wordText: 'week', occurrence: 1 } },
-                    { id: 'brain_label', type: 'label', text: 'your brain holds on far longer\nthan cramming the night before', slot: 'banner-low', size: 32, trigger: { wordText: 'cramming', occurrence: 1 } },
-                    { id: 'pz_out3', type: 'panZoom', toScale: 1.1, toX: 0, toY: -20, duration: 1.1, trigger: { afterId: 'brain_label', offset: 0.3 } },
-                ]),
-            ],
-        },
+            // ── Scene 1 — #3: Phalanx CIWS ($135k = Lamborghini) ─────────
+            {
+                tts: {
+                    text: "Number three: the Phalanx CIWS. The Navy's last line of defense. Four thousand five hundred rounds per minute. Thirty dollars a round. One hundred and thirty-five thousand dollars per minute. The price of a Lamborghini, gone in sixty seconds.",
+                    voice: 'am_adam', pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#e8dfcd' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-s1',
+                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]',
+                        fps: 30, viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: '#3 — PHALANX CIWS',
+                            theme: commonTheme,
+                            commands: [
+                                // Scene number — top left
+                                {
+                                    id: 'num1', type: 'sticker', text: '#3',
+                                    slot: 'top-left', size: 90,
+                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
+                                    rotate: -3, trigger: { atSeconds: 0.1 },
+                                },
+                                // Phalanx photo — top center/right
+                                {
+                                    id: 'photo1', type: 'photo',
+                                    src: imgPhalanx,
+                                    slot: 'top-center', width: 580, height: 360,
+                                    rotate: -2, pinStyle: 'tape',
+                                    caption: 'PHALANX CIWS',
+                                    trigger: { wordText: 'phalanx', occurrence: 1 },
+                                },
+                                // "$30 per round" — mid left
+                                {
+                                    id: 's1', type: 'sticker', text: '$30\nPER ROUND',
+                                    slot: 'mid-left', size: 56,
+                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
+                                    rotate: -2,
+                                    trigger: { wordText: 'thirty', occurrence: 1 },
+                                },
+                                // "4,500 RPM" — mid right
+                                {
+                                    id: 's2', type: 'sticker', text: '4,500\nRPM',
+                                    slot: 'mid-right', size: 56,
+                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    rotate: 3,
+                                    trigger: { wordText: 'thousand', occurrence: 1 },
+                                },
+                                // Arrow from round-cost to RPM (connecting the math)
+                                {
+                                    id: 'arr1', type: 'arrow',
+                                    x1: 300, y1: 820, x2: 780, y2: 820,
+                                    color: '#a93226', curve: 30,
+                                    trigger: { afterId: 's2', offset: 0.2 },
+                                },
+                                // "= $135,000/MIN" — low center, big reveal
+                                {
+                                    id: 's3', type: 'sticker', text: '$135,000\nPER MINUTE',
+                                    slot: 'low-center', size: 64,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
+                                    rotate: -1,
+                                    trigger: { wordText: 'thirty-five', occurrence: 1 },
+                                },
+                                {
+                                    id: 'sc1', type: 'circle', target: 's3',
+                                    color: '#a93226',
+                                    trigger: { afterId: 's3', offset: 0.3 },
+                                },
+                                // Lamborghini image — bot left
+                                {
+                                    id: 'img_lambo1', type: 'photo',
+                                    src: imgLambo,
+                                    slot: 'bot-left', width: 340, height: 220,
+                                    caption: '= 1 LAMBORGHINI', pinStyle: 'pins',
+                                    trigger: { wordText: 'lamborghini', occurrence: 1 },
+                                },
+                                // String from cost sticker to car image
+                                {
+                                    id: 'str3', type: 'string',
+                                    from: { target: 's3' }, to: { target: 'img_lambo1' },
+                                    color: '#a93226', sag: 40,
+                                    trigger: { afterId: 'img_lambo1', offset: 0.2 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
 
-        // ══ CLOSING — harder now, works better ═══════════════════════════
-        {
-            tts: { text: "It feels harder than passive reading. That's exactly why it works better.", voice: 'bm_lewis', pauseAfter: 0.4 },
-            captions: false,
-            layers: [
-                { type: 'background', color: THEME.paper },
-                casingLayer('recall-close', 'HARDER = BETTER', [
-                    { id: 'hard_icon', type: 'icon', icon: 'mdi:weight-lifter', slot: 'mid-center', size: 220, bg: 'circle', color: THEME.accent2, trigger: { wordText: 'harder', occurrence: 1 } },
-                    { id: 'hard_pz', type: 'panZoom', toScale: 1.4, toX: 0, toY: -30, duration: 1.0, trigger: { afterId: 'hard_icon', offset: 0.2 } },
-                    { id: 'hard_label', type: 'sticker', text: 'HARDER NOW.\nBETTER LATER.', slot: 'low-center', size: 50, color: THEME.accent2, trigger: { wordText: 'better', occurrence: 1 } },
-                    { id: 'pz_final', type: 'panZoom', toScale: 1, toX: 0, toY: 0, duration: 1.0, trigger: { afterId: 'hard_label', offset: 0.4 } },
-                ]),
-            ],
-        },
+            // ── Scene 2 — #2: M61 Vulcan ($180k = Ferrari) ───────────────
+            {
+                tts: {
+                    text: "Number two: the M61 Vulcan. The cannon on the F-16 and the F-22. Six thousand rounds per minute. One hundred and eighty thousand dollars per minute. A Ferrari. Sixty seconds. Gone.",
+                    voice: 'am_adam', pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#e8dfcd' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-s2',
+                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]',
+                        fps: 30, viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: '#2 — M61 VULCAN',
+                            theme: commonTheme,
+                            commands: [
+                                // Scene number
+                                {
+                                    id: 'num2', type: 'sticker', text: '#2',
+                                    slot: 'top-left', size: 90,
+                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
+                                    rotate: -3, trigger: { atSeconds: 0.1 },
+                                },
+                                // Vulcan cannon photo — top center
+                                {
+                                    id: 'photo2', type: 'photo',
+                                    src: imgVulcan,
+                                    slot: 'top-center', width: 580, height: 360,
+                                    rotate: 2, pinStyle: 'tape',
+                                    caption: 'M61 VULCAN — 20mm GATLING',
+                                    trigger: { wordText: 'vulcan', occurrence: 1 },
+                                },
+                                // F-16 image — fires when narrator says "F-16"
+                                {
+                                    id: 'img_f16', type: 'photo',
+                                    src: imgF16,
+                                    slot: 'mid-left', width: 320, height: 220,
+                                    caption: 'F-16', pinStyle: 'tape',
+                                    trigger: { wordText: 'f16', occurrence: 1 },
+                                },
+                                // F-22 image — fires when narrator says "F-22"
+                                {
+                                    id: 'img_f22', type: 'photo',
+                                    src: imgF22,
+                                    slot: 'mid-right', width: 320, height: 220,
+                                    caption: 'F-22', pinStyle: 'tape',
+                                    trigger: { wordText: 'f22', occurrence: 1 },
+                                },
+                                // String connecting the two jets
+                                {
+                                    id: 'str4', type: 'string',
+                                    from: { target: 'img_f16' }, to: { target: 'img_f22' },
+                                    color: '#1a5276', sag: 25,
+                                    trigger: { afterId: 'img_f22', offset: 0.3 },
+                                },
+                                // 6000 RPM sticker
+                                {
+                                    id: 's5', type: 'sticker', text: '6,000 RPM',
+                                    slot: 'low-left', size: 56,
+                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    rotate: -2,
+                                    trigger: { wordText: 'six', occurrence: 1 },
+                                },
+                                // Cost reveal
+                                {
+                                    id: 's6', type: 'sticker', text: '$180,000\nPER MINUTE',
+                                    slot: 'low-center', size: 62,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
+                                    rotate: -1,
+                                    trigger: { wordText: 'eighty', occurrence: 1 },
+                                },
+                                {
+                                    id: 'sc2', type: 'circle', target: 's6',
+                                    color: '#a93226',
+                                    trigger: { afterId: 's6', offset: 0.3 },
+                                },
+                                // Ferrari image — bot left
+                                {
+                                    id: 'img_ferrari1', type: 'photo',
+                                    src: imgFerrari,
+                                    slot: 'bot-left', width: 340, height: 220,
+                                    caption: '= 1 FERRARI', pinStyle: 'pins',
+                                    trigger: { wordText: 'ferrari', occurrence: 1 },
+                                },
+                                {
+                                    id: 'str5', type: 'string',
+                                    from: { target: 's6' }, to: { target: 'img_ferrari1' },
+                                    color: '#a93226', sag: 35,
+                                    trigger: { afterId: 'img_ferrari1', offset: 0.2 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
 
-    ],
-};
+            // ── Scene 3 — #1: GAU-8 Avenger ($507k = Private Jet) ────────
+            {
+                tts: {
+                    text: "And number one: the GAU-8 Avenger. The A-10 Warthog's main gun. Three thousand nine hundred rounds per minute, each round costing one hundred and thirty dollars. Over five hundred thousand dollars per minute. That's a private jet. Literally burning money.",
+                    voice: 'am_adam', pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#e8dfcd' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-s3',
+                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]',
+                        fps: 30, viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: '#1 — GAU-8 AVENGER',
+                            theme: commonTheme,
+                            commands: [
+                                // Scene number
+                                {
+                                    id: 'num3', type: 'sticker', text: '#1',
+                                    slot: 'top-left', size: 90,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
+                                    rotate: -3, trigger: { atSeconds: 0.1 },
+                                },
+                                // GAU-8 / A-10 photo — top center
+                                {
+                                    id: 'photo3', type: 'photo',
+                                    src: imgGau8,
+                                    slot: 'top-center', width: 600, height: 380,
+                                    rotate: -3, pinStyle: 'tape',
+                                    caption: 'GAU-8 AVENGER — 30mm',
+                                    trigger: { wordText: 'avenger', occurrence: 1 },
+                                },
+                                // A-10 image — fires when narrator says A-10 Warthog
+                                {
+                                    id: 'img_a10', type: 'photo',
+                                    src: imgA10,
+                                    slot: 'mid-left', width: 320, height: 200,
+                                    caption: 'A-10 WARTHOG', pinStyle: 'tape',
+                                    trigger: { wordText: 'warthog', occurrence: 1 },
+                                },
+                                // "$130/round" sticker
+                                {
+                                    id: 's7', type: 'sticker', text: '$130\nPER ROUND',
+                                    slot: 'mid-right', size: 56,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
+                                    rotate: 2,
+                                    trigger: { wordText: 'hundred and thirty', occurrence: 1 },
+                                },
+                                // "3,900 RPM"
+                                {
+                                    id: 's8', type: 'sticker', text: '3,900 RPM',
+                                    slot: 'low-left', size: 54,
+                                    color: '#1a1a1a', stroke: '#ffffff',
+                                    rotate: -2,
+                                    trigger: { wordText: 'three thousand', occurrence: 1 },
+                                },
+                                // Cost reveal — low center
+                                {
+                                    id: 's9', type: 'sticker', text: '$507,000\nPER MINUTE',
+                                    slot: 'low-center', size: 62,
+                                    color: '#ffffff', stroke: '#a93226', bg: '#a93226',
+                                    rotate: -1,
+                                    trigger: { wordText: 'five hundred', occurrence: 1 },
+                                },
+                                {
+                                    id: 'sc3', type: 'circle', target: 's9',
+                                    color: '#a93226',
+                                    trigger: { afterId: 's9', offset: 0.3 },
+                                },
+                                // Private jet image — bot left
+                                {
+                                    id: 'img_pjet', type: 'photo',
+                                    src: imgJet,
+                                    slot: 'bot-left', width: 340, height: 220,
+                                    caption: '= 1 PRIVATE JET', pinStyle: 'pins',
+                                    trigger: { wordText: 'private', occurrence: 1 },
+                                },
+                                {
+                                    id: 'str6', type: 'string',
+                                    from: { target: 's9' }, to: { target: 'img_pjet' },
+                                    color: '#a93226', sag: 38,
+                                    trigger: { afterId: 'img_pjet', offset: 0.2 },
+                                },
+                                // "LITERALLY BURNING MONEY" draw preset — bot right
+                                {
+                                    id: 'fire1', type: 'draw', preset: 'moneyBurn',
+                                    slot: 'bot-right', scale: 1.2, color: '#e67e22',
+                                    fillAfter: true,
+                                    trigger: { wordText: 'burning', occurrence: 1 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 4 — CTA ─────────────────────────────────────────────
+            {
+                tts: {
+                    text: "Subscribe for more.",
+                    voice: 'am_adam', pauseAfter: 0.2,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#e8dfcd' },
+                    {
+                        type: 'html-record',
+                        src: './ApexCasing/paper-sticker-explainer.html?tag=guns-cta',
+                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]',
+                        fps: 30, viewport: { width: 1080, height: 1920 },
+                        x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: 'SUBSCRIBE',
+                            theme: commonTheme,
+                            commands: [
+                                {
+                                    id: 'cta1', type: 'sticker', text: '🔔 SUBSCRIBE\nFOR MORE',
+                                    slot: 'banner-mid', size: 88,
+                                    color: '#ffffff', stroke: '#1a5276', bg: '#1a5276',
+                                    rotate: 0, trigger: { atSeconds: 0.1 },
+                                },
+                                {
+                                    id: 'sc_cta', type: 'circle', target: 'cta1',
+                                    color: '#1a5276',
+                                    trigger: { afterId: 'cta1', offset: 0.3 },
+                                },
+                                {
+                                    id: 'bell1', type: 'icon', icon: 'mdi:bell-ring',
+                                    size: 130, slot: 'low-center',
+                                    bg: 'circle', color: '#1a5276',
+                                    trigger: { afterId: 'cta1', offset: 0.2 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        ],
+    };
+})();
