@@ -1,6 +1,6 @@
-// config.zimsec-grading-explained.js
-// "ZIMSEC O Level Grading Explained" — auto-generated via generate_configs.py
-// Voice: bf_lily | Music: freesound search 'documentary neutral piano', mood fallback 'documentary'
+// config.highest-paying-careers-zimbabwe.js
+// "Highest-Paying Careers in Zimbabwe" — auto-generated via generate_configs.py
+// Voice: bf_lily | Music: freesound search 'inspiring corporate piano', mood fallback 'upbeat'
 // Uses ApexCasing/paper-sticker-explainer.html, exact-mirrored image-api.js fetch chain.
 
 
@@ -195,12 +195,12 @@ const ZOOM_OUT = { toScale: 1, toX: 0, toY: 0 };
 
 
 module.exports = (async () => {
-    console.log('[zimsec-grading-explained] Fetching images sequentially...');
+    console.log('[highest-paying-careers-zimbabwe] Fetching images sequentially...');
     const results = {};
     const queries = [
-        ["report card grades", { source: "pexels" }],
-        ["exam hall students writing", { source: "pexels" }],
-        ["certificate diploma", { source: "pexels" }],
+        ["doctor hospital", { source: "pexels" }],
+        ["engineer construction site", { source: "pexels" }],
+        ["accountant office calculator", { source: "pexels" }],
     ];
     for (const [q, opts] of queries) { results[q] = await fetchImageRobust(q, opts); }
 
@@ -208,32 +208,32 @@ module.exports = (async () => {
 
     return {
         output: {
-            title: "zimsec-grading-explained", format: 'portrait', fps: 30, crf: 22, preset: 'medium',
-            bgMusicVol: 0.1, bgMusic: { search: "documentary neutral piano", mood: "documentary" },
+            title: "highest-paying-careers-zimbabwe", format: 'portrait', fps: 30, crf: 22, preset: 'medium',
+            bgMusicVol: 0.1, bgMusic: { search: "inspiring corporate piano", mood: "upbeat" },
         },
         defaults: { voice: "bf_lily", transition: 'fade', transitionDuration: 0.35 },
         scenes: [
             {
-                tts: { text: "ZIMSEC O Level grades run from A, the highest, down to U, an ungraded fail. A through C are considered strong passes for most employers and colleges. D and E are still passes, but weaker ones some programs won't accept. Grades come from your total marks across coursework and final written papers. Five subjects at grade C or better is the actual benchmark most Zimbabwean employers look for, not just five passes at any grade. See the full grade-by-grade breakdown in the blog post linked below.", voice: "bf_lily", pauseAfter: 0.4 },
+                tts: { text: "What actually pays well in Zimbabwe, and which subjects get you there? Careers in medicine, engineering, and accounting consistently top the list, and they all trace back to specific O Level and A Level subject choices made years earlier. Doctors need strong Combined Science and Chemistry results. Engineers need Physics and Mathematics. Accountants need Mathematics and Commercials. The subjects you pick at fourteen quietly decide which of these doors stay open at twenty-two. Read the full breakdown of every career path in the blog post linked below.", voice: "bf_lily", pauseAfter: 0.4 },
                 captions: false,
                 layers: [
                     { type: 'background', color: commonTheme.paper },
                     {
-                        type: 'html-record', src: './ApexCasing/paper-sticker-explainer.html?tag=zimsec-grading-explained',
+                        type: 'html-record', src: './ApexCasing/paper-sticker-explainer.html?tag=highest-paying-careers-zimbabwe',
                         audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
                         viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
                         data: {
-                            title: "ZIMSEC O LEVEL GRADING EXPLAINED", theme: commonTheme,
+                            title: "HIGHEST-PAYING CAREERS IN ZIMBABWE", theme: commonTheme,
                             commands: [
-                                { id: 'title', type: 'sticker', text: "ZIMSEC O LEVEL GRADING EXPLAINED", slot: 'banner-top', size: 50, color: '#1a1a1a', stroke: '#ffffff', rotate: -1, trigger: { atSeconds: 0.1 } },
-                                { id: "v0", type: 'photo', src: results["report card grades"], slot: "mid-left", width: 300, height: 210, caption: "A TO U", pinStyle: 'tape', trigger: { wordText: "fail", occurrence: 1 } },
+                                { id: 'title', type: 'sticker', text: "HIGHEST-PAYING CAREERS IN ZIMBABWE", slot: 'banner-top', size: 50, color: '#1a1a1a', stroke: '#ffffff', rotate: -1, trigger: { atSeconds: 0.1 } },
+                                { id: "v0", type: 'photo', src: results["doctor hospital"], slot: "mid-left", width: 300, height: 210, caption: "MEDICINE", pinStyle: 'tape', trigger: { wordText: "medicine", occurrence: 1 } },
                                 { id: "pz0", type: 'panZoom', ...zoomTo("mid-left", 1.55), duration: 0.9, trigger: { afterId: "v0", offset: 0.15 } },
-                                { id: "v1", type: 'icon', icon: "mdi:check-decagram-outline", slot: "mid-right", size: 170, bg: 'circle', color: "#27ae60", trigger: { wordText: "passes", occurrence: 1 } },
+                                { id: "v1", type: 'photo', src: results["engineer construction site"], slot: "mid-right", width: 300, height: 210, caption: "ENGINEERING", pinStyle: 'tape', trigger: { wordText: "engineering", occurrence: 1 } },
                                 { id: "pz1", type: 'panZoom', ...zoomTo("mid-right", 1.55), duration: 0.9, trigger: { afterId: "v1", offset: 0.15 } },
                                 { id: "out1", type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: "pz1", offset: 0.5 } },
-                                { id: "v2", type: 'photo', src: results["exam hall students writing"], slot: "low-left", width: 300, height: 210, caption: "FINAL PAPERS", pinStyle: 'tape', trigger: { wordText: "papers", occurrence: 1 } },
+                                { id: "v2", type: 'photo', src: results["accountant office calculator"], slot: "low-left", width: 300, height: 210, caption: "ACCOUNTING", pinStyle: 'tape', trigger: { wordText: "accounting", occurrence: 1 } },
                                 { id: "pz2", type: 'panZoom', ...zoomTo("low-left", 1.55), duration: 0.9, trigger: { afterId: "v2", offset: 0.15 } },
-                                { id: "v3", type: 'photo', src: results["certificate diploma"], slot: "low-right", width: 300, height: 210, caption: "5 C's OR BETTER", pinStyle: 'tape', trigger: { wordText: "benchmark", occurrence: 1 } },
+                                { id: "v3", type: 'icon', icon: "mdi:book-open-page-variant", slot: "low-right", size: 170, bg: 'circle', color: "#27ae60", trigger: { wordText: "subjects", occurrence: 1 } },
                                 { id: "pz3", type: 'panZoom', ...zoomTo("low-right", 1.55), duration: 0.9, trigger: { afterId: "v3", offset: 0.15 } },
                                 { id: "out3", type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: "pz3", offset: 0.5 } },
                                 { id: 'final_out', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: "pz3", offset: 0.6 } }
