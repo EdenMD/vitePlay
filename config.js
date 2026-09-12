@@ -1,49 +1,107 @@
-// config.highest-paying-careers-zimbabwe-native.js — native-layer version (no HTML casing)
-// "Highest-Paying Careers in Zimbabwe" — pexels-video + pexels-image (rotate Ken Burns) + native chart/stat-counter data layers.
-// Voice: bf_lily | Music: freesound search 'inspiring corporate piano', mood fallback 'upbeat'
+/**
+ * config.youtube-test.js — Smoke test for the youtube-video layer
+ *
+ * Topic: F-35 Lightning II disadvantages.
+ * (Note: "F-35 Raptor" isn't a real jet — the F-35 is the Lightning II,
+ * the Raptor is the F-22. Queries below use "F-35 Lightning II" so the
+ * YouTube search actually returns F-35 footage instead of F-22 clips.)
+ *
+ * Exercises:
+ *   - youtube-video search resolution (2 different queries, Phase 1.15)
+ *   - Freesound-driven bgMusic (output.bgMusic.search — needs
+ *     FREESOUND_API_KEY; falls back to the FMA 'dark' mood track if that
+ *     secret isn't set, so this still runs either way)
+ *
+ * 2 short scenes on purpose — this is a smoke test for the new layer and
+ * the workflow's yt-dlp step, not a real upload.
+ *
+ * Run:
+ *   VIDEO_CONFIG=config.youtube-test.js node engine-ci.js
+ * Or via workflow_dispatch input: config = config.youtube-test.js
+ */
 
 module.exports = {
     output: {
-        title: "highest-paying-careers-zimbabwe-native", format: 'portrait', fps: 30, crf: 22, preset: 'medium',
-        bgMusicVol: 0.1, bgMusic: { search: "inspiring corporate piano", mood: "upbeat" },
-        postProcess: { grain: true, grainStrength: 0.02, vignette: true, vignetteStrength: 0.35 },
+        title:  'f35-disadvantages-yttest',
+        format: 'portrait',
+        fps:    30,
+        crf:    28,
+        preset: 'fast',
+
+        // { search: ... } hits Freesound if FREESOUND_API_KEY is set;
+        // `mood` is the fallback FMA track if the search comes up empty
+        // or the key isn't configured — see src/audio-fetch.js.
+        bgMusic: {
+            search: 'dark tense military drone ambience',
+            mood:   'dark',
+        },
     },
-    defaults: { voice: "bf_lily", transition: 'fade', transitionDuration: 0.35 },
+
+    defaults: {
+        voice:      'am_adam',
+        emotion:    'neutral',
+        transition: 'fade',
+    },
+
     scenes: [
+
+        // ── Scene 1 — cost/complexity hook ──────────────────────────────
         {
-            tts: { text: "What actually pays well in Zimbabwe, and which subjects get you there?", voice: "bf_lily", pauseAfter: 0.3 },
-            captions: { style: 'highlight', position: 'bottom', fontSize: 52, color: '#ffffff', highlightColor: '#f5c518', wordsPerChunk: 3, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5 },
+            tts: {
+                text:    "The F-35 is the most expensive weapons program in history. But it has real weaknesses.",
+                voice:   'am_adam',
+                emotion: 'neutral',
+            },
+            captions: true,
             layers: [
-                { type: 'pexels-video', query: "students graduation ceremony", orientation: 'portrait', loop: true, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover' },
-                { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
-                { type: 'text', text: "WHAT ACTUALLY\nPAYS WELL?", x: 540, y: 300, fontSize: 62, fontFamily: 'Arial Black, sans-serif', color: "#ffffff", align: 'center', maxWidth: 900, stroke: true, strokeColor: '#000', strokeWidth: 4 },
+                {
+                    type:        'youtube-video',
+                    query:       'F-35 Lightning II flight test footage',
+                    resultIndex: 0,
+                    maxDuration: 6,
+                    x: 0, y: 0, width: 1080, height: 1920,
+                    fit: 'cover',
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
+                {
+                    type:       'text',
+                    text:       'F-35: THE PROBLEMS',
+                    x: 540, y: 160,
+                    fontSize:   64,
+                    fontFamily: 'Impact, Arial Black',
+                    color:      '#fff',
+                    align:      'center',
+                    stroke:     true, strokeColor: '#000', strokeWidth: 4,
+                },
             ],
         },
+
+        // ── Scene 2 — maintenance cost, different query/result ──────────
         {
-            tts: { text: "Careers in medicine, engineering, and accounting consistently top the list, and they all trace back to specific O Level and A Level subject choices made years earlier.", voice: "bf_lily", pauseAfter: 0.3 },
-            captions: { style: 'highlight', position: 'bottom', fontSize: 52, color: '#ffffff', highlightColor: '#f5c518', wordsPerChunk: 3, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5 },
+            tts: {
+                text:    "Maintenance runs over forty thousand dollars per flight hour, and readiness rates still lag behind older jets.",
+                voice:   'am_adam',
+                emotion: 'neutral',
+            },
+            captions: true,
             layers: [
-                { type: 'stock-image', query: "doctor engineer accountant", source: 'pexels', orientation: 'portrait', fit: 'cover', kenBurns: "rotate-cw", kenBurnsAmount: 0.3, rotateDeg: 9, x: 0, y: 0, width: 1080, height: 1920 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.45)' },
-                { type: 'stat-counter', value: 3, suffix: " TOP FIELDS", label: "MEDICINE / ENGINEERING / ACCOUNTING", x: 540, y: 1500, fontSize: 100, labelSize: 28, color: "#f5c518", labelColor: '#ffffff', align: 'center', glow: true, glowColor: "#f5c518", glowBlur: 34, countDur: 1.2 },
-            ],
-        },
-        {
-            tts: { text: "Doctors need strong Combined Science and Chemistry. Engineers need Physics and Maths. Accountants need Maths and Commercials.", voice: "bf_lily", pauseAfter: 0.3 },
-            captions: { style: 'highlight', position: 'bottom', fontSize: 52, color: '#ffffff', highlightColor: '#f5c518', wordsPerChunk: 3, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5 },
-            layers: [
-                { type: 'stock-image', query: "science laboratory classroom", source: 'pexels', orientation: 'portrait', fit: 'cover', kenBurns: "rotate-ccw", kenBurnsAmount: 0.3, rotateDeg: 9, x: 0, y: 0, width: 1080, height: 1920 },
-                { type: 'overlay', color: 'rgba(0,0,0,0.45)' },
-                { type: 'text', text: "THE SUBJECTS DECIDE\nTHE DOORS THAT OPEN", x: 540, y: 1550, fontSize: 44, fontFamily: 'Arial Black, sans-serif', color: "#ffffff", align: 'center', maxWidth: 900, stroke: true, strokeColor: '#000', strokeWidth: 4 },
-            ],
-        },
-        {
-            tts: { text: "The subjects you pick at fourteen quietly decide which of these doors stay open at twenty-two. Read the full breakdown in the blog post linked below.", voice: "bf_lily", pauseAfter: 0.3 },
-            captions: { style: 'highlight', position: 'bottom', fontSize: 52, color: '#ffffff', highlightColor: '#f5c518', wordsPerChunk: 3, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 5 },
-            layers: [
-                { type: 'pexels-video', query: "graduation students celebration", orientation: 'portrait', loop: true, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover' },
-                { type: 'overlay', color: 'rgba(0,0,0,0.4)' },
-                { type: 'text', text: "READ THE FULL\nGUIDE BELOW", x: 540, y: 1600, fontSize: 46, fontFamily: 'Arial Black, sans-serif', color: "#f5c518", align: 'center', maxWidth: 900, stroke: true, strokeColor: '#000', strokeWidth: 4 },
+                {
+                    type:        'youtube-video',
+                    query:       'F-35 maintenance hangar footage',
+                    resultIndex: 0,
+                    maxDuration: 5,
+                    x: 0, y: 0, width: 1080, height: 1920,
+                    fit: 'cover',
+                },
+                { type: 'overlay', color: 'rgba(0,0,0,0.35)' },
+                {
+                    type:     'text',
+                    text:     '$40K+ per flight hour',
+                    x: 540, y: 1700,
+                    fontSize: 54,
+                    color:    '#ff3b5c',
+                    align:    'center',
+                },
             ],
         },
     ],
