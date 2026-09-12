@@ -1,4 +1,4 @@
-# .github/workflows/generate-video.yml
+#.github/workflows/generate-video.yml
 # APEX Video Engine v2.2 — GitHub Actions CI Workflow
 # Image generation: Pollinations.AI API (HTTP) — no local model, no RAM issues
 
@@ -18,7 +18,7 @@ on:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 150   # Pollinations is fast — 5 images ~2min, full render ~15min
+    timeout-minutes: 150 # Pollinations is fast — 5 images ~2min, full render ~15min
 
     steps:
 
@@ -51,16 +51,16 @@ jobs:
         run: |
           CONFIG_FILE="${{ github.event.inputs.config || 'config.js' }}"
           SRC="_public-configs/${CONFIG_FILE}"
-          if [ ! -f "$SRC" ]; then
+          if [! -f "$SRC" ]; then
             echo "❌ ${CONFIG_FILE} not found in the public repo at ${SRC}"
-            echo "   Either add it there, or pass a config that exists in the private repo instead."
+            echo " Either add it there, or pass a config that exists in the private repo instead."
             exit 1
           fi
           cp "$SRC" "./${CONFIG_FILE}"
           echo "✅ Using ${CONFIG_FILE} from the public repo"
           rm -rf _public-configs
 
-      # Cache the downloaded .deb files (not the install itself) — this keeps
+      # Cache the downloaded.deb files (not the install itself) — this keeps
       # a REAL `apt-get install` (full dependency resolution + postinst
       # scripts, incl. ldconfig) while still avoiding a full network
       # re-download on cache hit. The previous approach used an action that
@@ -90,17 +90,15 @@ jobs:
 
       # ── Detect whether the config needs WhisperX ──────────────────────────
       # Scans the actual config file being used for the three trigger strings:
-      #   subtitleBurn === 'whisperx'
-      #   lyricsTiming === 'whisperx'
-      #   lyricsTiming === 'precise'
+      # subtitleBurn === 'whisperx'
+      # lyricsTiming === 'whisperx'
+      # lyricsTiming === 'precise'
       # Sets NEED_WHISPERX=true in GITHUB_ENV so later steps can branch on it.
 
- - name: Install yt-dlp
+      - name: Install yt-dlp
         run: |
           pip3 install --quiet -U yt-dlp
           yt-dlp --version
-
-
 
       - name: Detect WhisperX requirement
         run: |
@@ -111,7 +109,7 @@ jobs:
             echo "✅ WhisperX required — will install"
           else
             echo "NEED_WHISPERX=false" >> $GITHUB_ENV
-            echo "⏭  WhisperX not needed — skipping"
+            echo "⏭ WhisperX not needed — skipping"
           fi
 
       - name: Cache Python packages
@@ -153,7 +151,7 @@ jobs:
 
       - name: Ensure package.json exists
         run: |
-          if [ ! -f package.json ]; then
+          if [! -f package.json ]; then
             echo '{"name":"apex-videogen","version":"2.2.0","private":true}' > package.json
           fi
 
@@ -226,7 +224,7 @@ jobs:
       - name: Generate video
         run: node engine-ci.js
         env:
-          VIDEO_CONFIG:           ${{ github.event.inputs.config || 'config.js' }}
+          VIDEO_CONFIG: ${{ github.event.inputs.config || 'config.js' }}
           # Lowered from 6144: GitHub-hosted ubuntu-latest runners have ~7GB
           # total RAM. Reserving 6GB for Node's heap left too little for
           # headless Chrome (which also wants real RAM, especially with
@@ -236,28 +234,28 @@ jobs:
           # screenshot to hang at SHOT_TIMEOUT_MS in a row. 4096 leaves
           # Chrome real headroom; src/html-record.js also now recovers from
           # a wedged renderer via browser relaunch as a second line of defense.
-          NODE_OPTIONS:           '--max-old-space-size=4096'
-          SERPAPI_API_KEY:        ${{ secrets.SERPAPI_API_KEY }}
-          GIPHY_API_KEY:          ${{ secrets.GIPHY_API_KEY }}
-          POLLINATIONS_API_KEY:   ${{ secrets.POLLINATIONS_API_KEY }}
-          UNSPLASH_ACCESS_KEY:    ${{ secrets.UNSPLASH_ACCESS_KEY }}
-          PEXELS_API_KEY:         ${{ secrets.PEXELS_API_KEY }}
-          PIXABAY_API_KEY:        ${{ secrets.PIXABAY_API_KEY }}
-          FREESOUND_API_KEY:      ${{ secrets.FREESOUND_API_KEY }}
+          NODE_OPTIONS: '--max-old-space-size=4096'
+          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
+          GIPHY_API_KEY: ${{ secrets.GIPHY_API_KEY }}
+          POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          FREESOUND_API_KEY: ${{ secrets.FREESOUND_API_KEY }}
         timeout-minutes: 145
 
       - name: Upload video (5-platform fallback chain)
         if: success()
         timeout-minutes: 6
         run: |
-          divider() { echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; }
+          divider() { echo "━━━━━━━━━━"; }
           announce_success() {
             local p="$1" u="$2" n="$3"
             divider
             echo "✅ Upload successful!"
             echo "🔗 Platform : $p"
-            echo "⏱  Expiry   : $n"
-            echo "📹 URL      : $u"
+            echo "⏱ Expiry : $n"
+            echo "📹 URL : $u"
             divider
           }
 
@@ -280,25 +278,15 @@ jobs:
           SERVER=$(curl --silent --connect-timeout 8 --max-time 12 \
             https://api.gofile.io/servers \
             | jq -r '.data.servers[0].name' 2>/dev/null) || true
-          if [ -n "$SERVER" ] && [ "$SERVER" != "null" ]; then
+          if [ -n "$SERVER" ] && [ "$SERVER"!= "null" ]; then
             RESPONSE=$(curl $CURL_FLAGS -F "file=@${VIDEO_FILE}" "https://${SERVER}.gofile.io/uploadFile") || true
-            # FIX: this script runs under `bash -e`. jq exits non-zero (status 5)
-            # on empty/malformed input — e.g. a rate-limit page, a connection
-            # reset mid-response, or a truncated body — which are all things
-            # the curl call above already tolerates via `|| true`. Without a
-            # guard here too, that jq failure was killing the ENTIRE script
-            # immediately, before the `if [ "$STATUS" = "ok" ]` check or the
-            # "⚠️ Failed" message could ever run — which is why every fallback
-            # platform below (transfer.sh, oshi.at, Filebin, Catbox) never even
-            # got attempted. `|| STATUS=""` makes a parse failure behave like
-            # any other "this platform failed" case instead of a hard abort.
             STATUS=$(echo "$RESPONSE" | jq -r '.status' 2>/dev/null) || STATUS=""
             if [ "$STATUS" = "ok" ]; then
               LINK=$(echo "$RESPONSE" | jq -r '.data.downloadPage') || LINK=""
               announce_success "GoFile" "$LINK" "No expiry"
               UPLOADED=true
             else
-              echo "   ⚠️  Failed"
+              echo " ⚠️ Failed"
             fi
           fi
 
@@ -309,7 +297,7 @@ jobs:
               announce_success "transfer.sh" "$RESPONSE" "14 days"
               UPLOADED=true
             else
-              echo "   ⚠️  Failed"
+              echo " ⚠️ Failed"
             fi
           fi
 
@@ -321,7 +309,7 @@ jobs:
               announce_success "oshi.at" "$LINK" "~90 days"
               UPLOADED=true
             else
-              echo "   ⚠️  Failed"
+              echo " ⚠️ Failed"
             fi
           fi
 
@@ -332,13 +320,12 @@ jobs:
               -H "filename: ${FILENAME}" -H "bin: ${BUCKET}" \
               --data-binary "@${VIDEO_FILE}" \
               "https://filebin.net/${BUCKET}/${FILENAME}") || true
-            # Same fix as GoFile's STATUS line above — see that comment.
             FNAME=$(echo "$RESPONSE" | jq -r '.file.filename' 2>/dev/null) || FNAME=""
-            if [ -n "$FNAME" ] && [ "$FNAME" != "null" ]; then
+            if [ -n "$FNAME" ] && [ "$FNAME"!= "null" ]; then
               announce_success "Filebin" "https://filebin.net/${BUCKET}/${FILENAME}" "~6 days idle"
               UPLOADED=true
             else
-              echo "   ⚠️  Failed"
+              echo " ⚠️ Failed"
             fi
           fi
 
@@ -346,7 +333,7 @@ jobs:
             echo ""; echo "📤 [5/5] Catbox (200MB cap)..."
             MAX_CATBOX=$((200 * 1024 * 1024))
             if [ "$FILESIZE" -gt "$MAX_CATBOX" ]; then
-              echo "   ⚠️  File exceeds 200MB — skipping"
+              echo " ⚠️ File exceeds 200MB — skipping"
             else
               RESPONSE=$(curl $CURL_FLAGS \
                 -F "reqtype=fileupload" -F "fileToUpload=@${VIDEO_FILE}" \
@@ -355,7 +342,7 @@ jobs:
                 announce_success "Catbox" "$RESPONSE" "Permanent"
                 UPLOADED=true
               else
-                echo "   ⚠️  Failed"
+                echo " ⚠️ Failed"
               fi
             fi
           fi
@@ -365,7 +352,6 @@ jobs:
             exit 1
           fi
 
-     
       - name: Upload debug logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
