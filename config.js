@@ -1,5 +1,5 @@
 /**
- * config.youtube-test.js — Smoke test for the youtube-video layer
+ * confg.youtube-test.js — Smoke test for the youtube-video layer
  *
  * Topic: F-35 Lightning II disadvantages.
  * (Note: "F-35 Raptor" isn't a real jet — the F-35 is the Lightning II,
