@@ -37,7 +37,7 @@ jobs:
         run: |
           CONFIG_FILE="${{ github.event.inputs.config || 'config.js' }}"
           SRC="_public-configs/${CONFIG_FILE}"
-          if [! -f "$SRC" ]; then
+          if [ ! -f "$SRC" ]; then
             echo "❌ ${CONFIG_FILE} not found in the public repo at ${SRC}"
             echo " Either add it there, or pass a config that exists in the private repo instead."
             exit 1
@@ -116,7 +116,7 @@ jobs:
 
       - name: Ensure package.json exists
         run: |
-          if [! -f package.json ]; then
+          if [ ! -f package.json ]; then
             echo '{"name":"apex-videogen","version":"2.2.0","private":true}' > package.json
           fi
 
@@ -231,7 +231,7 @@ jobs:
           SERVER=$(curl --silent --connect-timeout 8 --max-time 12 \
             https://api.gofile.io/servers \
             | jq -r '.data.servers[0].name' 2>/dev/null) || true
-          if [ -n "$SERVER" ] && [ "$SERVER"!= "null" ]; then
+          if [ -n "$SERVER" ] && [ "$SERVER" != "null" ]; then
             RESPONSE=$(curl $CURL_FLAGS -F "file=@${VIDEO_FILE}" "https://${SERVER}.gofile.io/uploadFile") || true
             STATUS=$(echo "$RESPONSE" | jq -r '.status' 2>/dev/null) || STATUS=""
             if [ "$STATUS" = "ok" ]; then
@@ -274,7 +274,7 @@ jobs:
               --data-binary "@${VIDEO_FILE}" \
               "https://filebin.net/${BUCKET}/${FILENAME}") || true
             FNAME=$(echo "$RESPONSE" | jq -r '.file.filename' 2>/dev/null) || FNAME=""
-            if [ -n "$FNAME" ] && [ "$FNAME"!= "null" ]; then
+            if [ -n "$FNAME" ] && [ "$FNAME" != "null" ]; then
               announce_success "Filebin" "https://filebin.net/${BUCKET}/${FILENAME}" "~6 days idle"
               UPLOADED=true
             else
