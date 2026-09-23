@@ -1,8 +1,15 @@
-// config.hard-to-get-government-job-zimbabwe.js
-// "Why It's Hard to Get a Government Job in Zimbabwe" — same series conventions as the pillar-topic batch.
-// Voice: bf_lily | Music: freesound search 'documentary neutral piano', mood fallback 'documentary'
-// Uses ApexCasing/paper-sticker-explainer.html, exact-mirrored image-api.js fetch chain.
-
+// config.how-to-be-successful.js
+// "5 Things Successful People Do Differently"
+// Same robust image-fetch scaffold as the weakest-militaries reference
+// (sequential fetching, exact 5-provider fallback chain, SerpAPI dead-link
+// resilience) — reused verbatim since it's proven working code.
+//
+// FIX vs the reference: photo dimensions bumped significantly larger.
+// Reference used 260-320px slot photos, 500x280 banner photos — genuinely
+// too small on a 1080-wide canvas. This version: 440-560px slot photos,
+// 620-680 x 400-440 banner photos.
+//
+// RUN: VIDEO_CONFIG=config.how-to-be-successful.js node engine-ci.js
 
 const https  = require('https');
 const http   = require('http');
@@ -60,7 +67,7 @@ function downloadToBase64(fileUrl, headers = {}) {
                 res.on('data', c => chunks.push(c));
                 res.on('end', () => {
                     const buf = Buffer.concat(chunks);
-                    if (buf.length < 1024) return reject(new Error(`File too small (${buf.length}B)`));
+                    if (buf.length < 1024) return reject(new Error(`File too small (${buf.length}B) — likely error response`));
                     resolve({ base64: buf.toString('base64'), contentType: ct.split(';')[0] || 'image/jpeg' });
                 });
             }).on('error', reject).on('timeout', () => reject(new Error('Download timeout')));
@@ -81,6 +88,7 @@ async function searchSerpApi(query, orientation, imageIndex = 0) {
         const usable = results.filter(r => r.original && !r.original.startsWith('x-raw-image'));
         serpApiResultsCache.set(cacheKey, usable.length ? usable : results);
         results = serpApiResultsCache.get(cacheKey);
+        console.log(`[Success] SerpAPI cached: ${results.length} result(s) for "${query.slice(0, 40)}"`);
     }
     const safeIndex = results.length ? imageIndex % results.length : 0;
     const pick = results[safeIndex] || results[0];
@@ -141,17 +149,22 @@ async function trySerpApiWithFallback(query, orientation, startIndex) {
     const results  = serpApiResultsCache.get(cacheKey) || [];
     const total    = results.length || 1;
     let lastErr = null;
+
     for (let attempt = 0; attempt < total; attempt++) {
         const idx = (startIndex + attempt) % total;
         const pick = results[idx];
         const candidateUrl = attempt === 0 ? firstUrl : pick?.original;
         if (!candidateUrl) continue;
         try {
+            if (attempt > 0) console.log(`[Success]  ↻ serpapi retry [#${idx}] for "${query.slice(0, 40)}"`);
             const { base64, contentType } = await downloadToBase64(candidateUrl);
             return `data:${contentType};base64,${base64}`;
-        } catch (e) { lastErr = e; }
+        } catch (e) {
+            lastErr = e;
+            console.warn(`[Success]  ⚠ serpapi [#${idx}] failed: ${e.message?.slice(0, 60)}`);
+        }
     }
-    throw lastErr || new Error('No working result found');
+    throw lastErr || new Error('No working result found across entire cached set');
 }
 
 async function fetchImageRobust(query, opts = {}) {
@@ -159,32 +172,39 @@ async function fetchImageRobust(query, opts = {}) {
     const orientation = opts.orientation || 'portrait';
     const imageIndex  = opts.imageIndex || 0;
     const chain = getSourceChain(preferred);
+
     for (const source of chain) {
         if (source === 'serpapi') {
             try {
                 const dataUri = await trySerpApiWithFallback(query, orientation, imageIndex);
-                console.log(`[Fetch] \u2713 "${query}" via serpapi`);
+                console.log(`[Success] ✓ "${query}" via serpapi`);
                 return dataUri;
-            } catch (e) { console.warn(`[Fetch]  \u26a0 serpapi exhausted for "${query}"`); }
+            } catch (e) {
+                console.warn(`[Success]  ⚠ serpapi exhausted for "${query}": ${e.message?.slice(0, 60)}`);
+            }
             continue;
         }
         try {
             const imageUrl = await searchSource(source, query, orientation, imageIndex);
             if (!imageUrl) continue;
             const { base64, contentType } = await downloadToBase64(imageUrl);
-            console.log(`[Fetch] \u2713 "${query}" via ${source}`);
+            console.log(`[Success] ✓ "${query}" via ${source}`);
             return `data:${contentType};base64,${base64}`;
-        } catch (e) { console.warn(`[Fetch]  \u26a0 ${source} failed for "${query}"`); }
+        } catch (e) {
+            console.warn(`[Success]  ⚠ ${source} failed for "${query}": ${e.message?.slice(0, 60)}`);
+        }
     }
-    console.warn(`[Fetch]  \u2717 ALL sources failed for "${query}"`);
+    console.warn(`[Success]  ✗ ALL sources failed for "${query}" — extremely rare (picsum has no key requirement)`);
     return null;
 }
 
+// ── panZoom camera helper — mirrors the casing's own slotToXY math ─────────
 const SLOT_CENTERS = {
     'top-left': [180, 270.5], 'top-center': [540, 270.5], 'top-right': [900, 270.5],
     'mid-left': [180, 511.5], 'mid-center': [540, 511.5], 'mid-right': [900, 511.5],
     'low-left': [180, 752.5], 'low-center': [540, 752.5], 'low-right': [900, 752.5],
     'bot-left': [180, 993.5], 'bot-center': [540, 993.5], 'bot-right': [900, 993.5],
+    'deep-left': [180, 1234.5], 'deep-center': [540, 1234.5], 'deep-right': [900, 1234.5],
     'banner-top': [540, 270.5], 'banner-mid': [540, 752.5], 'banner-low': [540, 1234.5], 'banner-bot': [540, 1475.5],
 };
 function zoomTo(slot, scale) {
@@ -193,51 +213,261 @@ function zoomTo(slot, scale) {
 }
 const ZOOM_OUT = { toScale: 1, toX: 0, toY: 0 };
 
-
 module.exports = (async () => {
-    console.log('[hard-to-get-government-job-zimbabwe] Fetching images sequentially...');
-    const results = {};
-    const queries = [
-        ["queue of people waiting line", { source: "pexels" }],
-        ["certificates documents desk", { source: "pexels" }],
-    ];
-    for (const [q, opts] of queries) { results[q] = await fetchImageRobust(q, opts); }
 
-    const commonTheme = {"paper": "#f2ede1", "ink": "#1c1c1e", "accent": "#1a5276", "accent2": "#27ae60", "shadow": "rgba(20,16,10,0.32)"};
+    console.log('[Success] Fetching images sequentially...');
+
+    const queries = [
+        ['person reaching mountain summit', { source: 'serpapi' }],
+        ['city skyline sunrise ambition', { source: 'serpapi' }],
+        ['person waking up sunrise window', { source: 'pexels' }],
+        ['morning routine journal coffee', { source: 'pexels' }],
+        ['person reading book focused', { source: 'pexels' }],
+        ['home library bookshelf', { source: 'pexels' }],
+        ['piggy bank savings coins', { source: 'pexels' }],
+        ['stock market growth chart', { source: 'pexels' }],
+        ['mentor mentee conversation office', { source: 'pexels' }],
+        ['business people networking handshake', { source: 'pexels' }],
+        ['person climbing rock determination', { source: 'pexels' }],
+        ['comeback success celebration', { source: 'pexels' }],
+        ['confident person city success', { source: 'serpapi' }],
+    ];
+
+    const results = {};
+    for (const [query, opts] of queries) {
+        results[query] = await fetchImageRobust(query, opts);
+    }
+
+    const imgSummit          = results['person reaching mountain summit'];
+    const imgSkyline         = results['city skyline sunrise ambition'];
+    const imgWakingUp        = results['person waking up sunrise window'];
+    const imgMorningRoutine  = results['morning routine journal coffee'];
+    const imgReading         = results['person reading book focused'];
+    const imgLibrary         = results['home library bookshelf'];
+    const imgPiggyBank       = results['piggy bank savings coins'];
+    const imgStockChart      = results['stock market growth chart'];
+    const imgMentor          = results['mentor mentee conversation office'];
+    const imgNetworking      = results['business people networking handshake'];
+    const imgClimbing        = results['person climbing rock determination'];
+    const imgCelebration     = results['comeback success celebration'];
+    const imgConfident       = results['confident person city success'];
+
+    console.log('[Success] All images resolved. Building config...');
+
+    const commonTheme = {
+        paper: '#f3ecd8', ink: '#1a1a1a',
+        accent: '#c9a227', accent2: '#1a7a4c',
+        shadow: 'rgba(20,16,10,0.38)',
+    };
 
     return {
-        output: {
-            title: "hard-to-get-government-job-zimbabwe", format: 'portrait', fps: 30, crf: 22, preset: 'medium',
-            bgMusicVol: 0.1, bgMusic: { search: "documentary neutral piano", mood: "documentary" },
-        },
-        defaults: { voice: "bf_lily", transition: 'fade', transitionDuration: 0.35 },
+        output: { title: 'how-to-be-successful-in-life', format: 'portrait', fps: 30, crf: 23, preset: 'medium' },
+        defaults: { voice: 'am_eric', transition: 'fade', transitionDuration: 0.35 },
+
         scenes: [
+
+            // ── Scene 0 — HOOK ────────────────────────────────────────────
             {
-                tts: { text: "Getting a government job in Zimbabwe is harder than most people expect, and it's rarely about qualifications alone. For years, the government has operated under a strict hiring freeze, largely because of pressure on the public wage bill, meaning very few new positions actually open in a given year. When a position does open, it's not competing against a handful of applicants, it's often hundreds, sometimes thousands, for one single post. Some ministries also require very specific combinations of qualifications and experience that rule out otherwise strong candidates. The process itself can move slowly, sometimes months with no communication at all. And there have also been documented cases of bribery scams targeting hopeful applicants, promising a job in exchange for payment. The full guide on spotting government job scams is linked in the blog post below.", voice: "bf_lily", pauseAfter: 0.4 },
+                tts: {
+                    text: "What if success isn't about talent at all? Research on high achievers keeps pointing to the same five habits — not luck, not genius, just five things they do differently, every single day.",
+                    voice: 'am_eric', pauseAfter: 0.4,
+                },
                 captions: false,
                 layers: [
-                    { type: 'background', color: commonTheme.paper },
+                    { type: 'background', color: '#f3ecd8' },
                     {
-                        type: 'html-record', src: './ApexCasing/paper-sticker-explainer.html?tag=hard-to-get-government-job-zimbabwe',
+                        type: 'html-record', src: './ApexCasing/paper-sticker-explainer.html?tag=success-hook',
                         audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
                         viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
                         data: {
-                            title: "WHY IT'S HARD TO GET A GOVERNMENT JOB IN ZIMBABWE", theme: commonTheme,
+                            title: '5 HABITS OF SUCCESSFUL PEOPLE', theme: commonTheme,
                             commands: [
-                                { id: 'title', type: 'sticker', text: "WHY IT'S HARD TO GET A GOVERNMENT JOB IN ZIMBABWE", slot: 'banner-top', size: 46, color: '#1a1a1a', stroke: '#ffffff', rotate: -1, trigger: { atSeconds: 0.1 } },
-                                { id: "v0", type: 'icon', icon: "mdi:pause-circle-outline", slot: "mid-left", size: 170, bg: 'circle', color: "#27ae60", trigger: { wordText: "freeze", occurrence: 1 } },
-                                { id: "pz0", type: 'panZoom', ...zoomTo("mid-left", 1.55), duration: 0.9, trigger: { afterId: "v0", offset: 0.15 } },
-                                { id: "v1", type: 'photo', src: results["queue of people waiting line"], slot: "mid-right", width: 300, height: 210, caption: "HUNDREDS OF APPLICANTS", pinStyle: 'tape', trigger: { wordText: "thousands", occurrence: 1 } },
-                                { id: "pz1", type: 'panZoom', ...zoomTo("mid-right", 1.55), duration: 0.9, trigger: { afterId: "v1", offset: 0.15 } },
-                                { id: "out1", type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: "pz1", offset: 0.5 } },
-                                { id: "v2", type: 'photo', src: results["certificates documents desk"], slot: "low-left", width: 300, height: 210, caption: "SPECIFIC REQUIREMENTS", pinStyle: 'tape', trigger: { wordText: "qualifications", occurrence: 1 } },
-                                { id: "pz2", type: 'panZoom', ...zoomTo("low-left", 1.55), duration: 0.9, trigger: { afterId: "v2", offset: 0.15 } },
-                                { id: "v3", type: 'icon', icon: "mdi:clock-alert-outline", slot: "low-right", size: 170, bg: 'circle', color: "#1a5276", trigger: { wordText: "months", occurrence: 1 } },
-                                { id: "pz3", type: 'panZoom', ...zoomTo("low-right", 1.55), duration: 0.9, trigger: { afterId: "v3", offset: 0.15 } },
-                                { id: "out3", type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: "pz3", offset: 0.5 } },
-                                { id: "v4", type: 'icon', icon: "mdi:alert-octagon-outline", slot: "bot-left", size: 170, bg: 'circle', color: "#27ae60", trigger: { wordText: "scams", occurrence: 1 } },
-                                { id: "pz4", type: 'panZoom', ...zoomTo("bot-left", 1.55), duration: 0.9, trigger: { afterId: "v4", offset: 0.15 } },
-                                { id: 'final_out', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: "pz4", offset: 0.6 } }
+                                { id: 'hook1', type: 'sticker', text: 'NOT TALENT.\nNOT LUCK.', slot: 'banner-top', size: 64, color: '#1a1a1a', stroke: '#ffffff', rotate: -1, trigger: { atSeconds: 0.1 } },
+                                { id: 'img_summit', type: 'photo', src: imgSummit, slot: 'mid-center', width: 620, height: 460, caption: 'HIGH ACHIEVERS', pinStyle: 'tape', trigger: { wordText: 'achievers', occurrence: 1 } },
+                                { id: 'pz1', type: 'panZoom', ...zoomTo('mid-center', 1.35), duration: 1.0, trigger: { afterId: 'img_summit', offset: 0.15 } },
+                                { id: 'pz_out0', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'img_summit', offset: 0.7 } },
+                                { id: 'hook2', type: 'sticker', text: '5 HABITS THAT\nCHANGE EVERYTHING', slot: 'banner-bot', size: 52, color: '#ffffff', stroke: '#c9a227', bg: '#c9a227', rotate: 1, trigger: { wordText: 'day', occurrence: 1 } },
+                                { id: 'sc_hook', type: 'circle', target: 'hook2', color: '#c9a227', trigger: { afterId: 'hook2', offset: 0.3 } },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 1 — #1: Wake up early / morning routine ─────────────
+            {
+                tts: {
+                    text: "Number one. They own the first hour of the day. Before notifications, before other people's demands, successful people protect one uninterrupted hour — for planning, thinking, or moving their body. That single hour sets the tone for everything after it.",
+                    voice: 'am_eric', pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#f3ecd8' },
+                    {
+                        type: 'html-record', src: './ApexCasing/paper-sticker-explainer.html?tag=success-s1',
+                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
+                        viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: '#1 — OWN THE FIRST HOUR', theme: commonTheme,
+                            commands: [
+                                { id: 'num1', type: 'sticker', text: '#1', slot: 'top-left', size: 100, color: '#ffffff', stroke: '#1a7a4c', bg: '#1a7a4c', rotate: -3, trigger: { atSeconds: 0.1 } },
+                                { id: 'photo1', type: 'photo', src: imgWakingUp, slot: 'top-center', width: 660, height: 460, rotate: -2, pinStyle: 'tape', caption: 'THE FIRST HOUR', trigger: { wordText: 'hour', occurrence: 1 } },
+                                { id: 'pz_p1', type: 'panZoom', ...zoomTo('top-center', 1.35), duration: 1.0, trigger: { afterId: 'photo1', offset: 0.15 } },
+                                { id: 'pz_out1a', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'photo1', offset: 0.5 } },
+                                { id: 'img_routine', type: 'photo', src: imgMorningRoutine, slot: 'mid-center', width: 560, height: 420, caption: 'PLANNING. THINKING. MOVING.', pinStyle: 'pins', trigger: { wordText: 'moving', occurrence: 1 } },
+                                { id: 'pz_routine', type: 'panZoom', ...zoomTo('mid-center', 1.4), duration: 1.0, trigger: { afterId: 'img_routine', offset: 0.15 } },
+                                { id: 'pz_out1b', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: 'img_routine', offset: 0.6 } },
+                                { id: 'lbl1', type: 'sticker', text: 'SETS THE TONE\nFOR EVERYTHING', slot: 'banner-low', size: 46, color: '#1a1a1a', stroke: '#c9a227', bg: '#c9a227', trigger: { wordText: 'everything', occurrence: 1 } },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 2 — #2: Read constantly ─────────────────────────────
+            {
+                tts: {
+                    text: "Number two. They read like it's their job. Warren Buffett, Bill Gates, dozens of top CEOs — all report reading for an hour or more a day. Not for entertainment. To absorb decades of other people's experience in a fraction of the time it took them to live it.",
+                    voice: 'am_eric', pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#f3ecd8' },
+                    {
+                        type: 'html-record', src: './ApexCasing/paper-sticker-explainer.html?tag=success-s2',
+                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
+                        viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: '#2 — READ LIKE IT\'S THE JOB', theme: commonTheme,
+                            commands: [
+                                { id: 'num2', type: 'sticker', text: '#2', slot: 'top-left', size: 100, color: '#ffffff', stroke: '#1a7a4c', bg: '#1a7a4c', rotate: -3, trigger: { atSeconds: 0.1 } },
+                                { id: 'photo2', type: 'photo', src: imgReading, slot: 'top-center', width: 660, height: 460, rotate: 2, pinStyle: 'tape', caption: 'READING, DAILY', trigger: { wordText: 'day', occurrence: 1 } },
+                                { id: 'pz_p2', type: 'panZoom', ...zoomTo('top-center', 1.35), duration: 1.0, trigger: { afterId: 'photo2', offset: 0.15 } },
+                                { id: 'pz_out2a', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'photo2', offset: 0.5 } },
+                                { id: 'img_library', type: 'photo', src: imgLibrary, slot: 'mid-center', width: 560, height: 420, caption: 'DECADES OF EXPERIENCE, COMPRESSED', pinStyle: 'pins', trigger: { wordText: 'experience', occurrence: 1 } },
+                                { id: 'pz_library', type: 'panZoom', ...zoomTo('mid-center', 1.4), duration: 1.0, trigger: { afterId: 'img_library', offset: 0.15 } },
+                                { id: 'pz_out2b', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: 'img_library', offset: 0.6 } },
+                                { id: 'lbl2', type: 'sticker', text: 'A SHORTCUT TO\nSOMEONE ELSE\'S YEARS', slot: 'banner-low', size: 42, color: '#1a1a1a', stroke: '#c9a227', bg: '#c9a227', trigger: { wordText: 'live', occurrence: 1 } },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 3 — #3: Save & invest before spending ───────────────
+            {
+                tts: {
+                    text: "Number three. They pay themselves first. Before rent, before anything else, a fixed percentage moves into savings or investments the moment income arrives. It's not about how much you earn — it's about what you never let yourself touch.",
+                    voice: 'am_eric', pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#f3ecd8' },
+                    {
+                        type: 'html-record', src: './ApexCasing/paper-sticker-explainer.html?tag=success-s3',
+                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
+                        viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: '#3 — PAY YOURSELF FIRST', theme: commonTheme,
+                            commands: [
+                                { id: 'num3', type: 'sticker', text: '#3', slot: 'top-left', size: 100, color: '#ffffff', stroke: '#1a7a4c', bg: '#1a7a4c', rotate: -3, trigger: { atSeconds: 0.1 } },
+                                { id: 'photo3', type: 'photo', src: imgPiggyBank, slot: 'top-center', width: 660, height: 460, rotate: -2, pinStyle: 'tape', caption: 'SAVE FIRST', trigger: { wordText: 'savings', occurrence: 1 } },
+                                { id: 'pz_p3', type: 'panZoom', ...zoomTo('top-center', 1.35), duration: 1.0, trigger: { afterId: 'photo3', offset: 0.15 } },
+                                { id: 'pz_out3a', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'photo3', offset: 0.5 } },
+                                { id: 'img_chart', type: 'photo', src: imgStockChart, slot: 'mid-center', width: 560, height: 420, caption: 'WHAT YOU NEVER TOUCH, GROWS', pinStyle: 'pins', trigger: { wordText: 'touch', occurrence: 1 } },
+                                { id: 'pz_chart', type: 'panZoom', ...zoomTo('mid-center', 1.4), duration: 1.0, trigger: { afterId: 'img_chart', offset: 0.15 } },
+                                { id: 'pz_out3b', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: 'img_chart', offset: 0.6 } },
+                                { id: 'lbl3', type: 'sticker', text: 'NOT HOW MUCH.\nWHAT YOU KEEP.', slot: 'banner-low', size: 46, color: '#1a1a1a', stroke: '#c9a227', bg: '#c9a227', trigger: { wordText: 'earn', occurrence: 1 } },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 4 — #4: Surround yourself with the right people ─────
+            {
+                tts: {
+                    text: "Number four. They choose their circle on purpose. You become the average of the five people you spend the most time with. Successful people actively seek out mentors and peers who are ahead of them — not to feel inferior, but to have a reason to catch up.",
+                    voice: 'am_eric', pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#f3ecd8' },
+                    {
+                        type: 'html-record', src: './ApexCasing/paper-sticker-explainer.html?tag=success-s4',
+                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
+                        viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: '#4 — CHOOSE YOUR CIRCLE', theme: commonTheme,
+                            commands: [
+                                { id: 'num4', type: 'sticker', text: '#4', slot: 'top-left', size: 100, color: '#ffffff', stroke: '#1a7a4c', bg: '#1a7a4c', rotate: -3, trigger: { atSeconds: 0.1 } },
+                                { id: 'photo4', type: 'photo', src: imgMentor, slot: 'top-center', width: 660, height: 460, rotate: 2, pinStyle: 'tape', caption: 'MENTORS, ON PURPOSE', trigger: { wordText: 'mentors', occurrence: 1 } },
+                                { id: 'pz_p4', type: 'panZoom', ...zoomTo('top-center', 1.35), duration: 1.0, trigger: { afterId: 'photo4', offset: 0.15 } },
+                                { id: 'pz_out4a', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'photo4', offset: 0.5 } },
+                                { id: 'img_network', type: 'photo', src: imgNetworking, slot: 'mid-center', width: 560, height: 420, caption: 'THE AVERAGE OF YOUR FIVE', pinStyle: 'pins', trigger: { wordText: 'five', occurrence: 1 } },
+                                { id: 'pz_network', type: 'panZoom', ...zoomTo('mid-center', 1.4), duration: 1.0, trigger: { afterId: 'img_network', offset: 0.15 } },
+                                { id: 'pz_out4b', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: 'img_network', offset: 0.6 } },
+                                { id: 'lbl4', type: 'sticker', text: 'A REASON\nTO CATCH UP', slot: 'banner-low', size: 48, color: '#1a1a1a', stroke: '#c9a227', bg: '#c9a227', trigger: { wordText: 'catch', occurrence: 1 } },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 5 — #5: Treat failure as data ────────────────────────
+            {
+                tts: {
+                    text: "And number five. They treat failure as data, not defeat. Every setback gets one honest question: what does this tell me for next time? That single shift — from 'I failed' to 'here's what I learned' — is often the actual difference between people who quit and people who don't.",
+                    voice: 'am_eric', pauseAfter: 0.5,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#f3ecd8' },
+                    {
+                        type: 'html-record', src: './ApexCasing/paper-sticker-explainer.html?tag=success-s5',
+                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
+                        viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: '#5 — FAILURE IS DATA', theme: commonTheme,
+                            commands: [
+                                { id: 'num5', type: 'sticker', text: '#5', slot: 'top-left', size: 100, color: '#ffffff', stroke: '#c9a227', bg: '#c9a227', rotate: -3, trigger: { atSeconds: 0.1 } },
+                                { id: 'photo5', type: 'photo', src: imgClimbing, slot: 'top-center', width: 660, height: 460, rotate: -2, pinStyle: 'tape', caption: 'NOT DEFEAT — DATA', trigger: { wordText: 'data', occurrence: 1 } },
+                                { id: 'pz_p5', type: 'panZoom', ...zoomTo('top-center', 1.35), duration: 1.0, trigger: { afterId: 'photo5', offset: 0.15 } },
+                                { id: 'pz_out5a', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'photo5', offset: 0.5 } },
+                                { id: 'img_comeback', type: 'photo', src: imgCelebration, slot: 'mid-center', width: 560, height: 420, caption: '"WHAT DID THIS TEACH ME?"', pinStyle: 'pins', trigger: { wordText: 'learned', occurrence: 1 } },
+                                { id: 'pz_comeback', type: 'panZoom', ...zoomTo('mid-center', 1.4), duration: 1.0, trigger: { afterId: 'img_comeback', offset: 0.15 } },
+                                { id: 'pz_out5b', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: 'img_comeback', offset: 0.6 } },
+                                { id: 'lbl5', type: 'sticker', text: 'THE ONES WHO\nDON\'T QUIT', slot: 'banner-low', size: 48, color: '#1a1a1a', stroke: '#c9a227', bg: '#c9a227', trigger: { wordText: 'quit', occurrence: 1 } },
+                            ],
+                        },
+                    },
+                ],
+            },
+
+            // ── Scene 6 — CLOSING + CTA ─────────────────────────────────────
+            {
+                tts: {
+                    text: "None of these five things require talent. They require deciding to do them, starting today. Which one are you weakest at right now? Subscribe for more, and go work on it.",
+                    voice: 'am_eric', pauseAfter: 0.4,
+                },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#f3ecd8' },
+                    {
+                        type: 'html-record', src: './ApexCasing/paper-sticker-explainer.html?tag=success-cta',
+                        audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
+                        viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                        data: {
+                            title: 'START TODAY', theme: commonTheme,
+                            commands: [
+                                { id: 'img_confident', type: 'photo', src: imgConfident, slot: 'banner-top', width: 680, height: 440, pinStyle: 'none', trigger: { atSeconds: 0.15 } },
+                                { id: 'pz_conf', type: 'panZoom', ...zoomTo('banner-top', 1.3), duration: 1.1, trigger: { afterId: 'img_confident', offset: 0.15 } },
+                                { id: 'pz_out_c1', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'img_confident', offset: 0.7 } },
+                                { id: 'note1', type: 'sticker', text: 'NO TALENT\nREQUIRED.', slot: 'mid-center', size: 62, color: '#1a1a1a', stroke: '#ffffff', trigger: { wordText: 'talent', occurrence: 1 } },
+                                { id: 'note2', type: 'sticker', text: 'JUST A\nDECISION.', slot: 'mid-center', size: 56, color: '#ffffff', stroke: '#1a7a4c', bg: '#1a7a4c', trigger: { wordText: 'today', occurrence: 1 } },
+                                { id: 'cta1', type: 'sticker', text: '🔔 SUBSCRIBE\nFOR MORE', slot: 'banner-bot', size: 78, color: '#ffffff', stroke: '#c9a227', bg: '#c9a227', rotate: 0, trigger: { wordText: 'subscribe', occurrence: 1 } },
+                                { id: 'sc_cta', type: 'circle', target: 'cta1', color: '#c9a227', trigger: { afterId: 'cta1', offset: 0.3 } },
+                                { id: 'pz_out_final', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'sc_cta', offset: 0.4 } },
                             ],
                         },
                     },
