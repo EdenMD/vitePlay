@@ -14,7 +14,7 @@ module.exports = {
         filename: 'rgn-interview-ep1-masterclass.mp4',
         bgMusic: {
             // Freesound ambient clinical/focus background drone
-            search: 'ambient',
+            search: 'medical ambient',
             volume: 0.12,
             fadeIn: 2.0,
             fadeOut: 3.0
