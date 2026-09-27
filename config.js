@@ -1,1557 +1,789 @@
-const https = require('https');
-const http = require('http');
-
-/* ============================================================
-   APEX — PHYTOMED "WHY CHOOSE PHYTOMED?" 40s AD
-   Paper Sticker Explainer
-   ============================================================ */
-
-const SERPAPI_KEY = process.env.SERPAPI_API_KEY || null;
-const serpCache = new Map();
-
-/* ============================================================
-   HTTP HELPERS
-   ============================================================ */
-
-function fetchJSON(url) {
-  return new Promise((resolve, reject) => {
-    const client = url.startsWith('https') ? https : http;
-
-    const req = client.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 APEX Video Engine'
-      }
-    }, res => {
-      let data = '';
-
-      res.on('data', chunk => {
-        data += chunk;
-      });
-
-      res.on('end', () => {
-        if (
-          res.statusCode >= 300 &&
-          res.statusCode < 400 &&
-          res.headers.location
-        ) {
-          return fetchJSON(res.headers.location)
-            .then(resolve)
-            .catch(reject);
-        }
-
-        try {
-          resolve(JSON.parse(data));
-        } catch (err) {
-          reject(
-            new Error(`Invalid JSON response: HTTP ${res.statusCode}`)
-          );
-        }
-      });
-    });
-
-    req.setTimeout(20000, () => {
-      req.destroy();
-      reject(new Error('JSON request timeout'));
-    });
-
-    req.on('error', reject);
-  });
-}
-
-
-function downloadToBase64(url) {
-  return new Promise((resolve, reject) => {
-
-    if (!url || !/^https?:\/\//i.test(url)) {
-      return reject(new Error('Invalid image URL'));
-    }
-
-    const client = url.startsWith('https') ? https : http;
-
-    const req = client.get(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'Accept':
-          'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
-      }
-    }, res => {
-
-      if (
-        res.statusCode >= 300 &&
-        res.statusCode < 400 &&
-        res.headers.location
-      ) {
-        return downloadToBase64(res.headers.location)
-          .then(resolve)
-          .catch(reject);
-      }
-
-      if (res.statusCode !== 200) {
-        res.resume();
-        return reject(
-          new Error(`Image HTTP ${res.statusCode}`)
-        );
-      }
-
-      const contentType =
-        String(res.headers['content-type'] || '').toLowerCase();
-
-      if (
-        contentType.includes('text/html') ||
-        contentType.includes('application/json')
-      ) {
-        res.resume();
-        return reject(new Error('HTML/JSON returned instead of image'));
-      }
-
-      const chunks = [];
-
-      res.on('data', chunk => chunks.push(chunk));
-
-      res.on('end', () => {
-
-        const buffer = Buffer.concat(chunks);
-
-        if (buffer.length < 1024) {
-          return reject(new Error('Image smaller than 1KB'));
-        }
-
-        let mime = contentType.split(';')[0].trim();
-
-        if (!mime.startsWith('image/')) {
-
-          const header =
-            buffer.slice(0, 12).toString('hex');
-
-          if (
-            header.startsWith('89504e470d0a1a0a')
-          ) {
-            mime = 'image/png';
-
-          } else if (
-            buffer[0] === 0xff &&
-            buffer[1] === 0xd8
-          ) {
-            mime = 'image/jpeg';
-
-          } else if (
-            buffer.slice(0, 4).toString() === 'RIFF'
-          ) {
-            mime = 'image/webp';
-
-          } else {
-            return reject(
-              new Error('Unknown image format')
-            );
-          }
-        }
-
-        resolve(
-          `data:${mime};base64,${buffer.toString('base64')}`
-        );
-      });
-    });
-
-    req.setTimeout(25000, () => {
-      req.destroy();
-      reject(new Error('Image download timeout'));
-    });
-
-    req.on('error', reject);
-  });
-}
-
-
-/* ============================================================
-   SERPAPI
-   ============================================================ */
-
-async function searchSerpApi(query) {
-
-  if (!SERPAPI_KEY) {
-    throw new Error(
-      'SERPAPI_API_KEY is not configured'
-    );
-  }
-
-  if (serpCache.has(query)) {
-    return serpCache.get(query);
-  }
-
-  const params = new URLSearchParams({
-    engine: 'google_images',
-    q: query,
-    api_key: SERPAPI_KEY,
-    safe: 'active',
-    num: '20'
-  });
-
-  const url =
-    `https://serpapi.com/search.json?${params.toString()}`;
-
-  const json = await fetchJSON(url);
-
-  const results =
-    Array.isArray(json.images_results)
-      ? json.images_results
-      : [];
-
-  serpCache.set(query, results);
-
-  return results;
-}
-
-
-/* ============================================================
-   ROBUST IMAGE FETCH
-   ============================================================ */
-
-async function fetchSerpImage(primary, backup) {
-
-  const queries = [primary];
-
-  if (backup && backup !== primary) {
-    queries.push(backup);
-  }
-
-  for (const query of queries) {
-
-    try {
-
-      const results =
-        await searchSerpApi(query);
-
-      for (const result of results) {
-
-        const candidates = [
-          result.original,
-          result.thumbnail
-        ].filter(Boolean);
-
-        for (const imageUrl of candidates) {
-
-          try {
-
-            const image =
-              await downloadToBase64(imageUrl);
-
-            if (image) {
-              console.log(
-                `[APEX] Image loaded: ${query}`
-              );
-
-              return image;
-            }
-
-          } catch (err) {
-            // Try the next image.
-          }
-        }
-      }
-
-    } catch (err) {
-
-      console.log(
-        `[APEX] Search failed: ${query} — ${err.message}`
-      );
-    }
-  }
-
-  console.log(
-    `[APEX] No usable image found for: ${primary}`
-  );
-
-  return null;
-}
-
-
-/* ============================================================
-   INVISIBLE SAFE FALLBACK
-   ============================================================ */
-
-function blankImage() {
-
-  const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg"
-       width="800"
-       height="600">
-
-    <rect width="800"
-          height="600"
-          fill="#f4ecdd"/>
-
-  </svg>`;
-
-  return (
-    'data:image/svg+xml;base64,' +
-    Buffer.from(svg).toString('base64')
-  );
-}
-
-
-/* ============================================================
-   SLOT CAMERA
-   ============================================================ */
-
-const SLOT_CENTERS = {
-
-  'top-left': [180, 270.5],
-  'top-center': [540, 270.5],
-  'top-right': [900, 270.5],
-
-  'mid-left': [180, 511.5],
-  'mid-center': [540, 511.5],
-  'mid-right': [900, 511.5],
-
-  'low-left': [180, 752.5],
-  'low-center': [540, 752.5],
-  'low-right': [900, 752.5],
-
-  'bot-left': [180, 993.5],
-  'bot-center': [540, 993.5],
-  'bot-right': [900, 993.5],
-
-  'deep-left': [180, 1234.5],
-  'deep-center': [540, 1234.5],
-  'deep-right': [900, 1234.5],
-
-  'floor-left': [180, 1475.5],
-  'floor-center': [540, 1475.5],
-  'floor-right': [900, 1475.5],
-
-  'banner-top': [540, 270.5],
-  'banner-mid': [540, 752.5],
-  'banner-low': [540, 1234.5],
-  'banner-bot': [540, 1475.5]
-};
-
-
-function zoomTo(slot, scale) {
-
-  const c =
-    SLOT_CENTERS[slot] || [540, 960];
-
-  return {
-    toScale: scale,
-    toX: -scale * (c[0] - 540),
-    toY: -scale * (c[1] - 960)
-  };
-}
-
-
-const ZOOM_OUT = {
-  toScale: 1,
-  toX: 0,
-  toY: 0
-};
-
-
-/* ============================================================
-   CONFIG
-   ============================================================ */
-
-module.exports = (async () => {
-
-  /*
-   * IMPORTANT:
-   * Images are intentionally fetched SEQUENTIALLY.
-   * Do not replace this with Promise.all().
-   */
-
-  const phytoBalm = await fetchSerpImage(
-    'Phytomed PhytoBalm official product',
-    'Phytomed PhytoBalm herbal balm'
-  );
-
-  const phytoBlend = await fetchSerpImage(
-    'Phytomed PhytoBlend official product',
-    'Phytomed PhytoBlend herbal tea'
-  );
-
-  const phytoHair = await fetchSerpImage(
-    'Phytomed Phyto Hair official product',
-    'Phytomed Phyto Hair serum'
-  );
-
-  const phytoWash = await fetchSerpImage(
-    'Phytomed Phyto Wash official product',
-    'Phytomed Phyto Wash'
-  );
-
-  const phytoDeo = await fetchSerpImage(
-    'Phytomed Phyto Deo official product',
-    'Phytomed Phyto Deo'
-  );
-
-  const phytoDerm = await fetchSerpImage(
-    'Phytomed PhytoDerm official product',
-    'Phytomed PhytoDerm cream'
-  );
-
-  const balm = phytoBalm || blankImage();
-  const blend = phytoBlend || blankImage();
-  const hair = phytoHair || blankImage();
-  const wash = phytoWash || blankImage();
-  const deo = phytoDeo || blankImage();
-  const derm = phytoDerm || blankImage();
-
-
-  return {
-
-    /* ========================================================
-       OUTPUT
-       ======================================================== */
+// ============================================================
+// APEX VIDEO ENGINE — HEALTH SERIES
+// THE COLD & FLU MEDICINE MISTAKE THAT CAN CAUSE AN OVERDOSE
+//
+// Target: Zimbabwean audience
+// Format: Vertical 9:16
+// Style: Investigative / consumer health / high retention
+// Target duration: ~75–80 seconds
+//
+// CORE HOOK:
+// Different brands do NOT always mean different ingredients.
+//
+// IMPORTANT:
+// Educational consumer-safety content.
+// Do not imply that normal recommended use is dangerous.
+// ============================================================
+
+const config = {
 
     output: {
+        title: 'health-03-cold-flu-medicine-overdose-zimbabwe',
+        format: 'portrait',
+        fps: 30,
+        crf: 24,
+        preset: 'ultrafast',
+        cleanup: true,
 
-      title:
-        'why-choose-phytomed-40s',
-
-      format: 'portrait',
-
-      width: 1080,
-      height: 1920,
-
-      fps: 30,
-
-      crf: 22,
-
-      preset: 'medium',
-
-      bgMusicVol: 0.06,
-
-      bgMusic: {
-        mood: 'uplifting'
-      },
-
-      postProcess: {
-        grain: true,
-        grainStrength: 0.018,
-        vignette: false
-      }
+        postProcess: {
+            grain: true,
+            grainStrength: 0.018,
+            vignette: true,
+            vignetteStrength: 0.38,
+        },
     },
-
-
-    /* ========================================================
-       DEFAULTS
-       ======================================================== */
 
     defaults: {
-
-      voice: 'bm_george',
-
-      speed: 1.0,
-
-      transition: 'fade',
-
-      transitionDuration: 0.25
+        voice: 'am_adam',
+        transition: 'fade',
+        transitionDuration: 0.20,
     },
-
-
-    /* ========================================================
-       SCENES
-       ======================================================== */
 
     scenes: [
 
-      /* ======================================================
-         SCENE 1 — THE QUESTION
-         ~7 seconds
-         ====================================================== */
+        // ========================================================
+        // SCENE 1 — THE HOOK
+        // ~9 SEC
+        // ========================================================
+        {
+            tts: {
+                text:
+                    'You take one medicine for flu. Then another for the headache. Then something else for the fever. But what if two of them contain the same medicine?',
 
-      {
-
-        tts: {
-
-          text:
-            "Why choose Phytomed? Because wellness is not just about one need. It's about caring for the whole you, every day.",
-
-          voice: 'bm_george',
-
-          speed: 1.0,
-
-          pauseAfter: 0.2
-        },
-
-        captions: false,
-
-        layers: [
-
-          {
-            type: 'background',
-            color: '#f4ecdd'
-          },
-
-          {
-
-            type: 'html-record',
-
-            src:
-              './ApexCasing/paper-sticker-explainer.html?tag=phytomed-why-01',
-
-            audioSync: true,
-
-            cursor: false,
-
-            waitFor: '[data-ready="1"]',
-
-            fps: 30,
-
-            viewport: {
-              width: 1080,
-              height: 1920
+                speed: 0.94,
+                emotion: 'neutral',
+                pauseAfter: 0.2,
             },
 
-            x: 0,
-            y: 0,
-
-            width: 1080,
-            height: 1920,
-
-            fit: 'cover',
-
-            data: {
-
-              title: 'WHY PHYTOMED?',
-
-              theme: {
-
-                paper: '#f4ecdd',
-
-                ink: '#17181c',
-
-                accent: '#47734d',
-
-                accent2: '#a94b38',
-
-                shadow:
-                  'rgba(20,16,10,0.35)'
-              },
-
-              commands: [
-
-                {
-                  id: 'question',
-
-                  type: 'sticker',
-
-                  text:
-                    'WHY\\nPHYTOMED?',
-
-                  slot: 'banner-mid',
-
-                  size: 86,
-
-                  color: '#ffffff',
-
-                  stroke: '#47734d',
-
-                  bg: '#47734d',
-
-                  rotate: -1,
-
-                  trigger: {
-                    atSeconds: 0.2
-                  }
-                },
-
-                {
-                  id: 'whole_you',
-
-                  type: 'label',
-
-                  text:
-                    'Wellness is more than one need.',
-
-                  slot: 'banner-low',
-
-                  size: 38,
-
-                  trigger: {
-                    afterId: 'question',
-                    offset: 0.55
-                  }
-                },
-
-                {
-                  id: 'leaf',
-
-                  type: 'icon',
-
-                  icon: 'mdi:leaf',
-
-                  size: 150,
-
-                  slot: 'top-center',
-
-                  bg: 'circle',
-
-                  color: '#47734d',
-
-                  trigger: {
-                    afterId: 'question',
-                    offset: 0.4
-                  }
-                },
-
-                {
-                  id: 'zoom',
-
-                  type: 'panZoom',
-
-                  ...zoomTo(
-                    'banner-mid',
-                    1.35
-                  ),
-
-                  duration: 0.8,
-
-                  trigger: {
-                    afterId: 'question',
-                    offset: 0.8
-                  }
-                },
-
-                {
-                  id: 'zoomout',
-
-                  type: 'panZoom',
-
-                  ...ZOOM_OUT,
-
-                  duration: 0.8,
-
-                  trigger: {
-                    afterId: 'zoom',
-                    offset: 0.7
-                  }
-                }
-
-              ]
-            }
-          }
-        ]
-      },
-
-
-      /* ======================================================
-         SCENE 2 — EVERYDAY NEEDS
-         ~8 seconds
-         ====================================================== */
-
-      {
-
-        tts: {
-
-          text:
-            "From everyday personal care to skin and hair care, Phytomed has products designed for different parts of your routine.",
-
-          voice: 'bm_george',
-
-          speed: 1.0,
-
-          pauseAfter: 0.2
-        },
-
-        captions: false,
-
-        layers: [
-
-          {
-            type: 'background',
-            color: '#f4ecdd'
-          },
-
-          {
-
-            type: 'html-record',
-
-            src:
-              './ApexCasing/paper-sticker-explainer.html?tag=phytomed-everyday-02',
-
-            audioSync: true,
-
-            cursor: false,
-
-            waitFor: '[data-ready="1"]',
-
-            fps: 30,
-
-            viewport: {
-              width: 1080,
-              height: 1920
+            transition: 'zoom-cut',
+            transitionDuration: 0.15,
+
+            captions: {
+                style: 'highlight',
+                position: 'bottom',
+                fontSize: 54,
+                color: '#ffffff',
+                highlightColor: '#ff5a3c',
+                wordsPerChunk: 3,
+                strokeColor: 'rgba(0,0,0,1)',
+                strokeWidth: 6,
             },
 
-            x: 0,
-            y: 0,
-
-            width: 1080,
-            height: 1920,
-
-            fit: 'cover',
-
-            data: {
-
-              title: 'EVERYDAY CARE',
-
-              theme: {
-
-                paper: '#f4ecdd',
-
-                ink: '#17181c',
-
-                accent: '#47734d',
-
-                accent2: '#a94b38',
-
-                shadow:
-                  'rgba(20,16,10,0.35)'
-              },
-
-              commands: [
+            layers: [
 
                 {
-                  id: 'wash',
+                    type: 'stock-image',
+                    query:
+                        'cold flu medicine tablets medicine boxes pharmacy',
+                    source: 'serpapi',
+                    orientation: 'portrait',
+                    imageIndex: 0,
 
-                  type: 'photo',
+                    x: 0,
+                    y: 0,
+                    width: 1080,
+                    height: 1920,
 
-                  src: wash,
-
-                  slot: 'mid-left',
-
-                  width: 500,
-
-                  height: 390,
-
-                  caption: 'PHYTO WASH',
-
-                  pinStyle: 'tape',
-
-                  rotate: -2,
-
-                  trigger: {
-                    atSeconds: 0.25
-                  }
+                    fit: 'cover',
+                    kenBurns: 'zoom-in',
+                    kenBurnsAmount: 0.18,
                 },
 
                 {
-                  id: 'deo',
-
-                  type: 'photo',
-
-                  src: deo,
-
-                  slot: 'mid-right',
-
-                  width: 500,
-
-                  height: 390,
-
-                  caption: 'PHYTO DEO',
-
-                  pinStyle: 'pins',
-
-                  rotate: 2,
-
-                  trigger: {
-                    afterId: 'wash',
-                    offset: 1.0
-                  }
+                    type: 'overlay',
+                    color: 'rgba(0,0,0,0.60)',
                 },
 
                 {
-                  id: 'personal',
+                    type: 'text',
+                    text:
+                        'THREE MEDICINES.\nONE HIDDEN PROBLEM.',
+                    x: 540,
+                    y: 520,
 
-                  type: 'sticker',
+                    fontSize: 68,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
+                    fontWeight: 'bold',
 
-                  text:
-                    'PERSONAL\\nCARE',
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 930,
+                    lineHeight: 1.08,
 
-                  slot: 'banner-low',
+                    gradient: [
+                        '#ff5a3c',
+                        '#ff8c42'
+                    ],
 
-                  size: 62,
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 5,
 
-                  color: '#ffffff',
+                    glow: true,
+                    glowColor: '#ff5a3c',
+                    glowBlur: 24,
 
-                  stroke: '#a94b38',
+                    animation: 'pop',
+                    animDur: 0.30,
+                    startT: 0.05,
 
-                  bg: '#a94b38',
-
-                  rotate: -1,
-
-                  trigger: {
-                    afterId: 'deo',
-                    offset: 0.6
-                  }
+                    hookLayer: true,
                 },
 
                 {
-                  id: 'hair',
+                    type: 'text',
+                    text:
+                        'DIFFERENT BRANDS ≠ DIFFERENT INGREDIENTS',
+                    x: 540,
+                    y: 950,
 
-                  type: 'photo',
+                    fontSize: 37,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
 
-                  src: hair,
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 920,
 
-                  slot: 'deep-center',
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 4,
 
-                  width: 520,
-
-                  height: 390,
-
-                  caption: 'PHYTO HAIR',
-
-                  pinStyle: 'tape',
-
-                  rotate: -1,
-
-                  trigger: {
-                    afterId: 'personal',
-                    offset: 0.55
-                  }
+                    animation: 'fade',
+                    animDur: 0.25,
+                    startT: 1.4,
                 },
-
-                {
-                  id: 'zoom',
-
-                  type: 'panZoom',
-
-                  ...zoomTo(
-                    'mid-left',
-                    1.45
-                  ),
-
-                  duration: 0.8,
-
-                  trigger: {
-                    afterId: 'wash',
-                    offset: 0.7
-                  }
-                },
-
-                {
-                  id: 'zoomout',
-
-                  type: 'panZoom',
-
-                  ...ZOOM_OUT,
-
-                  duration: 0.8,
-
-                  trigger: {
-                    afterId: 'zoom',
-                    offset: 0.7
-                  }
-                }
-
-              ]
-            }
-          }
-        ]
-      },
-
-
-      /* ======================================================
-         SCENE 3 — WHAT CAN THEY HELP WITH?
-         ~9 seconds
-         ====================================================== */
-
-      {
-
-        tts: {
-
-          text:
-            "PhytoBalm is marketed for everyday relief from body aches and congestion. PhytoBlend is a caffeine-free herbal tea, while PhytoDerm focuses on moisturising skin care.",
-
-          voice: 'bm_george',
-
-          speed: 1.0,
-
-          pauseAfter: 0.2
+            ],
         },
 
-        captions: false,
 
-        layers: [
+        // ========================================================
+        // SCENE 2 — EVERYDAY ZIMBABWEAN SCENARIO
+        // ~11 SEC
+        // ========================================================
+        {
+            tts: {
+                text:
+                    'Picture this. You've got a headache, a blocked nose and a fever. You buy one product for the flu and another for the headache. It feels like you're treating different problems. But the ingredients may overlap.',
 
-          {
-            type: 'background',
-            color: '#f4ecdd'
-          },
-
-          {
-
-            type: 'html-record',
-
-            src:
-              './ApexCasing/paper-sticker-explainer.html?tag=phytomed-help-03',
-
-            audioSync: true,
-
-            cursor: false,
-
-            waitFor: '[data-ready="1"]',
-
-            fps: 30,
-
-            viewport: {
-              width: 1080,
-              height: 1920
+                speed: 0.94,
+                emotion: 'neutral',
+                pauseAfter: 0.22,
             },
 
-            x: 0,
-            y: 0,
+            transition: 'wipe-left',
+            transitionDuration: 0.20,
 
-            width: 1080,
-            height: 1920,
+            captions: {
+                style: 'highlight',
+                position: 'bottom',
+                fontSize: 52,
+                color: '#ffffff',
+                highlightColor: '#ff5a3c',
+                wordsPerChunk: 4,
+                strokeColor: 'rgba(0,0,0,1)',
+                strokeWidth: 6,
+            },
 
-            fit: 'cover',
-
-            data: {
-
-              title: 'PRODUCT PURPOSES',
-
-              theme: {
-
-                paper: '#f4ecdd',
-
-                ink: '#17181c',
-
-                accent: '#a94b38',
-
-                accent2: '#47734d',
-
-                shadow:
-                  'rgba(20,16,10,0.35)'
-              },
-
-              commands: [
+            layers: [
 
                 {
-                  id: 'balm',
+                    type: 'stock-image',
+                    query:
+                        'African pharmacy customer buying cold medicine pharmacist',
+                    source: 'serpapi',
+                    orientation: 'portrait',
+                    imageIndex: 0,
 
-                  type: 'photo',
+                    x: 0,
+                    y: 0,
+                    width: 1080,
+                    height: 1920,
 
-                  src: balm,
-
-                  slot: 'top-left',
-
-                  width: 440,
-
-                  height: 350,
-
-                  caption: 'PHYTOBALM',
-
-                  pinStyle: 'tape',
-
-                  rotate: -2,
-
-                  trigger: {
-                    atSeconds: 0.25
-                  }
+                    fit: 'cover',
+                    kenBurns: 'pan-right',
+                    kenBurnsAmount: 0.15,
                 },
 
                 {
-                  id: 'balm_text',
-
-                  type: 'label',
-
-                  text:
-                    'Body care • congestion',
-
-                  slot: 'top-right',
-
-                  size: 29,
-
-                  trigger: {
-                    afterId: 'balm',
-                    offset: 0.45
-                  }
+                    type: 'overlay',
+                    color: 'rgba(0,0,0,0.57)',
                 },
 
                 {
-                  id: 'blend',
+                    type: 'text',
+                    text:
+                        'FLU.\nHEADACHE.\nFEVER.',
+                    x: 540,
+                    y: 430,
 
-                  type: 'photo',
+                    fontSize: 72,
+                    fontFamily: 'Impact, Arial Black, sans-serif',
 
-                  src: blend,
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 850,
+                    lineHeight: 1.08,
 
-                  slot: 'mid-left',
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 5,
 
-                  width: 440,
-
-                  height: 350,
-
-                  caption: 'PHYTOBLEND',
-
-                  pinStyle: 'pins',
-
-                  rotate: 2,
-
-                  trigger: {
-                    afterId: 'balm_text',
-                    offset: 0.7
-                  }
+                    animation: 'pop',
+                    animDur: 0.30,
+                    startT: 0.10,
                 },
 
                 {
-                  id: 'blend_text',
+                    type: 'text',
+                    text:
+                        'THREE SYMPTOMS.\nMULTIPLE PRODUCTS.',
+                    x: 540,
+                    y: 930,
 
-                  type: 'label',
+                    fontSize: 45,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
 
-                  text:
-                    'Herbal tea • caffeine free',
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 850,
+                    lineHeight: 1.18,
 
-                  slot: 'mid-right',
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 4,
 
-                  size: 29,
-
-                  trigger: {
-                    afterId: 'blend',
-                    offset: 0.45
-                  }
+                    animation: 'slide-up',
+                    animDur: 0.3,
+                    startT: 1.4,
                 },
-
-                {
-                  id: 'derm',
-
-                  type: 'photo',
-
-                  src: derm,
-
-                  slot: 'low-center',
-
-                  width: 540,
-
-                  height: 390,
-
-                  caption: 'PHYTODERM',
-
-                  pinStyle: 'tape',
-
-                  rotate: -1,
-
-                  trigger: {
-                    afterId: 'blend_text',
-                    offset: 0.7
-                  }
-                },
-
-                {
-                  id: 'derm_text',
-
-                  type: 'label',
-
-                  text:
-                    'Moisturising skin care',
-
-                  slot: 'banner-bot',
-
-                  size: 34,
-
-                  trigger: {
-                    afterId: 'derm',
-                    offset: 0.45
-                  }
-                },
-
-                {
-                  id: 'zoom',
-
-                  type: 'panZoom',
-
-                  ...zoomTo(
-                    'low-center',
-                    1.45
-                  ),
-
-                  duration: 0.8,
-
-                  trigger: {
-                    afterId: 'derm',
-                    offset: 0.7
-                  }
-                },
-
-                {
-                  id: 'zoomout',
-
-                  type: 'panZoom',
-
-                  ...ZOOM_OUT,
-
-                  duration: 0.8,
-
-                  trigger: {
-                    afterId: 'zoom',
-                    offset: 0.7
-                  }
-                }
-
-              ]
-            }
-          }
-        ]
-      },
-
-
-      /* ======================================================
-         SCENE 4 — WHY PEOPLE CHOOSE A RANGE
-         ~8 seconds
-         ====================================================== */
-
-      {
-
-        tts: {
-
-          text:
-            "The idea is simple: choose products according to your needs, follow the directions, and make informed choices about your wellbeing.",
-
-          voice: 'bm_george',
-
-          speed: 1.0,
-
-          pauseAfter: 0.2
+            ],
         },
 
-        captions: false,
 
-        layers: [
+        // ========================================================
+        // SCENE 3 — THE REVEAL
+        // ~12 SEC
+        // ========================================================
+        {
+            tts: {
+                text:
+                    'Here's the problem. Some cold and flu products contain paracetamol, the same medicine found in many products used for pain and fever. Taking multiple products with the same active ingredient can make it easier to accidentally take too much.',
 
-          {
-            type: 'background',
-            color: '#f4ecdd'
-          },
-
-          {
-
-            type: 'html-record',
-
-            src:
-              './ApexCasing/paper-sticker-explainer.html?tag=phytomed-choice-04',
-
-            audioSync: true,
-
-            cursor: false,
-
-            waitFor: '[data-ready="1"]',
-
-            fps: 30,
-
-            viewport: {
-              width: 1080,
-              height: 1920
+                speed: 0.93,
+                emotion: 'neutral',
+                pauseAfter: 0.25,
             },
 
-            x: 0,
-            y: 0,
+            transition: 'glitch',
+            transitionDuration: 0.17,
 
-            width: 1080,
-            height: 1920,
+            captions: {
+                style: 'highlight',
+                position: 'bottom',
+                fontSize: 52,
+                color: '#ffffff',
+                highlightColor: '#ff5a3c',
+                wordsPerChunk: 3,
+                strokeColor: 'rgba(0,0,0,1)',
+                strokeWidth: 6,
+            },
 
-            fit: 'cover',
-
-            data: {
-
-              title: 'YOUR ROUTINE',
-
-              theme: {
-
-                paper: '#f4ecdd',
-
-                ink: '#17181c',
-
-                accent: '#47734d',
-
-                accent2: '#a94b38',
-
-                shadow:
-                  'rgba(20,16,10,0.35)'
-              },
-
-              commands: [
+            layers: [
 
                 {
-                  id: 'one',
+                    type: 'stock-image',
+                    query:
+                        'paracetamol tablets medicine packaging close up',
+                    source: 'serpapi',
+                    orientation: 'portrait',
+                    imageIndex: 0,
 
-                  type: 'sticker',
+                    x: 0,
+                    y: 0,
+                    width: 1080,
+                    height: 1920,
 
-                  text:
-                    '1. KNOW\\nYOUR NEED',
-
-                  slot: 'top-left',
-
-                  size: 52,
-
-                  color: '#ffffff',
-
-                  stroke: '#47734d',
-
-                  bg: '#47734d',
-
-                  rotate: -2,
-
-                  trigger: {
-                    atSeconds: 0.3
-                  }
+                    fit: 'cover',
+                    kenBurns: 'zoom-in',
+                    kenBurnsAmount: 0.17,
                 },
 
                 {
-                  id: 'two',
-
-                  type: 'sticker',
-
-                  text:
-                    '2. CHOOSE\\nWISELY',
-
-                  slot: 'mid-center',
-
-                  size: 52,
-
-                  color: '#ffffff',
-
-                  stroke: '#a94b38',
-
-                  bg: '#a94b38',
-
-                  rotate: 1,
-
-                  trigger: {
-                    afterId: 'one',
-                    offset: 1.2
-                  }
+                    type: 'overlay',
+                    color: 'rgba(0,0,0,0.62)',
                 },
 
                 {
-                  id: 'three',
+                    type: 'text',
+                    text:
+                        'CHECK THE\nACTIVE INGREDIENTS',
+                    x: 540,
+                    y: 390,
 
-                  type: 'sticker',
+                    fontSize: 62,
+                    fontFamily: 'Impact, Arial Black, sans-serif',
 
-                  text:
-                    '3. FOLLOW\\nDIRECTIONS',
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 900,
+                    lineHeight: 1.1,
 
-                  slot: 'low-right',
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 5,
 
-                  size: 52,
-
-                  color: '#ffffff',
-
-                  stroke: '#47734d',
-
-                  bg: '#47734d',
-
-                  rotate: -1,
-
-                  trigger: {
-                    afterId: 'two',
-                    offset: 1.2
-                  }
+                    animation: 'pop',
+                    animDur: 0.3,
+                    startT: 0.10,
                 },
 
                 {
-                  id: 'check',
+                    type: 'text',
+                    text:
+                        'PARACETAMOL',
+                    x: 540,
+                    y: 790,
 
-                  type: 'draw',
+                    fontSize: 70,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
 
-                  preset: 'check',
+                    color: '#ff5a3c',
+                    align: 'center',
 
-                  slot: 'banner-low',
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 5,
 
-                  scale: 1.5,
+                    glow: true,
+                    glowColor: '#ff5a3c',
+                    glowBlur: 28,
 
-                  color: '#47734d',
-
-                  trigger: {
-                    afterId: 'three',
-                    offset: 0.5
-                  }
+                    animation: 'pop',
+                    animDur: 0.25,
+                    startT: 1.1,
                 },
 
                 {
-                  id: 'zoom',
+                    type: 'text',
+                    text:
+                        'ONE INGREDIENT\nCAN APPEAR IN MORE THAN ONE PRODUCT.',
+                    x: 540,
+                    y: 1050,
 
-                  type: 'panZoom',
+                    fontSize: 38,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
 
-                  ...zoomTo(
-                    'mid-center',
-                    1.4
-                  ),
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 900,
+                    lineHeight: 1.25,
 
-                  duration: 0.8,
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 4,
 
-                  trigger: {
-                    afterId: 'two',
-                    offset: 0.7
-                  }
+                    animation: 'fade',
+                    animDur: 0.3,
+                    startT: 1.7,
                 },
-
-                {
-                  id: 'zoomout',
-
-                  type: 'panZoom',
-
-                  ...ZOOM_OUT,
-
-                  duration: 0.8,
-
-                  trigger: {
-                    afterId: 'zoom',
-                    offset: 0.8
-                  }
-                }
-
-              ]
-            }
-          }
-        ]
-      },
-
-
-      /* ======================================================
-         SCENE 5 — CTA / WHATSAPP
-         ~8 seconds
-         ====================================================== */
-
-      {
-
-        tts: {
-
-          text:
-            "Want to learn more about Phytomed products? Join our WhatsApp community, ask questions, and discover the range. Your pathway to wellness starts with an informed choice.",
-
-          voice: 'bm_george',
-
-          speed: 1.0,
-
-          pauseAfter: 0.4
+            ],
         },
 
-        captions: false,
 
-        layers: [
+        // ========================================================
+        // SCENE 4 — WHY OVERDOSE IS SERIOUS
+        // ~12 SEC
+        // ========================================================
+        {
+            tts: {
+                text:
+                    'Too much paracetamol can cause serious liver damage. And that's what makes accidental overdose dangerous: early symptoms may not always seem severe. You may think you're simply dealing with the flu, while something much more serious is happening.',
 
-          {
-            type: 'background',
-            color: '#f4ecdd'
-          },
-
-          {
-
-            type: 'html-record',
-
-            src:
-              './ApexCasing/paper-sticker-explainer.html?tag=phytomed-cta-05',
-
-            audioSync: true,
-
-            cursor: false,
-
-            waitFor: '[data-ready="1"]',
-
-            fps: 30,
-
-            viewport: {
-              width: 1080,
-              height: 1920
+                speed: 0.93,
+                emotion: 'neutral',
+                pauseAfter: 0.3,
             },
 
-            x: 0,
-            y: 0,
+            transition: 'fade',
+            transitionDuration: 0.20,
 
-            width: 1080,
-            height: 1920,
+            captions: {
+                style: 'highlight',
+                position: 'bottom',
+                fontSize: 52,
+                color: '#ffffff',
+                highlightColor: '#ff5a3c',
+                wordsPerChunk: 4,
+                strokeColor: 'rgba(0,0,0,1)',
+                strokeWidth: 6,
+            },
 
-            fit: 'cover',
-
-            data: {
-
-              title: 'JOIN US',
-
-              theme: {
-
-                paper: '#f4ecdd',
-
-                ink: '#17181c',
-
-                accent: '#47734d',
-
-                accent2: '#a94b38',
-
-                shadow:
-                  'rgba(20,16,10,0.35)'
-              },
-
-              commands: [
+            layers: [
 
                 {
-                  id: 'leaf',
+                    type: 'stock-image',
+                    query:
+                        'liver medical illustration human anatomy',
+                    source: 'serpapi',
+                    orientation: 'portrait',
+                    imageIndex: 0,
 
-                  type: 'icon',
+                    x: 0,
+                    y: 0,
+                    width: 1080,
+                    height: 1920,
 
-                  icon: 'mdi:leaf-circle',
-
-                  size: 170,
-
-                  slot: 'top-center',
-
-                  bg: 'circle',
-
-                  color: '#47734d',
-
-                  trigger: {
-                    atSeconds: 0.2
-                  }
+                    fit: 'cover',
+                    kenBurns: 'drift',
+                    kenBurnsAmount: 0.12,
                 },
 
                 {
-                  id: 'brand',
-
-                  type: 'sticker',
-
-                  text:
-                    'WHY\\nPHYTOMED?',
-
-                  slot: 'mid-center',
-
-                  size: 76,
-
-                  color: '#ffffff',
-
-                  stroke: '#47734d',
-
-                  bg: '#47734d',
-
-                  rotate: -1,
-
-                  trigger: {
-                    afterId: 'leaf',
-                    offset: 0.45
-                  }
+                    type: 'overlay',
+                    color: 'rgba(0,0,0,0.65)',
                 },
 
                 {
-                  id: 'community',
+                    type: 'text',
+                    text:
+                        'TOO MUCH\nCAN BE DANGEROUS.',
+                    x: 540,
+                    y: 450,
 
-                  type: 'sticker',
+                    fontSize: 67,
+                    fontFamily: 'Impact, Arial Black, sans-serif',
 
-                  text:
-                    'JOIN OUR\\nWHATSAPP\\nCOMMUNITY',
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 900,
+                    lineHeight: 1.08,
 
-                  slot: 'low-center',
+                    gradient: [
+                        '#ff5a3c',
+                        '#ff8c42'
+                    ],
 
-                  size: 53,
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 5,
 
-                  color: '#ffffff',
+                    glow: true,
+                    glowColor: '#ff5a3c',
+                    glowBlur: 22,
 
-                  stroke: '#a94b38',
-
-                  bg: '#a94b38',
-
-                  rotate: 1,
-
-                  trigger: {
-                    afterId: 'brand',
-                    offset: 0.65
-                  }
+                    animation: 'pop',
+                    animDur: 0.3,
+                    startT: 0.15,
                 },
 
                 {
-                  id: 'whatsapp',
+                    type: 'text',
+                    text:
+                        'SERIOUS LIVER DAMAGE',
+                    x: 540,
+                    y: 900,
 
-                  type: 'icon',
+                    fontSize: 48,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
 
-                  icon: 'mdi:whatsapp',
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 900,
 
-                  size: 125,
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 4,
 
-                  slot: 'deep-center',
-
-                  bg: 'circle',
-
-                  color: '#47734d',
-
-                  trigger: {
-                    afterId: 'community',
-                    offset: 0.5
-                  }
+                    animation: 'slide-up',
+                    animDur: 0.3,
+                    startT: 1.4,
                 },
 
                 {
-                  id: 'cta',
+                    type: 'text',
+                    text:
+                        'AND EARLY WARNING SIGNS\nMAY NOT SEEM SEVERE.',
+                    x: 540,
+                    y: 1100,
 
-                  type: 'label',
+                    fontSize: 35,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
 
-                  text:
-                    'Ask • Learn • Discover',
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 850,
+                    lineHeight: 1.25,
 
-                  slot: 'floor-center',
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 4,
 
-                  size: 34,
+                    animation: 'fade',
+                    animDur: 0.25,
+                    startT: 2.1,
+                },
+            ],
+        },
 
-                  trigger: {
-                    afterId: 'whatsapp',
-                    offset: 0.4
-                  }
+
+        // ========================================================
+        // SCENE 5 — ZIMBABWEAN PRACTICAL ANGLE
+        // ~11 SEC
+        // ========================================================
+        {
+            tts: {
+                text:
+                    'So when you're buying medicine for a cold or flu in Zimbabwe, don't only look at the brand name. Look at the active ingredients. And if you're taking more than one medicine, ask a pharmacist whether the ingredients overlap.',
+
+                speed: 0.94,
+                emotion: 'neutral',
+                pauseAfter: 0.25,
+            },
+
+            transition: 'wipe-right',
+            transitionDuration: 0.20,
+
+            captions: {
+                style: 'highlight',
+                position: 'bottom',
+                fontSize: 52,
+                color: '#ffffff',
+                highlightColor: '#ff8c42',
+                wordsPerChunk: 4,
+                strokeColor: 'rgba(0,0,0,1)',
+                strokeWidth: 6,
+            },
+
+            layers: [
+
+                {
+                    type: 'stock-image',
+                    query:
+                        'African pharmacist customer pharmacy medicine',
+                    source: 'serpapi',
+                    orientation: 'portrait',
+                    imageIndex: 0,
+
+                    x: 0,
+                    y: 0,
+                    width: 1080,
+                    height: 1920,
+
+                    fit: 'cover',
+                    kenBurns: 'zoom-out',
+                    kenBurnsAmount: 0.13,
                 },
 
                 {
-                  id: 'zoom',
-
-                  type: 'panZoom',
-
-                  ...zoomTo(
-                    'low-center',
-                    1.3
-                  ),
-
-                  duration: 1.0,
-
-                  trigger: {
-                    afterId: 'community',
-                    offset: 0.7
-                  }
+                    type: 'overlay',
+                    color: 'rgba(0,0,0,0.53)',
                 },
 
                 {
-                  id: 'zoomout',
+                    type: 'text',
+                    text:
+                        'DON’T JUST CHECK\nTHE BRAND.',
+                    x: 540,
+                    y: 420,
 
-                  type: 'panZoom',
+                    fontSize: 67,
+                    fontFamily: 'Impact, Arial Black, sans-serif',
 
-                  ...ZOOM_OUT,
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 900,
+                    lineHeight: 1.1,
 
-                  duration: 0.8,
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 5,
 
-                  trigger: {
-                    afterId: 'zoom',
-                    offset: 0.8
-                  }
+                    animation: 'pop',
+                    animDur: 0.3,
+                    startT: 0.1,
                 },
 
                 {
-                  id: 'disclaimer',
+                    type: 'text',
+                    text:
+                        'CHECK THE\nACTIVE INGREDIENTS.',
+                    x: 540,
+                    y: 820,
 
-                  type: 'label',
+                    fontSize: 55,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
 
-                  text:
-                    'Use products as directed. Consult a healthcare professional when appropriate.',
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 850,
+                    lineHeight: 1.15,
 
-                  slot: 'floor-left',
+                    gradient: [
+                        '#ff5a3c',
+                        '#ff8c42'
+                    ],
 
-                  size: 19,
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 5,
 
-                  trigger: {
-                    afterId: 'cta',
-                    offset: 0.5
-                  }
-                }
+                    animation: 'slide-up',
+                    animDur: 0.3,
+                    startT: 1.3,
+                },
 
-              ]
-            }
-          }
-        ]
-      }
+                {
+                    type: 'text',
+                    text:
+                        'WHEN IN DOUBT,\nASK A PHARMACIST.',
+                    x: 540,
+                    y: 1120,
 
-    ]
-  };
+                    fontSize: 38,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
 
-})();
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 800,
+                    lineHeight: 1.25,
+
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 4,
+
+                    animation: 'fade',
+                    animDur: 0.25,
+                    startT: 2.0,
+                },
+            ],
+        },
+
+
+        // ========================================================
+        // SCENE 6 — FINAL RETENTION / CTA
+        // ~10 SEC
+        // ========================================================
+        {
+            tts: {
+                text:
+                    'And if you think you've taken more medicine than recommended, don't wait for serious symptoms. Seek medical advice promptly. Before you take another cold medicine, check what's already in the one you took.',
+
+                speed: 0.92,
+                emotion: 'neutral',
+                pauseAfter: 0.45,
+            },
+
+            transition: 'zoom-cut',
+            transitionDuration: 0.18,
+
+            captions: {
+                style: 'highlight',
+                position: 'bottom',
+                fontSize: 52,
+                color: '#ffffff',
+                highlightColor: '#ff5a3c',
+                wordsPerChunk: 3,
+                strokeColor: 'rgba(0,0,0,1)',
+                strokeWidth: 6,
+            },
+
+            layers: [
+
+                {
+                    type: 'gradient',
+                    gradientType: 'linear',
+
+                    colors: [
+                        '#050505',
+                        '#180b0b',
+                        '#050505'
+                    ],
+
+                    angle: 150,
+
+                    vignette: true,
+                    vignetteStrength: 0.45,
+                },
+
+                {
+                    type: 'text',
+                    text:
+                        'BEFORE YOU\nTAKE ANOTHER ONE…',
+                    x: 540,
+                    y: 480,
+
+                    fontSize: 68,
+                    fontFamily: 'Impact, Arial Black, sans-serif',
+
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 930,
+                    lineHeight: 1.05,
+
+                    animation: 'pop',
+                    animDur: 0.3,
+                    startT: 0.15,
+                },
+
+                {
+                    type: 'text',
+                    text:
+                        'CHECK WHAT’S\nALREADY INSIDE.',
+                    x: 540,
+                    y: 820,
+
+                    fontSize: 57,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
+
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 850,
+                    lineHeight: 1.1,
+
+                    gradient: [
+                        '#ff5a3c',
+                        '#ff8c42'
+                    ],
+
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 5,
+
+                    glow: true,
+                    glowColor: '#ff5a3c',
+                    glowBlur: 25,
+
+                    animation: 'slide-up',
+                    animDur: 0.3,
+                    startT: 1.1,
+                },
+
+                {
+                    type: 'text',
+                    text:
+                        'DIFFERENT BRAND.\nSAME ACTIVE INGREDIENT.',
+                    x: 540,
+                    y: 1110,
+
+                    fontSize: 35,
+                    fontFamily: 'Arial Black, Impact, sans-serif',
+
+                    color: '#ffffff',
+                    align: 'center',
+                    maxWidth: 850,
+                    lineHeight: 1.25,
+
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 4,
+
+                    animation: 'fade',
+                    animDur: 0.25,
+                    startT: 2.0,
+                },
+            ],
+        },
+    ],
+};
+
+module.exports = config;
