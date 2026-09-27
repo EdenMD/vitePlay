@@ -1,257 +1,328 @@
 /**
- * config.stealth-fighter-paradox.js
+ * config.nursing-ep1-verified.js
  * 
- * Engine: APEX Video Engine v2.4 / V3
- * Format: 9:16 Portrait (1080x1920) for YouTube Shorts & TikTok
- * Topic: The F-117 Nighthawk & the math paper the US ignored
- * 
- * Run with: VIDEO_CONFIG=config.stealth-fighter-paradox.js node engine-ci.js
+ * Zimbabwe Nurse Trainee Coaching — Episode 1
+ * Platform: books.co.zw (16:9 Landscape Embed)
+ * Fully compliant with APEX Engine v2.6+ / V3 source code
  */
 
 module.exports = {
     output: {
-        title:  'the-math-behind-stealth',
-        format: 'portrait',
+        title:  'nurse-interview-ep1',
+        format: 'landscape',
+        width:  1920,
+        height: 1080,
         fps:    30,
-        crf:    22,
-        preset: 'fast',
-        postProcess: {
-            grain: true,
-            grainStrength: 0.025,
-            vignette: true,
-            vignetteStrength: 0.40,
+        crf:    20,
+        preset: 'medium',
+        // Freesound search with automatic mood-track fallback
+        bgMusic: {
+            search: 'hospital ambient room clinical',
+            mood:   'documentary',
         },
-        beat: {
-            bpm: 110,
-            genre: 'dark-synth',
-            bars: 8,
-            key: 'Dmin',
-            vol: 0.22,
+        bgMusicVol: 0.15,
+        postProcess: {
+            vignette: true,
+            vignetteStrength: 0.35,
+            grain: true,
+            grainStrength: 0.02,
         },
     },
 
     defaults: {
-        voice:              'bm_george',    // Deep authoritative documentary tone
+        voice:              'bf_emma',
         speed:              1.0,
         transition:         'fade',
         transitionDuration: 0.35,
     },
 
     scenes: [
-        // ══ 1. HOOK — IN MEDIAS RES ════════════════════════════════════════
+        // ══ SCENE 1: THE HOOK WITH LIVE EKG SVG & SFX ══════════════════════
         {
             tts: {
-                text: "The most secret stealth jet in American history wasn't invented in the United States. It was discovered in an unclassified Soviet math paper.",
-                voice: 'bm_george',
-                pauseAfter: 0.4,
-            },
-            transition: 'zoom-out',
-            captions: true,
-            layers: [
-                {
-                    type: 'stock-image',
-                    query: 'F-117 Nighthawk stealth aircraft dramatic night sky',
-                    source: 'serpapi',
-                    orientation: 'portrait',
-                    kenBurns: 'zoom-in',
-                    kenBurnsAmount: 0.52,
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                },
-                {
-                    type: 'overlay',
-                    color: 'rgba(0, 0, 0, 0.45)',
-                },
-            ],
-            sfx: 'sub-drop',
-            sfxAt: 0.1,
-        },
-
-        // ══ 2. DRAMATIC TEXT HOOK ══════════════════════════════════════════
-        {
-            tts: {
-                text: "Soviet scientists thought the math was completely useless. Lockheed used it to become invisible to radar.",
-                voice: 'bm_george',
+                text: "The first question in your Zimbabwean nursing interview will determine if you get accepted or eliminated: Why do you want to become a registered nurse?",
+                voice: 'bf_emma',
                 pauseAfter: 0.5,
             },
             transition: 'fade',
+            transitionSfx: 'whoosh',
+            sfx: 'dramatic',
+            sfxAt: 0.1,
+            sfxVol: 0.5,
             captions: true,
             layers: [
                 {
                     type: 'gradient',
                     gradientType: 'radial',
-                    colors: ['#120800', '#050200', '#000000'],
+                    colors: ['#0f2338', '#07111c', '#02060a'],
                     vignette: true,
-                    vignetteStrength: 0.5,
+                    vignetteStrength: 0.6,
+                },
+                {
+                    type: 'particles',
+                    particleType: 'dust',
+                    count: 30,
+                    color: 'rgba(56, 189, 248, 0.25)',
+                    speed: 0.4,
+                },
+                // Animated real-time EKG cardiac monitor path
+                {
+                    type: 'svg-draw',
+                    x: 160, y: 760,
+                    scale: 1.5,
+                    drawDur: 2.2,
+                    stagger: 0.1,
+                    fillAfter: false,
+                    paths: [
+                        {
+                            d: "M 0 0 L 250 0 L 280 -15 L 300 15 L 320 -120 L 350 70 L 370 -20 L 390 0 L 700 0 L 730 -15 L 750 15 L 770 -120 L 800 70 L 820 -20 L 840 0 L 1100 0",
+                            stroke: '#38bdf8',
+                            strokeWidth: 4,
+                            lineCap: 'round',
+                        },
+                    ],
+                },
+                // Animated Medical Cross
+                {
+                    type: 'svg-draw',
+                    x: 960, y: 320,
+                    scale: 1.2,
+                    drawDur: 1.5,
+                    fillAfter: true,
+                    paths: [
+                        {
+                            d: "M -25 -75 L 25 -75 L 25 -25 L 75 -25 L 75 25 L 25 25 L 25 75 L -25 75 L -25 25 L -75 25 L -75 -25 L -25 -25 Z",
+                            stroke: '#38bdf8',
+                            strokeWidth: 3,
+                            fill: 'rgba(56, 189, 248, 0.12)',
+                        },
+                    ],
+                },
+                {
+                    type: 'text',
+                    text: 'BOOKS.CO.ZW \u2022 MOHCC INTERVIEW COACHING',
+                    x: 100, y: 80,
+                    fontSize: 22,
+                    fontFamily: 'Arial, sans-serif',
+                    color: '#38bdf8',
+                    align: 'left',
                 },
                 {
                     type: 'neon-text',
-                    text: 'THE RADAR\nPARADOX',
-                    x: 540, y: 880,
-                    fontSize: 88,
-                    color: '#ff8c00',
+                    text: 'THE ELIMINATOR QUESTION',
+                    x: 960, y: 470,
+                    fontSize: 56,
+                    color: '#e0f2fe',
                     align: 'center',
-                    glowLayers: 5,
-                    glowSpread: 18,
-                    flicker: true,
-                    hookLayer: true,
+                    glowLayers: 4,
+                    glowSpread: 14,
+                },
+                {
+                    type: 'text',
+                    text: '"Why do you want to be a Nurse?"',
+                    x: 960, y: 560,
+                    fontSize: 72,
+                    fontFamily: 'Impact, Arial Black',
+                    color: '#ffffff',
+                    align: 'center',
+                    stroke: true,
+                    strokeColor: '#000000',
+                    strokeWidth: 4,
+                    animation: 'pop',
+                    startT: 0.4, animDur: 0.5,
                 },
             ],
-            sfx: 'dramatic-hit',
+        },
+
+        // ══ SCENE 2: DOSSIER AUDIT EXPLAINER (BUILT-IN APEXCASING) ═════════
+        {
+            tts: {
+                text: "Hospital matrons at Parirenyatwa, Sally Mugabe, and Mpilo hear hundreds of scripted applicants every single day.",
+                voice: 'bf_emma',
+                pauseAfter: 0.5,
+            },
+            transition: 'fade',
+            transitionSfx: 'wipe',
+            sfx: 'tension',
+            sfxAt: 0.2,
+            sfxVol: 0.4,
+            captions: true,
+            layers: [
+                {
+                    type: 'html-record',
+                    src: './ApexCasing/dossier-audit-explainer-landscape.html',
+                    data: {
+                        caseTitle: 'MOHCC APPLICANT AUDIT // FILE #2026-NURSE',
+                        stamp: 'EVALUATED',
+                        commands: [
+                            { type: 'label', text: 'PANEL REPORT: COMMON REJECTIONS', x: 180, y: 160, font: 'label' },
+                            { type: 'redact', x: 200, y: 280, width: 680, height: 44, color: '#b3242f', label: 'GENERIC "PASSION" CLICHE' },
+                            { type: 'pin', x: 1200, y: 180, label: 'CENTRAL HOSPITALS AUDITED' },
+                            { type: 'meter', label: 'CANDIDATE REJECTION RATE', value: 92, max: 100, x: 1100, y: 340, unit: '%' },
+                            {
+                                type: 'ledgerLine',
+                                items: [
+                                    { text: 'Parirenyatwa Group of Hospitals', status: 'OVER-SUBSCRIBED' },
+                                    { text: 'Sally Mugabe Central Hospital', status: 'HIGH RESILIENCE FOCUS' },
+                                    { text: 'Mpilo Central Hospital', status: 'WARD WORK CAPACITY' },
+                                ],
+                                x: 180, y: 460,
+                            },
+                        ],
+                    },
+                    waitFor: '[data-ready="1"]',
+                    duration: 6.8,
+                    fps: 30,
+                    viewport: { width: 1920, height: 1080 },
+                    x: 0, y: 0, width: 1920, height: 1080, fit: 'cover',
+                },
+            ],
+        },
+
+        // ══ SCENE 3: VALID DATA-TABLE COMPARISON ═══════════════════════════
+        {
+            tts: {
+                text: "Saying you 'love helping sick people' gets you penalized. The panel needs to know you understand night duty, acute ward stress, and clinical accountability.",
+                voice: 'bf_emma',
+                pauseAfter: 0.5,
+            },
+            transition: 'fade',
+            transitionSfx: 'wipe',
+            sfx: 'error',
             sfxAt: 0.1,
-        },
-
-        // ══ 3. THE DISCOVERY & HISTORICAL EVIDENCE ═════════════════════════
-        {
-            tts: {
-                text: "In 1964, physicist Pyotr Ufimtsev published a breakthrough formula calculating exactly how electromagnetic waves scatter off flat 2D surfaces.",
-                voice: 'bm_george',
-                pauseAfter: 0.4,
-            },
-            transition: 'slideLeft',
-            captions: true,
-            layers: [
-                {
-                    type: 'stock-image',
-                    query: 'physics blackboard formulas mathematics equations dark room',
-                    source: 'serpapi',
-                    orientation: 'portrait',
-                    kenBurns: 'pan-up',
-                    kenBurnsAmount: 0.40,
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-                },
-                {
-                    type: 'overlay',
-                    color: 'rgba(0, 0, 0, 0.5)',
-                },
-            ],
-        },
-
-        // ══ 4. QUOTE CARD (CANON DOCUMENTATION) ════════════════════════════
-        {
-            tts: {
-                text: "The Soviet Union allowed it to be published worldwide because military censors concluded it had zero weapon value.",
-                voice: 'bm_george',
-                pauseAfter: 0.5,
-            },
-            transition: 'fade',
-            captions: true,
-            layers: [
-                {
-                    type: 'gradient',
-                    gradientType: 'radial',
-                    colors: ['#0f172a', '#020617'],
-                    vignette: true,
-                    vignetteStrength: 0.45,
-                },
-                {
-                    type: 'quote-card',
-                    text: '"The calculations are of purely academic interest with no direct military application." \u2014 Soviet Technical Review, 1964',
-                    x: 540, y: 860,
-                    width: 920,
-                    fontSize: 36,
-                    accentColor: '#38bdf8',
-                    showCard: true,
-                    showLines: true,
-                    animDur: 0.6,
-                },
-            ],
-        },
-
-        // ══ 5. APEXCASING DATA-DRIVEN HTML COMPARISON ═══════════════════════
-        {
-            tts: {
-                text: "Lockheed's Skunk Works translated it. By replacing smooth curved wings with angled flat facets, radar cross-sections collapsed overnight.",
-                voice: 'bm_george',
-                pauseAfter: 0.5,
-            },
-            transition: 'fade',
+            sfxVol: 0.45,
             captions: true,
             layers: [
                 {
                     type: 'html-record',
                     src: './ApexCasing/data-table.html',
                     data: {
-                        title: 'RADAR SIGNATURE (RCS)',
-                        columns: ['B-52', 'F-15', 'F-117 Stealth'],
-                        highlightColumn: 2,
+                        title: 'APPLICANT EVALUATION MATRIX',
+                        columns: ['What Gets Rejected', 'What Passes the Panel'],
+                        highlightColumn: 1,
                         rows: [
-                            { label: 'Radar Echo Area', values: ['100 m²', '25 m²', '0.001 m²'] },
-                            { label: 'Radar Equivalent', values: ['Barn', 'Truck', 'Small Marble'] },
-                            { label: 'Detection Range', values: ['250+ km', '160 km', '< 8 km'] },
+                            { label: 'Motivation', values: ['"Always loved helping people"', 'Concrete catalyst event'] },
+                            { label: 'Ward Labor', values: ['Ignores physical reality', 'Ready for 12hr night shifts'] },
+                            { label: 'Public Health', values: ['No awareness of MoHCC goals', 'Commitment to district care'] },
                         ],
                     },
                     waitFor: '[data-ready="1"]',
-                    duration: 6.0,
+                    duration: 6.5,
                     fps: 30,
-                    viewport: { width: 1080, height: 1920 },
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                    viewport: { width: 1920, height: 1080 },
+                    x: 0, y: 0, width: 1920, height: 1080, fit: 'cover',
                 },
             ],
         },
 
-        // ══ 6. APEXCASING RECAP & RANKING BOARD ════════════════════════════
+        // ══ SCENE 4: 3-PILLAR RECAP BOARD ══════════════════════════════════
         {
             tts: {
-                text: "Here is the ultimate irony: the mathematics that gave the West total air dominance in Desert Storm came straight out of Moscow.",
-                voice: 'bm_george',
+                text: "When answering, use the three pillars: the catalyst that proved your interest, proof of your physical and emotional stamina, and your commitment to Zimbabwean public healthcare.",
+                voice: 'bf_emma',
                 pauseAfter: 0.6,
             },
             transition: 'fade',
+            transitionSfx: 'zoom',
+            sfx: 'success',
+            sfxAt: 0.2,
+            sfxVol: 0.4,
             captions: true,
             layers: [
                 {
                     type: 'html-record',
                     src: './ApexCasing/recap-board.html',
                     data: {
-                        title: 'STEALTH ORIGIN RECAP',
+                        title: 'THE 3-PILLAR WINNING FORMULA',
                         items: [
-                            { rank: 3, name: 'Soviet Math Paper', stat: 'Ufimtsev (1964) ignored at home' },
-                            { rank: 2, name: 'Skunk Works Overhaul', stat: 'Faceting computer model Echo 1' },
-                            { rank: 1, name: 'The F-117 Nighthawk', stat: 'First operational stealth aircraft' },
+                            { rank: 1, name: 'The Catalyst', stat: 'A real personal event that tested your resolve to serve patients' },
+                            { rank: 2, name: 'Stamina & Discipline', stat: 'Proof you can handle long shifts, night duty, and ward pressure' },
+                            { rank: 3, name: 'National Service', stat: 'Dedication to public clinics, district centers, and patient safety' },
                         ],
                     },
                     waitFor: '[data-ready="1"]',
-                    duration: 6.5,
+                    duration: 7.0,
                     fps: 30,
-                    viewport: { width: 1080, height: 1920 },
-                    x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+                    viewport: { width: 1920, height: 1080 },
+                    x: 0, y: 0, width: 1920, height: 1080, fit: 'cover',
                 },
             ],
         },
 
-        // ══ 7. RETENTION OUTRO & CALL TO ACTION ════════════════════════════
+        // ══ SCENE 5: OUTRO WITH DUAL SVG PULSE & AUDIO WAVEFORM ═════════════
         {
             tts: {
-                text: "Follow for more uncovered military history you weren't supposed to know.",
-                voice: 'bm_george',
+                text: "Download the complete word-for-word interview answers and sample scenario questions right now on books.co.zw.",
+                voice: 'bf_emma',
                 pauseAfter: 0.5,
             },
             transition: 'fade',
+            sfx: 'notification',
+            sfxAt: 0.1,
+            sfxVol: 0.45,
             captions: true,
             layers: [
                 {
                     type: 'gradient',
                     gradientType: 'radial',
-                    colors: ['#0f051d', '#000000'],
+                    colors: ['#0f2338', '#07111c', '#000000'],
                     vignette: true,
-                    vignetteStrength: 0.5,
+                    vignetteStrength: 0.55,
+                },
+                // Animated SVG Medical Cross
+                {
+                    type: 'svg-draw',
+                    x: 960, y: 340,
+                    scale: 1.0,
+                    drawDur: 1.2,
+                    fillAfter: true,
+                    paths: [
+                        {
+                            d: "M -20 -60 L 20 -60 L 20 -20 L 60 -20 L 60 20 L 20 20 L 20 60 L -20 60 L -20 20 L -60 20 L -60 -20 L -20 -20 Z",
+                            stroke: '#38bdf8',
+                            strokeWidth: 3,
+                            fill: '#0284c7',
+                        },
+                    ],
+                },
+                {
+                    type: 'text',
+                    text: 'COMPLETE STUDY GUIDES & SCRIPTS',
+                    x: 960, y: 460,
+                    fontSize: 28,
+                    fontFamily: 'Arial, sans-serif',
+                    color: '#94a3b8',
+                    align: 'center',
+                },
+                {
+                    type: 'neon-text',
+                    text: 'books.co.zw',
+                    x: 960, y: 550,
+                    fontSize: 90,
+                    color: '#38bdf8',
+                    align: 'center',
+                    glowLayers: 5,
+                    glowSpread: 22,
+                },
+                {
+                    type: 'text',
+                    text: 'Next Episode: "Handling Difficult Relatives & Ward Ethical Conflicts"',
+                    x: 960, y: 660,
+                    fontSize: 26,
+                    fontFamily: 'Arial, sans-serif',
+                    color: '#e2e8f0',
+                    align: 'center',
+                    animation: 'fade',
+                    startT: 0.4, animDur: 0.4,
                 },
                 {
                     type: 'waveform',
                     vizStyle: 'bars',
-                    x: 90, y: 1550,
-                    width: 900,
-                    height: 80,
-                    bars: 48,
-                    color: '#ff8c00',
-                },
-                {
-                    type: 'giphy',
-                    query: 'subscribe button youtube sticker',
-                    sticker: true,
-                    x: 290, y: 800,
-                    width: 500, height: 500,
-                    fit: 'contain',
+                    x: 260, y: 880,
+                    width: 1400,
+                    height: 60,
+                    bars: 70,
+                    color: '#38bdf8',
                 },
             ],
         },
