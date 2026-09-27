@@ -1,786 +1,157 @@
 // ============================================================
-// APEX VIDEO ENGINE — HEALTH SERIES
-// THE COLD & FLU MEDICINE MISTAKE THAT CAN CAUSE AN OVERDOSE
-//
-// Target: Zimbabwean audience
-// Format: Vertical 9:16
-// Style: Investigative / consumer health / high retention
-// Target duration: ~75–80 seconds
-//
-// CORE HOOK:
-// Different brands do NOT always mean different ingredients.
-//
-// IMPORTANT:
-// Educational consumer-safety content.
-// Do not imply that normal recommended use is dangerous.
+//  APEX VIDEO ENGINE — HEALTH SERIES — HOUSEHOLD PRODUCTS,
+//  LONG-TERM RISKS (PART 2)
+//  Standalone educational video. No product tie-in of any kind.
+//  Target: ~90 seconds | 5 scenes | am_adam voice
+//  Sourced from NIH Sister Study (2022/2025), PFAS/cookware
+//  research (2025-2026). Framed as documented associations,
+//  not proven single-cause claims — same as Part 1.
 // ============================================================
-
 const config = {
-
     output: {
-        title: 'health-03-cold-flu-medicine-overdose-zimbabwe',
-        format: 'portrait',
-        fps: 30,
-        crf: 24,
-        preset: 'ultrafast',
-        cleanup: true,
-
+        title:      'health-03-household-products-longterm',
+        format:     'portrait',
+        fps:        30,
+        crf:        24,
+        preset:     'ultrafast',
+        cleanup:    true,
         postProcess: {
-            grain: true,
-            grainStrength: 0.018,
-            vignette: true,
-            vignetteStrength: 0.38,
+            grain:            true,
+            grainStrength:    0.022,
+            vignette:         true,
+            vignetteStrength: 0.45,
         },
     },
-
     defaults: {
-        voice: 'am_adam',
-        transition: 'fade',
-        transitionDuration: 0.20,
+        voice:              'am_adam',
+        transition:         'fade',
+        transitionDuration: 0.26,
     },
-
     scenes: [
 
-        // ========================================================
-        // SCENE 1 — THE HOOK
-        // ~9 SEC
-        // ========================================================
+        // ── SCENE 1 — HOOK (~13 sec) ────────────────────────────────
         {
             tts: {
-                text:
-                    'You take one medicine for flu. Then another for the headache. Then something else for the fever. But what if two of them contain the same medicine?',
-
-                speed: 0.94,
-                emotion: 'neutral',
-                pauseAfter: 0.2,
+                text:       'Three things in almost every kitchen and bathroom right now — not medicine this time, just ordinary household items — with documented long-term risks that took decades of research to even notice. Same rule as always: this is about knowing the risk, not throwing everything away in a panic.',
+                speed:      0.95,
+                emotion:    'neutral',
+                pauseAfter: 0.35,
             },
-
-            transition: 'zoom-cut',
-            transitionDuration: 0.15,
-
+            transition:         'zoom-cut',
+            transitionDuration: 0.2,
             captions: {
-                style: 'highlight',
-                position: 'bottom',
-                fontSize: 54,
-                color: '#ffffff',
-                highlightColor: '#ff5a3c',
-                wordsPerChunk: 3,
-                strokeColor: 'rgba(0,0,0,1)',
-                strokeWidth: 6,
+                style:          'highlight',
+                position:       'bottom',
+                fontSize:       56,
+                color:          '#ffffff',
+                highlightColor: '#ff8c42',
+                wordsPerChunk:  4,
+                strokeColor:    'rgba(0,0,0,1)',
+                strokeWidth:    6,
             },
-
             layers: [
-
                 {
-                    type: 'stock-image',
-                    query:
-                        'cold flu medicine tablets medicine boxes pharmacy',
-                    source: 'serpapi',
-                    orientation: 'portrait',
-                    imageIndex: 0,
-
-                    x: 0,
-                    y: 0,
-                    width: 1080,
-                    height: 1920,
-
-                    fit: 'cover',
-                    kenBurns: 'zoom-in',
-                    kenBurnsAmount: 0.18,
+                    type:           'stock-image',
+                    query:          'kitchen bathroom household items',
+                    source:         'serpapi',
+                    orientation:    'portrait',
+                    imageIndex:     0,
+                    x: 0, y: 0, width: 1080, height: 1920,
+                    fit:            'cover',
+                    kenBurns:       'zoom-in',
+                    kenBurnsAmount: 0.14,
                 },
-
+                { type: 'overlay', color: 'rgba(0,0,0,0.55)' },
                 {
-                    type: 'overlay',
-                    color: 'rgba(0,0,0,0.60)',
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'THREE MEDICINES.\nONE HIDDEN PROBLEM.',
-                    x: 540,
-                    y: 520,
-
-                    fontSize: 68,
+                    type:       'text',
+                    text:       '3 HOUSEHOLD ITEMS.\nDECADES TO\nNOTICE THE RISK.',
+                    x:          540,
+                    y:          700,
+                    fontSize:   60,
                     fontFamily: 'Arial Black, Impact, sans-serif',
                     fontWeight: 'bold',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 930,
-                    lineHeight: 1.08,
-
-                    gradient: [
-                        '#ff5a3c',
-                        '#ff8c42'
-                    ],
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 5,
-
-                    glow: true,
-                    glowColor: '#ff5a3c',
-                    glowBlur: 24,
-
-                    animation: 'pop',
-                    animDur: 0.30,
-                    startT: 0.05,
-
-                    hookLayer: true,
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'DIFFERENT BRANDS ≠ DIFFERENT INGREDIENTS',
-                    x: 540,
-                    y: 950,
-
-                    fontSize: 37,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 920,
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 4,
-
-                    animation: 'fade',
-                    animDur: 0.25,
-                    startT: 1.4,
-                },
-            ],
-        },
-
-
-        // ========================================================
-        // SCENE 2 — EVERYDAY ZIMBABWEAN SCENARIO
-        // ~11 SEC
-        // ========================================================
-        {
-            tts: {
-                text:
-                    'Picture this. You've got a headache, a blocked nose and a fever. You buy one product for the flu and another for the headache. It feels like you're treating different problems. But the ingredients may overlap.',
-
-                speed: 0.94,
-                emotion: 'neutral',
-                pauseAfter: 0.22,
-            },
-
-            transition: 'wipe-left',
-            transitionDuration: 0.20,
-
-            captions: {
-                style: 'highlight',
-                position: 'bottom',
-                fontSize: 52,
-                color: '#ffffff',
-                highlightColor: '#ff5a3c',
-                wordsPerChunk: 4,
-                strokeColor: 'rgba(0,0,0,1)',
-                strokeWidth: 6,
-            },
-
-            layers: [
-
-                {
-                    type: 'stock-image',
-                    query:
-                        'African pharmacy customer buying cold medicine pharmacist',
-                    source: 'serpapi',
-                    orientation: 'portrait',
-                    imageIndex: 0,
-
-                    x: 0,
-                    y: 0,
-                    width: 1080,
-                    height: 1920,
-
-                    fit: 'cover',
-                    kenBurns: 'pan-right',
-                    kenBurnsAmount: 0.15,
-                },
-
-                {
-                    type: 'overlay',
-                    color: 'rgba(0,0,0,0.57)',
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'FLU.\nHEADACHE.\nFEVER.',
-                    x: 540,
-                    y: 430,
-
-                    fontSize: 72,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 850,
-                    lineHeight: 1.08,
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 5,
-
-                    animation: 'pop',
-                    animDur: 0.30,
-                    startT: 0.10,
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'THREE SYMPTOMS.\nMULTIPLE PRODUCTS.',
-                    x: 540,
-                    y: 930,
-
-                    fontSize: 45,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 850,
-                    lineHeight: 1.18,
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 4,
-
-                    animation: 'slide-up',
-                    animDur: 0.3,
-                    startT: 1.4,
-                },
-            ],
-        },
-
-
-        // ========================================================
-        // SCENE 3 — THE REVEAL
-        // ~12 SEC
-        // ========================================================
-        {
-            tts: {
-                text:
-                    'Here's the problem. Some cold and flu products contain paracetamol, the same medicine found in many products used for pain and fever. Taking multiple products with the same active ingredient can make it easier to accidentally take too much.',
-
-                speed: 0.93,
-                emotion: 'neutral',
-                pauseAfter: 0.25,
-            },
-
-            transition: 'glitch',
-            transitionDuration: 0.17,
-
-            captions: {
-                style: 'highlight',
-                position: 'bottom',
-                fontSize: 52,
-                color: '#ffffff',
-                highlightColor: '#ff5a3c',
-                wordsPerChunk: 3,
-                strokeColor: 'rgba(0,0,0,1)',
-                strokeWidth: 6,
-            },
-
-            layers: [
-
-                {
-                    type: 'stock-image',
-                    query:
-                        'paracetamol tablets medicine packaging close up',
-                    source: 'serpapi',
-                    orientation: 'portrait',
-                    imageIndex: 0,
-
-                    x: 0,
-                    y: 0,
-                    width: 1080,
-                    height: 1920,
-
-                    fit: 'cover',
-                    kenBurns: 'zoom-in',
-                    kenBurnsAmount: 0.17,
-                },
-
-                {
-                    type: 'overlay',
-                    color: 'rgba(0,0,0,0.62)',
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'CHECK THE\nACTIVE INGREDIENTS',
-                    x: 540,
-                    y: 390,
-
-                    fontSize: 62,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 900,
-                    lineHeight: 1.1,
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 5,
-
-                    animation: 'pop',
-                    animDur: 0.3,
-                    startT: 0.10,
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'PARACETAMOL',
-                    x: 540,
-                    y: 790,
-
-                    fontSize: 70,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-
-                    color: '#ff5a3c',
-                    align: 'center',
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 5,
-
-                    glow: true,
-                    glowColor: '#ff5a3c',
-                    glowBlur: 28,
-
-                    animation: 'pop',
-                    animDur: 0.25,
-                    startT: 1.1,
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'ONE INGREDIENT\nCAN APPEAR IN MORE THAN ONE PRODUCT.',
-                    x: 540,
-                    y: 1050,
-
-                    fontSize: 38,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 900,
-                    lineHeight: 1.25,
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 4,
-
-                    animation: 'fade',
-                    animDur: 0.3,
-                    startT: 1.7,
-                },
-            ],
-        },
-
-
-        // ========================================================
-        // SCENE 4 — WHY OVERDOSE IS SERIOUS
-        // ~12 SEC
-        // ========================================================
-        {
-            tts: {
-                text:
-                    'Too much paracetamol can cause serious liver damage. And that's what makes accidental overdose dangerous: early symptoms may not always seem severe. You may think you're simply dealing with the flu, while something much more serious is happening.',
-
-                speed: 0.93,
-                emotion: 'neutral',
-                pauseAfter: 0.3,
-            },
-
-            transition: 'fade',
-            transitionDuration: 0.20,
-
-            captions: {
-                style: 'highlight',
-                position: 'bottom',
-                fontSize: 52,
-                color: '#ffffff',
-                highlightColor: '#ff5a3c',
-                wordsPerChunk: 4,
-                strokeColor: 'rgba(0,0,0,1)',
-                strokeWidth: 6,
-            },
-
-            layers: [
-
-                {
-                    type: 'stock-image',
-                    query:
-                        'liver medical illustration human anatomy',
-                    source: 'serpapi',
-                    orientation: 'portrait',
-                    imageIndex: 0,
-
-                    x: 0,
-                    y: 0,
-                    width: 1080,
-                    height: 1920,
-
-                    fit: 'cover',
-                    kenBurns: 'drift',
-                    kenBurnsAmount: 0.12,
-                },
-
-                {
-                    type: 'overlay',
-                    color: 'rgba(0,0,0,0.65)',
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'TOO MUCH\nCAN BE DANGEROUS.',
-                    x: 540,
-                    y: 450,
-
-                    fontSize: 67,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 900,
-                    lineHeight: 1.08,
-
-                    gradient: [
-                        '#ff5a3c',
-                        '#ff8c42'
-                    ],
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 5,
-
-                    glow: true,
-                    glowColor: '#ff5a3c',
-                    glowBlur: 22,
-
-                    animation: 'pop',
-                    animDur: 0.3,
-                    startT: 0.15,
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'SERIOUS LIVER DAMAGE',
-                    x: 540,
-                    y: 900,
-
-                    fontSize: 48,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 900,
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 4,
-
-                    animation: 'slide-up',
-                    animDur: 0.3,
-                    startT: 1.4,
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'AND EARLY WARNING SIGNS\nMAY NOT SEEM SEVERE.',
-                    x: 540,
-                    y: 1100,
-
-                    fontSize: 35,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 850,
-                    lineHeight: 1.25,
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 4,
-
-                    animation: 'fade',
-                    animDur: 0.25,
-                    startT: 2.1,
-                },
-            ],
-        },
-
-
-        // ========================================================
-        // SCENE 5 — ZIMBABWEAN PRACTICAL ANGLE
-        // ~11 SEC
-        // ========================================================
-        {
-            tts: {
-                text:
-                    'So when you're buying medicine for a cold or flu in Zimbabwe, don't only look at the brand name. Look at the active ingredients. And if you're taking more than one medicine, ask a pharmacist whether the ingredients overlap.',
-
-                speed: 0.94,
-                emotion: 'neutral',
-                pauseAfter: 0.25,
-            },
-
-            transition: 'wipe-right',
-            transitionDuration: 0.20,
-
-            captions: {
-                style: 'highlight',
-                position: 'bottom',
-                fontSize: 52,
-                color: '#ffffff',
-                highlightColor: '#ff8c42',
-                wordsPerChunk: 4,
-                strokeColor: 'rgba(0,0,0,1)',
-                strokeWidth: 6,
-            },
-
-            layers: [
-
-                {
-                    type: 'stock-image',
-                    query:
-                        'African pharmacist customer pharmacy medicine',
-                    source: 'serpapi',
-                    orientation: 'portrait',
-                    imageIndex: 0,
-
-                    x: 0,
-                    y: 0,
-                    width: 1080,
-                    height: 1920,
-
-                    fit: 'cover',
-                    kenBurns: 'zoom-out',
-                    kenBurnsAmount: 0.13,
-                },
-
-                {
-                    type: 'overlay',
-                    color: 'rgba(0,0,0,0.53)',
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'DON’T JUST CHECK\nTHE BRAND.',
-                    x: 540,
-                    y: 420,
-
-                    fontSize: 67,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 900,
-                    lineHeight: 1.1,
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 5,
-
-                    animation: 'pop',
-                    animDur: 0.3,
-                    startT: 0.1,
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'CHECK THE\nACTIVE INGREDIENTS.',
-                    x: 540,
-                    y: 820,
-
-                    fontSize: 55,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 850,
+                    color:      '#ffffff',
+                    align:      'center',
+                    maxWidth:   940,
                     lineHeight: 1.15,
-
-                    gradient: [
-                        '#ff5a3c',
-                        '#ff8c42'
-                    ],
-
-                    stroke: true,
-                    strokeColor: '#000000',
+                    gradient:   ['#ff8c42', '#ffb347'],
+                    stroke:     true,
+                    strokeColor:'#000000',
                     strokeWidth: 5,
-
-                    animation: 'slide-up',
-                    animDur: 0.3,
-                    startT: 1.3,
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'WHEN IN DOUBT,\nASK A PHARMACIST.',
-                    x: 540,
-                    y: 1120,
-
-                    fontSize: 38,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 800,
-                    lineHeight: 1.25,
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 4,
-
-                    animation: 'fade',
-                    animDur: 0.25,
-                    startT: 2.0,
+                    glow:       true,
+                    glowColor:  '#ff8c42',
+                    glowBlur:   30,
+                    animation:  'pop',
+                    animDur:    0.35,
+                    startT:     0.15,
+                    hookLayer:  true,
                 },
             ],
         },
 
-
-        // ========================================================
-        // SCENE 6 — FINAL RETENTION / CTA
-        // ~10 SEC
-        // ========================================================
+        // ── SCENE 2 — NON-STICK COOKWARE / PFAS (~20 sec) ───────────
         {
             tts: {
-                text:
-                    'And if you think you've taken more medicine than recommended, don't wait for serious symptoms. Seek medical advice promptly. Before you take another cold medicine, check what's already in the one you took.',
-
-                speed: 0.92,
-                emotion: 'neutral',
-                pauseAfter: 0.45,
+                text:       'Non-stick pans. The coating that stops food from sticking is made using PFAS chemicals — often called "forever chemicals" because they barely break down, in the environment or in your body. The real risk isn\'t normal cooking. It\'s overheating an empty or old pan past its coating\'s limit — that\'s when it can release fumes linked to kidney and other cancers in research studies.',
+                speed:      0.95, emotion: 'neutral', pauseAfter: 0.3,
             },
-
-            transition: 'zoom-cut',
-            transitionDuration: 0.18,
-
-            captions: {
-                style: 'highlight',
-                position: 'bottom',
-                fontSize: 52,
-                color: '#ffffff',
-                highlightColor: '#ff5a3c',
-                wordsPerChunk: 3,
-                strokeColor: 'rgba(0,0,0,1)',
-                strokeWidth: 6,
-            },
-
+            transition: 'wipe-left', transitionDuration: 0.22,
+            captions: { style: 'highlight', position: 'bottom', fontSize: 56, color: '#ffffff', highlightColor: '#ff8c42', wordsPerChunk: 4, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 6 },
             layers: [
+                { type: 'stock-image', query: 'nonstick frying pan kitchen', source: 'serpapi', orientation: 'portrait', imageIndex: 0, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover', kenBurns: 'pan-up', kenBurnsAmount: 0.16 },
+                { type: 'overlay', color: 'rgba(0,0,0,0.55)' },
+                { type: 'text', text: 'NON-STICK\nCOOKWARE', x: 540, y: 380, fontSize: 62, fontFamily: 'Impact, Arial Black, sans-serif', color: '#ffffff', align: 'center', maxWidth: 920, lineHeight: 1.2, stroke: true, strokeColor: '#000000', strokeWidth: 5, animation: 'pop', animDur: 0.3, startT: 0.1 },
+                { type: 'text', text: '"Forever chemicals" —\nfine in normal use.', x: 540, y: 620, fontSize: 44, fontFamily: 'Arial Black, Impact, sans-serif', color: '#ffffff', align: 'center', maxWidth: 880, lineHeight: 1.3, stroke: true, strokeColor: '#000000', strokeWidth: 4, animation: 'fade', animDur: 0.3, startT: 0.5 },
+                { type: 'text', text: 'RISK: OVERHEATING AN\nEMPTY OR DAMAGED PAN', x: 540, y: 950, fontSize: 46, fontFamily: 'Arial Black, Impact, sans-serif', color: '#ff8c42', align: 'center', maxWidth: 900, lineHeight: 1.2, stroke: true, strokeColor: '#000000', strokeWidth: 4, glow: true, glowColor: '#ff8c42', glowBlur: 20, animation: 'slide-up', animDur: 0.3, startT: 1.6 },
+            ],
+        },
 
-                {
-                    type: 'gradient',
-                    gradientType: 'linear',
+        // ── SCENE 3 — CHEMICAL HAIR RELAXERS (~21 sec) ──────────────
+        {
+            tts: {
+                text:       'Chemical hair relaxers and straighteners. A major U.S. government study tracking over thirty thousand women found that frequent users — more than four times a year — were roughly twice as likely to develop uterine cancer over their lifetime. To be fair, this is an association from observational data, not confirmed proof that the product alone causes it. But it\'s a strong enough signal that researchers say it\'s worth taking seriously, especially for frequent, long-term use.',
+                speed:      0.95, emotion: 'neutral', pauseAfter: 0.35,
+            },
+            transition: 'glitch', transitionDuration: 0.2,
+            captions: { style: 'highlight', position: 'bottom', fontSize: 56, color: '#ffffff', highlightColor: '#ff8c42', wordsPerChunk: 4, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 6 },
+            layers: [
+                { type: 'stock-image', query: 'hair relaxer salon product', source: 'serpapi', orientation: 'portrait', imageIndex: 0, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover', kenBurns: 'zoom-in', kenBurnsAmount: 0.15 },
+                { type: 'overlay', color: 'rgba(0,0,0,0.55)' },
+                { type: 'text', text: 'HAIR RELAXERS &\nSTRAIGHTENERS', x: 540, y: 360, fontSize: 56, fontFamily: 'Impact, Arial Black, sans-serif', color: '#ffffff', align: 'center', maxWidth: 920, lineHeight: 1.2, stroke: true, strokeColor: '#000000', strokeWidth: 5, animation: 'pop', animDur: 0.3, startT: 0.1 },
+                { type: 'text', text: 'Frequent use (4+ times/year)\nlinked to roughly 2x\nuterine cancer risk.', x: 540, y: 620, fontSize: 42, fontFamily: 'Arial Black, Impact, sans-serif', color: '#ffffff', align: 'center', maxWidth: 880, lineHeight: 1.3, stroke: true, strokeColor: '#000000', strokeWidth: 4, animation: 'fade', animDur: 0.3, startT: 0.6 },
+                { type: 'text', text: 'AN ASSOCIATION —\nNOT CONFIRMED SINGLE CAUSE', x: 540, y: 980, fontSize: 40, fontFamily: 'Arial Black, Impact, sans-serif', color: '#ff8c42', align: 'center', maxWidth: 900, lineHeight: 1.2, stroke: true, strokeColor: '#000000', strokeWidth: 4, glow: true, glowColor: '#ff8c42', glowBlur: 18, animation: 'slide-up', animDur: 0.3, startT: 1.9 },
+            ],
+        },
 
-                    colors: [
-                        '#050505',
-                        '#180b0b',
-                        '#050505'
-                    ],
+        // ── SCENE 4 — TALCUM POWDER (~17 sec) ───────────────────────
+        {
+            tts: {
+                text:       'Talcum powder. Used for generations on babies and for personal hygiene. Multiple studies and years of litigation have raised concerns about long-term genital use and a possible link to ovarian cancer — the research is genuinely contested, but it\'s exactly why many manufacturers have already quietly switched to cornstarch-based alternatives.',
+                speed:      0.95, emotion: 'neutral', pauseAfter: 0.35,
+            },
+            transition: 'wipe-right', transitionDuration: 0.22,
+            captions: { style: 'highlight', position: 'bottom', fontSize: 56, color: '#ffffff', highlightColor: '#ff8c42', wordsPerChunk: 4, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 6 },
+            layers: [
+                { type: 'stock-image', query: 'talcum powder bottle bathroom', source: 'serpapi', orientation: 'portrait', imageIndex: 0, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover', kenBurns: 'drift', kenBurnsAmount: 0.15 },
+                { type: 'overlay', color: 'rgba(0,0,0,0.55)' },
+                { type: 'text', text: 'TALCUM POWDER', x: 540, y: 400, fontSize: 60, fontFamily: 'Impact, Arial Black, sans-serif', color: '#ffffff', align: 'center', maxWidth: 920, stroke: true, strokeColor: '#000000', strokeWidth: 5, animation: 'pop', animDur: 0.3, startT: 0.1 },
+                { type: 'text', text: 'Contested research —\nbut manufacturers are already\nswitching to cornstarch.', x: 540, y: 660, fontSize: 42, fontFamily: 'Arial Black, Impact, sans-serif', color: '#ffffff', align: 'center', maxWidth: 880, lineHeight: 1.3, stroke: true, strokeColor: '#000000', strokeWidth: 4, animation: 'fade', animDur: 0.3, startT: 0.6 },
+            ],
+        },
 
-                    angle: 150,
-
-                    vignette: true,
-                    vignetteStrength: 0.45,
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'BEFORE YOU\nTAKE ANOTHER ONE…',
-                    x: 540,
-                    y: 480,
-
-                    fontSize: 68,
-                    fontFamily: 'Impact, Arial Black, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 930,
-                    lineHeight: 1.05,
-
-                    animation: 'pop',
-                    animDur: 0.3,
-                    startT: 0.15,
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'CHECK WHAT’S\nALREADY INSIDE.',
-                    x: 540,
-                    y: 820,
-
-                    fontSize: 57,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 850,
-                    lineHeight: 1.1,
-
-                    gradient: [
-                        '#ff5a3c',
-                        '#ff8c42'
-                    ],
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 5,
-
-                    glow: true,
-                    glowColor: '#ff5a3c',
-                    glowBlur: 25,
-
-                    animation: 'slide-up',
-                    animDur: 0.3,
-                    startT: 1.1,
-                },
-
-                {
-                    type: 'text',
-                    text:
-                        'DIFFERENT BRAND.\nSAME ACTIVE INGREDIENT.',
-                    x: 540,
-                    y: 1110,
-
-                    fontSize: 35,
-                    fontFamily: 'Arial Black, Impact, sans-serif',
-
-                    color: '#ffffff',
-                    align: 'center',
-                    maxWidth: 850,
-                    lineHeight: 1.25,
-
-                    stroke: true,
-                    strokeColor: '#000000',
-                    strokeWidth: 4,
-
-                    animation: 'fade',
-                    animDur: 0.25,
-                    startT: 2.0,
-                },
+        // ── SCENE 5 — CLOSING (~15 sec) — protective, no product pivot ─
+        {
+            tts: {
+                text:       'None of this means panic. Most of these risks are tied to frequent, repeated, long-term exposure — not a one-off. Check for cornstarch-based alternatives where they exist, retire damaged non-stick pans, and if you use chemical hair products regularly, that\'s a reasonable thing to bring up with your doctor. Small, informed swaps — that\'s the whole point.',
+                speed:      0.95, emotion: 'neutral', pauseAfter: 0.4,
+            },
+            transition: 'zoom-cut', transitionDuration: 0.2,
+            captions: { style: 'highlight', position: 'bottom', fontSize: 56, color: '#ffffff', highlightColor: '#ff8c42', wordsPerChunk: 4, strokeColor: 'rgba(0,0,0,1)', strokeWidth: 6 },
+            layers: [
+                { type: 'stock-image', query: 'kitchen healthy home lifestyle', source: 'serpapi', orientation: 'portrait', imageIndex: 0, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover', kenBurns: 'zoom-out', kenBurnsAmount: 0.14 },
+                { type: 'overlay', color: 'rgba(0,0,0,0.55)' },
+                { type: 'text', text: 'SMALL, INFORMED\nSWAPS.', x: 540, y: 460, fontSize: 62, fontFamily: 'Impact, Arial Black, sans-serif', color: '#ffffff', align: 'center', maxWidth: 920, lineHeight: 1.2, gradient: ['#ff8c42', '#ffb347'], stroke: true, strokeColor: '#000000', strokeWidth: 5, glow: true, glowColor: '#ff8c42', glowBlur: 24, animation: 'slide-up', animDur: 0.3, startT: 0.3 },
+                { type: 'text', text: 'Not panic. Just awareness.', x: 540, y: 900, fontSize: 42, fontFamily: 'Arial Black, Impact, sans-serif', color: '#ffffff', align: 'center', maxWidth: 880, stroke: true, strokeColor: '#000000', strokeWidth: 4, animation: 'fade', animDur: 0.3, startT: 1.5 },
             ],
         },
     ],
