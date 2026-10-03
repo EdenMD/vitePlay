@@ -1,0 +1,109 @@
+name: Extract and Save MD Files
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: 'Source repository URL (e.g., https://github.com/user/repo)'
+        required: true
+        default: ''
+      source_branch:
+        description: 'Branch to clone from (default: main)'
+        required: false
+        default: 'main'
+      target_path:
+        description: 'Target directory in this repo to save MD files (default: cloned-docs)'
+        required: false
+        default: 'cloned-docs'
+
+jobs:
+  extract-md-files:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout current repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Clone source repository
+        run: |
+          SOURCE_REPO="${{ github.event.inputs.source_repo }}"
+          SOURCE_BRANCH="${{ github.event.inputs.source_branch || 'main' }}"
+          
+          echo "📦 Cloning ${SOURCE_REPO} (branch: ${SOURCE_BRANCH})..."
+          git clone --depth 1 --branch "$SOURCE_BRANCH" "$SOURCE_REPO" _temp-source
+          
+          if [ ! -d "_temp-source" ]; then
+            echo "❌ Failed to clone repository"
+            exit 1
+          fi
+          echo "✅ Repository cloned successfully"
+
+      - name: Find and extract MD files
+        run: |
+          TARGET_DIR="${{ github.event.inputs.target_path || 'cloned-docs' }}"
+          
+          # Create target directory
+          mkdir -p "$TARGET_DIR"
+          
+          # Find all .md files and copy them, preserving directory structure
+          echo "🔍 Searching for .md files..."
+          MD_COUNT=$(find _temp-source -type f -name "*.md" | wc -l)
+          
+          if [ "$MD_COUNT" -eq 0 ]; then
+            echo "⚠️ No .md files found in the repository"
+            exit 1
+          fi
+          
+          echo "📄 Found $MD_COUNT .md files"
+          
+          # Copy all MD files, preserving structure relative to source repo
+          find _temp-source -type f -name "*.md" | while read file; do
+            # Get relative path from _temp-source
+            rel_path="${file#_temp-source/}"
+            target_file="$TARGET_DIR/$rel_path"
+            target_dir=$(dirname "$target_file")
+            
+            # Create directory if it doesn't exist
+            mkdir -p "$target_dir"
+            
+            # Copy file
+            cp "$file" "$target_file"
+            echo " ✓ Copied: $rel_path"
+          done
+          
+          echo "✅ All .md files extracted successfully"
+
+      - name: Clean up temporary clone
+        if: always()
+        run: |
+          rm -rf _temp-source
+          echo "🧹 Temporary files cleaned up"
+
+      - name: Verify extracted files
+        run: |
+          TARGET_DIR="${{ github.event.inputs.target_path || 'cloned-docs' }}"
+          echo "📊 Final file list:"
+          find "$TARGET_DIR" -type f -name "*.md" | sort
+          echo ""
+          echo "📈 Total files: $(find "$TARGET_DIR" -type f -name "*.md" | wc -l)"
+
+      - name: Commit and push changes
+        run: |
+          TARGET_DIR="${{ github.event.inputs.target_path || 'cloned-docs' }}"
+          
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "ℹ️ No changes to commit"
+            exit 0
+          fi
+          
+          git add "$TARGET_DIR"
+          git commit -m "docs: extract MD files from ${{ github.event.inputs.source_repo }}"
+          git push
+          
+          echo "✅ Changes pushed successfully"
