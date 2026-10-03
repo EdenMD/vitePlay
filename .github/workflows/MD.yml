@@ -1,3 +1,6 @@
+permissions:
+  contents: write
+
 name: Save MD Files from Source Repo
 
 on:
@@ -16,6 +19,8 @@ jobs:
   save-markdown:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout this repo
