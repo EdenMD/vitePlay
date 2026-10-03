@@ -1,109 +1,89 @@
-name: Extract and Save MD Files
+name: Save MD Files from Source Repo
 
 on:
   workflow_dispatch:
     inputs:
       source_repo:
-        description: 'Source repository URL (e.g., https://github.com/user/repo)'
+        description: 'Source repo to clone, example: EdenMD/ApexV3'
         required: true
-        default: ''
+        default: 'EdenMD/ApexV3'
       source_branch:
-        description: 'Branch to clone from (default: main)'
+        description: 'Branch to clone from'
         required: false
         default: 'main'
-      target_path:
-        description: 'Target directory in this repo to save MD files (default: cloned-docs)'
-        required: false
-        default: 'cloned-docs'
 
 jobs:
-  extract-md-files:
+  save-markdown:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
-      - name: Checkout current repo
+      - name: Checkout this repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Clone source repository
-        run: |
-          SOURCE_REPO="${{ github.event.inputs.source_repo }}"
-          SOURCE_BRANCH="${{ github.event.inputs.source_branch || 'main' }}"
-          
-          echo "📦 Cloning ${SOURCE_REPO} (branch: ${SOURCE_BRANCH})..."
-          git clone --depth 1 --branch "$SOURCE_BRANCH" "$SOURCE_REPO" _temp-source
-          
-          if [ ! -d "_temp-source" ]; then
-            echo "❌ Failed to clone repository"
-            exit 1
-          fi
-          echo "✅ Repository cloned successfully"
+      - name: Checkout source repo using PAT
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.inputs.source_repo }}
+          token: ${{ secrets.PRIVATE_SRC_PAT }}
+          ref: ${{ github.event.inputs.source_branch }}
+          path: source-repo
+          fetch-depth: 1
 
-      - name: Find and extract MD files
+      - name: Create documentation folder if it doesn't exist
+        shell: bash
         run: |
-          TARGET_DIR="${{ github.event.inputs.target_path || 'cloned-docs' }}"
-          
-          # Create target directory
-          mkdir -p "$TARGET_DIR"
-          
-          # Find all .md files and copy them, preserving directory structure
-          echo "🔍 Searching for .md files..."
-          MD_COUNT=$(find _temp-source -type f -name "*.md" | wc -l)
-          
-          if [ "$MD_COUNT" -eq 0 ]; then
-            echo "⚠️ No .md files found in the repository"
-            exit 1
-          fi
-          
-          echo "📄 Found $MD_COUNT .md files"
-          
-          # Copy all MD files, preserving structure relative to source repo
-          find _temp-source -type f -name "*.md" | while read file; do
-            # Get relative path from _temp-source
-            rel_path="${file#_temp-source/}"
-            target_file="$TARGET_DIR/$rel_path"
-            target_dir=$(dirname "$target_file")
-            
-            # Create directory if it doesn't exist
-            mkdir -p "$target_dir"
-            
-            # Copy file
-            cp "$file" "$target_file"
-            echo " ✓ Copied: $rel_path"
-          done
-          
-          echo "✅ All .md files extracted successfully"
+          mkdir -p documentation
+          echo "✅ Documentation folder ready"
 
-      - name: Clean up temporary clone
-        if: always()
+      - name: Copy all markdown files into documentation folder
+        shell: bash
         run: |
-          rm -rf _temp-source
-          echo "🧹 Temporary files cleaned up"
+          TARGET_DIR="documentation"
 
-      - name: Verify extracted files
-        run: |
-          TARGET_DIR="${{ github.event.inputs.target_path || 'cloned-docs' }}"
-          echo "📊 Final file list:"
-          find "$TARGET_DIR" -type f -name "*.md" | sort
+          echo "Searching for .md files in source repo..."
+          COUNT=0
+
+          while IFS= read -r file; do
+            rel_path="${file#source-repo/}"
+            dest="$TARGET_DIR/$rel_path"
+
+            mkdir -p "$(dirname "$dest")"
+            cp "$file" "$dest"
+
+            echo "✓ Copied: $rel_path"
+            COUNT=$((COUNT + 1))
+          done < <(find source-repo -type f -iname "*.md" | sort)
+
           echo ""
-          echo "📈 Total files: $(find "$TARGET_DIR" -type f -name "*.md" | wc -l)"
+          echo "📊 Total .md files copied: $COUNT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "⚠️ No .md files found in source repo"
+            exit 1
+          fi
+
+      - name: Show all files in documentation folder
+        shell: bash
+        run: |
+          echo "📁 Files in documentation/:"
+          find documentation -type f -iname "*.md" | sort
+          echo ""
+          echo "📈 Total: $(find documentation -type f -iname "*.md" | wc -l)"
 
       - name: Commit and push changes
+        shell: bash
         run: |
-          TARGET_DIR="${{ github.event.inputs.target_path || 'cloned-docs' }}"
-          
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          
-          if [ -z "$(git status --porcelain)" ]; then
+
+          if git status --porcelain | grep -q .; then
+            git add documentation
+            git commit -m "docs: add markdown files from ${{ github.event.inputs.source_repo }}"
+            git push
+            echo "✅ Changes pushed successfully"
+          else
             echo "ℹ️ No changes to commit"
-            exit 0
           fi
-          
-          git add "$TARGET_DIR"
-          git commit -m "docs: extract MD files from ${{ github.event.inputs.source_repo }}"
-          git push
-          
-          echo "✅ Changes pushed successfully"
