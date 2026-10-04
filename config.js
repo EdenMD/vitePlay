@@ -1,34 +1,38 @@
-// config.humanoid-soldiers.js
-// "Top 5 reasons humanoid soldiers are a dumb idea" — ~3 min, 7 scenes.
+// config.pirate-dream.js
+// "Why Being a Pirate Was Every Kid's Dream" — ~5 min, 11 scenes.
+// Voice: bm_george (history/documentary, per Voices.md's own mapping table).
 //
-// RUN: VIDEO_CONFIG=config.humanoid-soldiers.js node engine-ci.js
+// RUN: VIDEO_CONFIG=config.pirate-dream.js node engine-ci.js
+//
+// ASSUMPTION MADE (you only answered the length question): real historical
+// photos (SerpAPI/Pexels, short 2-word queries) are MIXED with Open-Peeps-
+// style character illustrations — photos carry the history, Peeps carry the
+// "kid's dream" framing device. Say the word and I'll rebalance either way.
+//
+// OPEN PEEPS — IMPORTANT HONESTY NOTE
+//   The real openpeeps.com asset library is a drag-and-drop picker (SVG/
+//   Figma files) with no API, so it can't be fetched by a script the way
+//   SerpAPI/Pexels can. What's below is a small PARAMETRIC GENERATOR
+//   (`peep()`) built in the same spirit as Open Peeps — flat color blocks,
+//   no gradients, swappable hair / accessory / pose — producing real SVG
+//   at config-build time, encoded as a data: URI and dropped into the
+//   casing's own `photo` command like any other image. It is NOT a
+//   redistribution of Open Peeps' actual files. If you want the literal
+//   Open Peeps assets instead, download SVGs from openpeeps.com and swap
+//   them in for any `peep(...)` call below — same data: URI mechanism.
 //
 // STRUCTURE
-//   Scene 0  hook                       paper-sticker-explainer casing
-//   Scene 1  #5 legs                    paper-sticker-explainer casing
-//   Scene 2  #4 field test report       INLINE html-record (audioSync, word-triggered)
-//   Scene 3  #3 cost exchange           INLINE html-record (audioSync, word-triggered)
-//   Scene 4  #2 payload                 paper-sticker-explainer casing
-//   Scene 5  #1 twist: the shape        paper-sticker-explainer casing
-//   Scene 6  verdict + CTA              INLINE html-record (audioSync, word-triggered)
-//
-// IMAGES
-//   Short, generic ~2-word queries. SerpAPI for robot/drone subjects, Pexels
-//   for plain nouns. Same query + different imageIndex reuses ONE cached
-//   SerpAPI search (no extra credit). Fetch chain/validation mirrors
-//   src/image-api.js (serpapi -> unsplash -> pexels -> pixabay -> picsum).
-//
-// AUDIO
-//   output.bgMusic uses your FreeSound setup (mood based; falls back to FMA).
-//   If the mood pick is off, swap it for the generated beat — see the comment
-//   on `output` below. No per-scene SFX are added.
-//
-// FACTS USED (kept hedged on purpose)
-//   - Foundation's Phantom humanoid: ~44 lb max payload incl. weapons.
-//   - Two Phantom units piloted in Ukraine in early 2026 for logistics;
-//     reported gaps: waterproofing, payload, battery life.
-//   - Cost comparison is deliberately qualitative ("tens of thousands or
-//     more" vs "a few hundred"), not a precise figure.
+//   Scene 0  hook — kid dreaming                  casing + peep
+//   Scene 1  what a pirate even is / ancient roots casing + photo
+//   Scene 2  privateers: legal pirates             casing + peep + photo
+//   Scene 3  the golden age begins                 inline html (timeline)
+//   Scene 4  Blackbeard                             casing + peep + photo
+//   Scene 5  Anne Bonny & Mary Read                 casing + peep
+//   Scene 6  the pirate code / Jolly Roger          inline html (articles list)
+//   Scene 7  myth vs reality                        inline html (vs panel)
+//   Scene 8  the crackdown / end of the golden age  casing + photo
+//   Scene 9  how the dream was built (books/film)   casing + peep
+//   Scene 10 verdict + CTA                          inline html
 
 const https  = require('https');
 const http   = require('http');
@@ -107,7 +111,7 @@ async function searchSerpApi(query, orientation, imageIndex = 0) {
         const usable = all.filter(r => r.original && !r.original.startsWith('x-raw-image'));
         results = usable.length ? usable : all;
         serpApiResultsCache.set(cacheKey, results);
-        console.log(`[Humanoid] SerpAPI cached: ${results.length} result(s) for "${query}"`);
+        console.log(`[Pirate] SerpAPI cached: ${results.length} result(s) for "${query}"`);
     }
     const pick = results[imageIndex % results.length] || results[0];
     if (!pick?.original) throw new Error('No usable image URL');
@@ -160,7 +164,6 @@ async function searchSource(source, query, orientation, imageIndex) {
     }
 }
 
-// Walks forward through the cached SerpAPI result list when a link is dead.
 async function trySerpApiWithFallback(query, orientation, startIndex) {
     const firstUrl = await searchSerpApi(query, orientation, startIndex);
     const results  = serpApiResultsCache.get(`${query.toLowerCase().trim()}::${orientation}`) || [];
@@ -171,12 +174,12 @@ async function trySerpApiWithFallback(query, orientation, startIndex) {
         const candidateUrl = attempt === 0 ? firstUrl : results[idx]?.original;
         if (!candidateUrl) continue;
         try {
-            if (attempt > 0) console.log(`[Humanoid]  ↻ serpapi retry [#${idx}] for "${query}"`);
+            if (attempt > 0) console.log(`[Pirate]  ↻ serpapi retry [#${idx}] for "${query}"`);
             const { base64, contentType } = await downloadToBase64(candidateUrl);
             return `data:${contentType};base64,${base64}`;
         } catch (e) {
             lastErr = e;
-            console.warn(`[Humanoid]  ⚠ serpapi [#${idx}] failed: ${e.message?.slice(0, 60)}`);
+            console.warn(`[Pirate]  ⚠ serpapi [#${idx}] failed: ${e.message?.slice(0, 60)}`);
         }
     }
     throw lastErr || new Error('No working result in cached set');
@@ -189,19 +192,19 @@ async function fetchImageRobust(query, opts = {}) {
         try {
             if (source === 'serpapi') {
                 const uri = await trySerpApiWithFallback(query, orientation, imageIndex);
-                console.log(`[Humanoid] ✓ "${query}" #${imageIndex} via serpapi`);
+                console.log(`[Pirate] ✓ "${query}" #${imageIndex} via serpapi`);
                 return uri;
             }
             const imageUrl = await searchSource(source, query, orientation, imageIndex);
             if (!imageUrl) continue;
             const { base64, contentType } = await downloadToBase64(imageUrl);
-            console.log(`[Humanoid] ✓ "${query}" via ${source}`);
+            console.log(`[Pirate] ✓ "${query}" via ${source}`);
             return `data:${contentType};base64,${base64}`;
         } catch (e) {
-            console.warn(`[Humanoid]  ⚠ ${source} failed for "${query}": ${e.message?.slice(0, 60)}`);
+            console.warn(`[Pirate]  ⚠ ${source} failed for "${query}": ${e.message?.slice(0, 60)}`);
         }
     }
-    console.warn(`[Humanoid]  ✗ ALL sources failed for "${query}"`);
+    console.warn(`[Pirate]  ✗ ALL sources failed for "${query}"`);
     return null;
 }
 
@@ -220,32 +223,90 @@ function zoomTo(slot, scale) {
 }
 const ZOOM_OUT = { toScale: 1, toX: 0, toY: 0 };
 
-// ── Shared look: same paper palette as the sticker casing ───────────────
 const THEME = {
-    paper: '#e8dfcd', ink: '#1a1a1a',
-    accent: '#a93226', accent2: '#1a5276',
-    shadow: 'rgba(20,16,10,0.38)',
+    paper: '#ece0c4', ink: '#211a12',
+    accent: '#8a2e2e', accent2: '#1f5c52',
+    shadow: 'rgba(20,16,10,0.4)',
 };
 
-// Base CSS for the three inline scenes. Safe zone: ~150px top, ~300px bottom.
+// ── peep() — a small Open-Peeps-spirited parametric character generator ──
+// Flat color blocks, no gradients, swappable hair/accessory/pose — same
+// idea as the real library's modular parts. Returns a data: URI (SVG),
+// ready to drop straight into a casing `photo` command's `src`.
+function peep({
+    skin = '#caa07a', shirt = '#2d4f5e', pants = '#2b2420',
+    hair = '#2a1e16', hairStyle = 'short',           // short | bun | bald | long
+    accessory = 'none',                               // none | tricorn | bandana | bicorne | captainHat
+    beard = false, dress = false, armsUp = false,
+}) {
+    const hairShape = {
+        short: `<path d="M38 70 Q50 30 100 30 Q150 30 162 70 Q150 50 100 50 Q50 50 38 70 Z" fill="${hair}"/>`,
+        bun:   `<path d="M40 66 Q52 32 100 32 Q148 32 160 66 Q148 48 100 48 Q52 48 40 66 Z" fill="${hair}"/><circle cx="100" cy="24" r="14" fill="${hair}"/>`,
+        long:  `<path d="M36 64 Q50 28 100 28 Q150 28 164 64 L160 120 L150 118 L148 70 Q148 48 100 46 Q52 48 52 70 L50 118 L40 120 Z" fill="${hair}"/>`,
+        bald:  '',
+    }[hairStyle] || '';
+
+    const accessoryShape = {
+        none: '',
+        tricorn: `<path d="M26 58 Q100 8 174 58 Q150 36 100 36 Q50 36 26 58 Z" fill="#1a1512"/>
+                  <path d="M26 58 Q60 44 100 44 Q140 44 174 58 Q168 66 100 54 Q32 66 26 58 Z" fill="#1a1512"/>
+                  <circle cx="100" cy="40" r="5" fill="#c9a24b"/>`,
+        bicorne: `<path d="M32 56 Q100 14 100 14 Q100 14 168 56 Q134 30 100 30 Q66 30 32 56 Z" fill="#0f1a24"/>
+                  <circle cx="100" cy="22" r="5" fill="#c9a24b"/>`,
+        captainHat: `<path d="M24 60 Q100 4 176 60 Q148 34 100 34 Q52 34 24 60 Z" fill="#1a1512"/>
+                     <path d="M24 60 Q60 46 100 46 Q140 46 176 60 Q168 70 100 56 Q32 70 24 60 Z" fill="#8a2e2e"/>
+                     <rect x="86" y="18" width="28" height="10" fill="#c9a24b"/>`,
+        bandana: `<path d="M34 54 Q100 26 166 54 L160 70 Q100 48 40 70 Z" fill="#8a2e2e"/>
+                  <path d="M150 62 L178 78 L156 80 Z" fill="#8a2e2e"/>
+                  <circle cx="90" cy="46" r="4" fill="#ece0c4"/><circle cx="110" cy="44" r="4" fill="#ece0c4"/>`,
+    }[accessory] || '';
+
+    const eyepatch = accessory === 'tricorn' || accessory === 'bandana'
+        ? `<path d="M74 92 Q86 84 98 92 L96 102 Q86 96 76 102 Z" fill="#1a1512"/><path d="M96 92 L150 70" stroke="#1a1512" stroke-width="4"/>`
+        : `<circle cx="80" cy="94" r="4" fill="#1a1512"/><circle cx="118" cy="94" r="4" fill="#1a1512"/>`;
+
+    const beardShape = beard
+        ? `<path d="M64 100 Q100 150 136 100 Q138 128 100 140 Q62 128 64 100 Z" fill="${hair}"/>`
+        : '';
+
+    const armL = armsUp
+        ? `<path d="M74 150 Q40 120 34 80" stroke="${shirt}" stroke-width="22" stroke-linecap="round" fill="none"/>`
+        : `<path d="M74 150 Q58 190 62 228" stroke="${shirt}" stroke-width="22" stroke-linecap="round" fill="none"/>`;
+    const armR = armsUp
+        ? `<path d="M126 150 Q160 120 166 80" stroke="${shirt}" stroke-width="22" stroke-linecap="round" fill="none"/>`
+        : `<path d="M126 150 Q142 190 138 228" stroke="${shirt}" stroke-width="22" stroke-linecap="round" fill="none"/>`;
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260">
+        <rect x="76" y="150" width="20" height="90" fill="${pants}"/>
+        <rect x="104" y="150" width="20" height="90" fill="${pants}"/>
+        ${armL}${armR}
+        ${dress
+            ? `<path d="M64 148 Q100 136 136 148 L150 236 Q100 252 50 236 Z" fill="${shirt}"/>`
+            : `<rect x="64" y="144" width="72" height="80" rx="16" fill="${shirt}"/>`}
+        <circle cx="100" cy="92" r="42" fill="${skin}"/>
+        ${eyepatch}
+        <path d="M86 112 Q100 120 114 112" stroke="#1a1512" stroke-width="3" fill="none" stroke-linecap="round"/>
+        ${beardShape}
+        ${hairShape}
+        ${accessoryShape}
+    </svg>`;
+    return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+}
+
+// ── Reveal helper for inline/audioSync scenes ─────────────────────────────
 const BASE_CSS = `
   *{box-sizing:border-box}
-  html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#e8dfcd;
-    font-family:Georgia,'Times New Roman',serif;color:#1a1a1a}
+  html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#ece0c4;
+    font-family:Georgia,'Times New Roman',serif;color:#211a12}
   .wrap{position:absolute;inset:0;padding:150px 80px 300px;display:flex;flex-direction:column}
-  .badge{align-self:flex-start;background:#1a5276;color:#fff;font:900 96px Impact,'Arial Black',sans-serif;
-    padding:6px 34px;transform:rotate(-3deg);box-shadow:6px 6px 0 rgba(20,16,10,.38)}
-  .badge.red{background:#a93226}
-  h1{font:900 92px/1.02 Impact,'Arial Black',sans-serif;margin:36px 0 12px;letter-spacing:.5px}
-  .sub{font-size:38px;line-height:1.3;margin:0 0 36px;color:#3a3226;max-width:900px}
+  .badge{align-self:flex-start;background:#1f5c52;color:#fff;font:900 90px Impact,'Arial Black',sans-serif;
+    padding:6px 34px;transform:rotate(-3deg);box-shadow:6px 6px 0 rgba(20,16,10,.4)}
+  .badge.red{background:#8a2e2e}
+  h1{font:900 86px/1.04 Impact,'Arial Black',sans-serif;margin:34px 0 10px;letter-spacing:.5px}
+  .sub{font-size:36px;line-height:1.3;margin:0 0 30px;color:#3a3226;max-width:900px}
   .off{opacity:0;transition:opacity .35s ease}
   .on{opacity:1}
 `;
-
-// Inline reveal helper. Each scene reveals items when the narrator SAYS the
-// trigger word (audioSync), with a late-time fallback so a missed word match
-// can never leave an item hidden.
-// Usage in scene scripts: reveal map {word: elementId}, fallbacks [[id, seconds]].
 const REVEAL_JS = `
   var seen = {};
   function show(id){ if (seen[id]) return; seen[id] = 1;
@@ -256,109 +317,121 @@ const REVEAL_JS = `
       if (map[w]) show(map[w]);
       for (var i = 0; i < fb.length; i++) if (d.t > fb[i][1]) show(fb[i][0]);
     });
-    document.body.setAttribute('data-ready', '1');   // listener attached FIRST, then ready
+    document.body.setAttribute('data-ready', '1');
   }
 `;
 
-// ── Inline scene 2 — #4 field test report ───────────────────────────────
-const HTML_FIELD_REPORT = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${BASE_CSS}
-  .rows{display:flex;flex-direction:column;gap:30px}
-  .row{display:flex;align-items:center;justify-content:space-between;border:5px solid #1a1a1a;
-    background:#f4ecdb;padding:38px 46px;position:relative;box-shadow:8px 8px 0 rgba(20,16,10,.38)}
-  .k{font:900 62px Impact,'Arial Black',sans-serif}
-  .v{font-size:46px;font-style:italic;color:#3a3226}
-  .stamp{position:absolute;right:34px;top:50%;margin-top:-42px;border:6px solid #a93226;color:#a93226;
-    font:900 56px Impact,'Arial Black',sans-serif;padding:2px 22px;transform:rotate(-9deg) scale(2.2);
-    opacity:0;transition:transform .28s cubic-bezier(.2,1.4,.4,1),opacity .2s ease;background:#f4ecdb}
-  .row.on .stamp{transform:rotate(-9deg) scale(1);opacity:1}
-  .row .v{margin-right:230px}
-  .note{margin-top:46px;font-size:44px;line-height:1.35;border-left:10px solid #a93226;padding-left:28px}
-  .note b{font-family:Impact,'Arial Black',sans-serif;font-weight:900;letter-spacing:.5px}
+// ── Inline scene 3 — the golden age begins (timeline) ─────────────────────
+const HTML_TIMELINE = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${BASE_CSS}
+  .line{position:relative;margin-top:50px;padding-left:46px;border-left:6px solid #211a12}
+  .pt{position:relative;margin-bottom:64px;opacity:0;transform:translateX(-18px);
+    transition:opacity .35s ease,transform .35s cubic-bezier(.2,1,.3,1)}
+  .pt.on{opacity:1;transform:translateX(0)}
+  .pt::before{content:"";position:absolute;left:-58px;top:6px;width:24px;height:24px;border-radius:50%;
+    background:#8a2e2e;border:5px solid #ece0c4;box-shadow:0 0 0 4px #211a12}
+  .yr{font:900 54px Impact,'Arial Black',sans-serif;color:#8a2e2e}
+  .tx{font-size:38px;line-height:1.35;margin-top:6px;max-width:820px}
 </style></head><body><div class="wrap">
-  <div class="badge">#4</div>
-  <h1>It can't handle<br>the field</h1>
-  <p class="sub">Two humanoid robots hauling supplies in Ukraine, early 2026. What testers reported:</p>
-  <div class="rows">
-    <div class="row off" id="r1"><div class="k">Waterproofing</div><div class="v">Lacking</div><div class="stamp">FAIL</div></div>
-    <div class="row off" id="r2"><div class="k">Payload</div><div class="v">Limited</div><div class="stamp">FAIL</div></div>
-    <div class="row off" id="r3"><div class="k">Battery life</div><div class="v">Too short</div><div class="stamp">FAIL</div></div>
+  <div class="badge">1650s</div>
+  <h1>The golden age<br>begins</h1>
+  <p class="sub">After decades of legal raiding, the line between privateer and pirate started to blur.</p>
+  <div class="line">
+    <div class="pt off" id="p1"><div class="yr">1650s</div><div class="tx">Wars wind down. Governments stop hiring privateers, but the ships and crews don't disappear.</div></div>
+    <div class="pt off" id="p2"><div class="yr">1660s</div><div class="tx">Unemployed sailors turn to the Caribbean, a maze of islands, hidden coves and weak colonial navies.</div></div>
+    <div class="pt off" id="p3"><div class="yr">1690s</div><div class="tx">Piracy spreads from the Caribbean to the Atlantic coast and the Indian Ocean trade routes.</div></div>
+    <div class="pt off" id="p4"><div class="yr">1715</div><div class="tx">A wrecked Spanish treasure fleet draws hundreds of opportunists, launching what we now call the Golden Age.</div></div>
   </div>
-  <div class="note off" id="note"><b>War zone:</b> mud, dust, rain, cold.<br><b>Built for:</b> clean factory floors.</div>
 </div><script>${REVEAL_JS}
-  wire({waterproofing:'r1', limited:'r2', battery:'r3', mud:'note'},
-       [['r1',12],['r2',14],['r3',16],['note',20]]);
+  wire({decades:'p1', caribbean:'p2', ocean:'p3', fleet:'p4'}, [['p1',6],['p2',12],['p3',18],['p4',24]]);
 </script></body></html>`;
 
-// ── Inline scene 3 — #3 cost exchange ───────────────────────────────────
-const HTML_COST = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${BASE_CSS}
-  .panel{border:5px solid #1a1a1a;background:#f4ecdb;padding:34px 40px;box-shadow:8px 8px 0 rgba(20,16,10,.38);margin-top:26px}
-  .head{display:flex;align-items:center;gap:36px}
-  .name{font:900 66px/1 Impact,'Arial Black',sans-serif}
-  .price{font-size:42px;font-style:italic;color:#3a3226;margin-top:8px}
-  svg.bot{width:120px;height:240px;flex:none}
-  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:14px;margin-top:26px}
-  .d{aspect-ratio:1;position:relative;opacity:0;transform:scale(.3);transition:opacity .2s ease,transform .25s cubic-bezier(.2,1.4,.4,1)}
-  .d::before{content:"";position:absolute;inset:34%;background:#a93226;border-radius:2px}
-  .d::after{content:"";position:absolute;inset:6%;border-radius:50%;
-    background:radial-gradient(circle at 12% 12%,#1a1a1a 11%,transparent 12%),radial-gradient(circle at 88% 12%,#1a1a1a 11%,transparent 12%),
-               radial-gradient(circle at 12% 88%,#1a1a1a 11%,transparent 12%),radial-gradient(circle at 88% 88%,#1a1a1a 11%,transparent 12%)}
-  #pb.on .d{opacity:1;transform:scale(1)}
-  .cap{font-size:36px;margin-top:20px;color:#3a3226}
-  .trade{margin-top:34px;align-self:center;background:#a93226;color:#fff;border:5px solid #1a1a1a;
-    font:900 70px Impact,'Arial Black',sans-serif;padding:8px 40px;transform:rotate(-2deg) scale(1.8);
-    opacity:0;transition:transform .3s cubic-bezier(.2,1.4,.4,1),opacity .2s ease;box-shadow:8px 8px 0 rgba(20,16,10,.38)}
-  .trade.on{opacity:1;transform:rotate(-2deg) scale(1)}
+// ── Inline scene 6 — pirate code / Jolly Roger ─────────────────────────────
+const HTML_CODE = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${BASE_CSS}
+  .flag{align-self:center;margin:10px 0 36px;opacity:0;transform:scale(.6) rotate(-4deg);
+    transition:opacity .4s ease,transform .4s cubic-bezier(.2,1.4,.4,1)}
+  .flag.on{opacity:1;transform:scale(1) rotate(-4deg)}
+  .art{display:flex;align-items:flex-start;gap:26px;border:5px solid #211a12;background:#f4ecdb;
+    padding:28px 34px;margin-bottom:24px;box-shadow:8px 8px 0 rgba(20,16,10,.4);
+    opacity:0;transform:translateY(16px);transition:opacity .3s ease,transform .3s cubic-bezier(.2,1,.3,1)}
+  .art.on{opacity:1;transform:translateY(0)}
+  .num{font:900 54px Impact,'Arial Black',sans-serif;color:#8a2e2e;flex:none;width:70px}
+  .txt{font-size:36px;line-height:1.35}
 </style></head><body><div class="wrap">
-  <div class="badge">#3</div>
-  <h1>The math<br>doesn't work</h1>
-  <div class="panel off" id="pa"><div class="head">
-    <svg class="bot" viewBox="0 0 100 200" fill="none" stroke="#1a1a1a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="50" cy="22" r="15"/><rect x="30" y="46" width="40" height="62" rx="8"/>
-      <path d="M30 56 L10 100 M70 56 L90 100 M42 108 L36 186 M58 108 L64 186"/></svg>
-    <div><div class="name">1 humanoid robot</div><div class="price">tens of thousands of dollars, or more</div></div>
-  </div></div>
-  <div class="panel off" id="pb"><div class="name">Small attack drone</div>
-    <div class="price">a few hundred dollars</div><div class="grid" id="grid"></div>
-    <div class="cap">Dozens of drones for the price of one robot.</div></div>
-  <div class="trade" id="trade">A BAD TRADE</div>
+  <div class="badge red">The Code</div>
+  <h1>A democracy,<br>not a mutiny</h1>
+  <svg class="flag" id="flag" width="260" height="170" viewBox="0 0 260 170">
+    <rect width="260" height="170" fill="#141210"/>
+    <circle cx="130" cy="72" r="34" fill="#ece0c4"/>
+    <circle cx="117" cy="66" r="5" fill="#141210"/><circle cx="143" cy="66" r="5" fill="#141210"/>
+    <path d="M110 86 Q130 98 150 86" stroke="#141210" stroke-width="4" fill="none"/>
+    <path d="M80 130 L130 100 L180 130" stroke="#ece0c4" stroke-width="7" fill="none"/>
+  </svg>
+  <div class="art off" id="a1"><div class="num">1</div><div class="txt">The captain is elected. Crews can vote a bad captain out.</div></div>
+  <div class="art off" id="a2"><div class="num">2</div><div class="txt">Loot is split by fixed shares, written down, agreed in advance.</div></div>
+  <div class="art off" id="a3"><div class="num">3</div><div class="txt">Injury pays compensation. Lose a leg, get an agreed sum.</div></div>
+  <div class="art off" id="a4"><div class="num">4</div><div class="txt">The black flag is a warning, not a battle cry: surrender, and no one has to die.</div></div>
 </div><script>${REVEAL_JS}
-  var g = document.getElementById('grid'), s = '';
-  for (var i = 0; i < 40; i++) s += '<div class="d" style="transition-delay:' + (i * 0.03).toFixed(2) + 's"></div>';
-  g.innerHTML = s;
-  wire({tens:'pa', few:'pb', donating:'trade'}, [['pa',7],['pb',11],['trade',21]]);
+  wire({democracy:'flag', elected:'a1', shares:'a2', compensation:'a3', surrender:'a4'},
+       [['flag',4],['a1',9],['a2',15],['a3',21],['a4',27]]);
 </script></body></html>`;
 
-// ── Inline scene 6 — verdict + CTA ──────────────────────────────────────
+// ── Inline scene 7 — myth vs reality ───────────────────────────────────────
+const HTML_MYTH = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${BASE_CSS}
+  .cols{display:flex;gap:24px;margin-top:20px}
+  .col{flex:1;border:5px solid #211a12;padding:30px 26px;box-shadow:8px 8px 0 rgba(20,16,10,.4)}
+  .col.myth{background:#e7d7bd}
+  .col.real{background:#f4ecdb}
+  .col h2{font:900 50px Impact,'Arial Black',sans-serif;margin:0 0 20px}
+  .col.myth h2{color:#8a2e2e}.col.real h2{color:#1f5c52}
+  .row{font-size:32px;line-height:1.3;margin-bottom:26px;opacity:0;transform:translateY(10px);
+    transition:opacity .3s ease,transform .3s ease}
+  .row.on{opacity:1;transform:translateY(0)}
+</style></head><body><div class="wrap">
+  <div class="badge">Myth vs Reality</div>
+  <h1>What we<br>got wrong</h1>
+  <div class="cols">
+    <div class="col myth"><h2>The Myth</h2>
+      <div class="row off" id="m1">Buried treasure maps</div>
+      <div class="row off" id="m2">Walking the plank</div>
+      <div class="row off" id="m3">Eyepatches for style</div>
+      <div class="row off" id="m4">One-ship lone wolves</div></div>
+    <div class="col real"><h2>The Reality</h2>
+      <div class="row off" id="r1">Loot was spent fast, not buried</div>
+      <div class="row off" id="r2">Marooning was the real punishment</div>
+      <div class="row off" id="r3">Eyepatches kept one eye night-adapted</div>
+      <div class="row off" id="r4">Pirates sailed in organized fleets</div></div>
+  </div>
+</div><script>${REVEAL_JS}
+  wire({maps:'m1', plank:'m2', eyepatches:'m3', wolves:'m4',
+        fast:'r1', marooning:'r2', night:'r3', fleets:'r4'},
+       [['m1',4],['m2',8],['m3',12],['m4',16],['r1',20],['r2',24],['r3',28],['r4',32]]);
+</script></body></html>`;
+
+// ── Inline scene 10 — verdict + CTA ────────────────────────────────────────
 const HTML_VERDICT = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${BASE_CSS}
-  .card{border:5px solid #1a1a1a;background:#f4ecdb;padding:36px 44px;box-shadow:8px 8px 0 rgba(20,16,10,.38);margin-top:30px}
-  .card h2{font:900 64px Impact,'Arial Black',sans-serif;margin:0 0 14px}
-  .card.yes h2{color:#1a5276}.card.no h2{color:#a93226}
-  .card ul{margin:0;padding-left:34px;font-size:42px;line-height:1.45}
-  .cta{margin-top:44px;align-self:center;text-align:center;background:#1a5276;color:#fff;border:5px solid #1a1a1a;
-    font:900 78px/1.05 Impact,'Arial Black',sans-serif;padding:20px 54px;transform:rotate(-1deg) scale(1.6);
-    opacity:0;transition:transform .3s cubic-bezier(.2,1.4,.4,1),opacity .2s ease;box-shadow:8px 8px 0 rgba(20,16,10,.38)}
+  .card{border:5px solid #211a12;background:#f4ecdb;padding:34px 42px;box-shadow:8px 8px 0 rgba(20,16,10,.4);margin-top:28px}
+  .card h2{font:900 58px Impact,'Arial Black',sans-serif;margin:0 0 12px;color:#8a2e2e}
+  .card p{font-size:38px;line-height:1.4;margin:0}
+  .cta{margin-top:46px;align-self:center;text-align:center;background:#1f5c52;color:#fff;border:5px solid #211a12;
+    font:900 76px/1.05 Impact,'Arial Black',sans-serif;padding:20px 54px;transform:rotate(-1deg) scale(1.6);
+    opacity:0;transition:transform .3s cubic-bezier(.2,1.4,.4,1),opacity .2s ease;box-shadow:8px 8px 0 rgba(20,16,10,.4)}
   .cta.on{opacity:1;transform:rotate(-1deg) scale(1)}
-  .cta small{display:block;font:400 34px Georgia,serif;margin-top:10px;letter-spacing:0}
+  .cta small{display:block;font:400 32px Georgia,serif;margin-top:10px;letter-spacing:0}
 </style></head><body><div class="wrap">
-  <div class="badge red">Verdict</div>
-  <h1>A solution to<br>a movie</h1>
-  <div class="card yes off" id="yes"><h2>Maybe useful</h2>
-    <ul><li>Hauling supplies</li><li>Going where people shouldn't</li><li>Working in spaces built for people</li></ul></div>
-  <div class="card no off" id="no"><h2>Not worth it</h2>
-    <ul><li>Front-line combat</li><li>Fighting cheap drones</li><li>Replacing the soldier</li></ul></div>
+  <div class="badge red">The Real Dream</div>
+  <h1>Freedom, not<br>treasure</h1>
+  <div class="card off" id="c1"><h2>What kids actually wanted</h2>
+    <p>Not gold. A vote. A share. A world with no landlord, no king, no boss telling them what to do.</p></div>
   <div class="cta" id="cta">🔔 SUBSCRIBE<small>for facts nobody tells you</small></div>
 </div><script>${REVEAL_JS}
-  wire({maybe:'yes', movie:'no', subscribe:'cta'}, [['yes',5],['no',13],['cta',19]]);
+  wire({vote:'c1', subscribe:'cta'}, [['c1',6],['cta',14]]);
 </script></body></html>`;
 
-// Helper: an inline full-frame html-record layer.
 const inlineLayer = (html) => ({
     type: 'html-record', html,
     audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
     viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
 });
-
-// Helper: a sticker-casing html-record layer.
 const casingLayer = (tag, title, commands) => ({
     type: 'html-record', src: `./ApexCasing/paper-sticker-explainer.html?tag=${tag}`,
     audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
@@ -368,186 +441,232 @@ const casingLayer = (tag, title, commands) => ({
 
 module.exports = (async () => {
 
-    console.log('[Humanoid] Fetching images sequentially...');
+    console.log('[Pirate] Fetching photos sequentially...');
 
-    // [key, query, opts]. Same query + different imageIndex = one SerpAPI search.
     const wanted = [
-        ['humanoid0', 'humanoid robot',   { source: 'serpapi', imageIndex: 0 }],
-        ['humanoid1', 'humanoid robot',   { source: 'serpapi', imageIndex: 1 }],
-        ['soldier0',  'robot soldier',    { source: 'serpapi', imageIndex: 0 }],
-        ['soldier1',  'robot soldier',    { source: 'serpapi', imageIndex: 1 }],
-        ['fpv0',      'FPV drone',        { source: 'serpapi', imageIndex: 0 }],
-        ['fpv1',      'FPV drone',        { source: 'serpapi', imageIndex: 1 }],
-        ['falling',   'robot falling',    { source: 'serpapi' }],
-        ['tracked',   'tracked robot',    { source: 'serpapi' }],
-        ['bomb',      'bomb robot',       { source: 'serpapi' }],
-        ['mud',       'muddy terrain',    { source: 'pexels'  }],
-        ['backpack',  'soldier backpack', { source: 'pexels'  }],
+        ['ship0',     'pirate ship',     { source: 'serpapi', imageIndex: 0 }],
+        ['ship1',     'pirate ship',     { source: 'serpapi', imageIndex: 1 }],
+        ['woodship',  'wooden ship',     { source: 'serpapi' }],
+        ['jollyroger','jolly roger',     { source: 'serpapi' }],
+        ['chest',     'treasure chest',  { source: 'serpapi' }],
+        ['oldmap',    'old map',         { source: 'serpapi' }],
+        ['cannon',    'naval cannon',    { source: 'serpapi' }],
+        ['wreck',     'shipwreck ruins', { source: 'serpapi' }],
+        ['island',    'tropical island', { source: 'pexels'  }],
+        ['ocean',     'ocean waves',     { source: 'pexels'  }],
+        ['deck',      'ship deck',       { source: 'pexels'  }],
     ];
     const img = {};
     for (const [key, query, opts] of wanted) img[key] = await fetchImageRobust(query, opts);
 
-    console.log('[Humanoid] Images resolved. Building config...');
+    console.log('[Pirate] Photos resolved. Building Peeps-style characters...');
+
+    const peeps = {
+        kid:        peep({ skin: '#e3b48c', shirt: '#4a7a8c', pants: '#2b4055', hairStyle: 'short', hair: '#4a2e1a' }),
+        kidPirate:  peep({ skin: '#e3b48c', shirt: '#4a7a8c', pants: '#2b4055', hairStyle: 'short', hair: '#4a2e1a', accessory: 'bandana', armsUp: true }),
+        privateer:  peep({ skin: '#c99165', shirt: '#1f3d5c', pants: '#111', hairStyle: 'short', accessory: 'bicorne' }),
+        blackbeard: peep({ skin: '#b67b4f', shirt: '#2a2a2a', pants: '#111', hairStyle: 'short', accessory: 'tricorn', beard: true }),
+        captain:    peep({ skin: '#caa07a', shirt: '#6b1f1f', pants: '#1a1512', hairStyle: 'long', accessory: 'captainHat', beard: true }),
+        anneBonny:  peep({ skin: '#dba074', shirt: '#7a2d3d', pants: '#2b2420', hairStyle: 'long', accessory: 'bandana', dress: true }),
+        maryRead:   peep({ skin: '#caa07a', shirt: '#2d4f3f', pants: '#1a1512', hairStyle: 'short', accessory: 'bandana' }),
+        officer:    peep({ skin: '#e3c19c', shirt: '#1a2e4a', pants: '#111', hairStyle: 'short', accessory: 'bicorne' }),
+        author:     peep({ skin: '#e3c19c', shirt: '#3a3a3a', pants: '#1a1512', hairStyle: 'short' }),
+    };
+
+    console.log('[Pirate] Building config...');
 
     return {
         output: {
-            title: 'humanoid-soldiers-dumb', format: 'portrait', fps: 30, crf: 23, preset: 'medium',
-            // FreeSound mood pick. If it's inaccurate, replace the next two lines with a generated beat
-            // (no API, fully deterministic):
-            //   beat: { bpm: 70, bars: 8, genre: 'cinematic', key: 'Ephrygian', vol: 0.16 },
-            bgMusic: { mood: 'dark' }, bgMusicVol: 0.16,
-        },
-        defaults: { voice: 'am_adam', speed: 0.95, transition: 'fade', transitionDuration: 0.35 },
+    title: 'why-pirates-every-kids-dream', format: 'portrait', fps: 30, crf: 23, preset: 'medium',
+    bgMusic: { search: 'pirate', mood: 'adventure' }, bgMusicVol: 0.08,
+},
+      
+        defaults: { voice: 'bm_george', speed: 0.95, transition: 'fade', transitionDuration: 0.35 },
 
         scenes: [
 
             // ── Scene 0 — HOOK ───────────────────────────────────────────
             {
-                tts: {
-                    text: "Billions of dollars are flowing into humanoid robots, and now companies want to put them in uniform. Machines shaped like us, built to fight like us. But the robots actually changing today's battlefield look nothing like people. Here are the top five reasons humanoid soldiers are a dumb idea, and number one is not what you'd expect.",
-                    pauseAfter: 0.4,
-                },
+                tts: { text: "Every kid who ever played pretend has stood on a couch with a wooden sword, shouting about buried treasure. For centuries, being a pirate was the dream. But almost everything that made it a dream was invented long after the pirates themselves were dead. Here's where that dream actually came from, and the real story underneath it.", pauseAfter: 0.4 },
                 captions: false,
                 layers: [
-                    { type: 'background', color: '#e8dfcd' },
-                    casingLayer('hs-hook', 'HUMANOID SOLDIERS', [
-                        { id: 'hook1', type: 'sticker', text: 'ROBOT SOLDIERS?\nREALLY?', slot: 'banner-top', size: 62, color: '#1a1a1a', stroke: '#ffffff', rotate: -1, trigger: { atSeconds: 0.1 } },
-                        { id: 'img_h',  type: 'photo', src: img.humanoid0, slot: 'mid-left',   width: 320, height: 220, caption: 'HUMANOID',    pinStyle: 'tape', trigger: { wordText: 'billions', occurrence: 1 } },
-                        { id: 'pz1',    type: 'panZoom', ...zoomTo('mid-left', 1.5),   duration: 0.9, trigger: { afterId: 'img_h', offset: 0.15 } },
-                        { id: 'img_s',  type: 'photo', src: img.soldier0,  slot: 'mid-center', width: 320, height: 220, caption: 'IN UNIFORM',  pinStyle: 'tape', trigger: { wordText: 'uniform', occurrence: 1 } },
-                        { id: 'pz2',    type: 'panZoom', ...zoomTo('mid-center', 1.5), duration: 0.9, trigger: { afterId: 'img_s', offset: 0.15 } },
-                        { id: 'img_d',  type: 'photo', src: img.fpv0,      slot: 'mid-right',  width: 320, height: 220, caption: 'WHAT ACTUALLY WORKS', pinStyle: 'tape', trigger: { wordText: 'battlefield', occurrence: 1 } },
-                        { id: 'pz3',    type: 'panZoom', ...zoomTo('mid-right', 1.5),  duration: 0.9, trigger: { afterId: 'img_d', offset: 0.15 } },
-                        { id: 'pz_out', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: 'img_d', offset: 0.5 } },
-                        { id: 'hook2',  type: 'sticker', text: 'TOP 5 REASONS', slot: 'banner-bot', size: 68, color: '#ffffff', stroke: '#a93226', bg: '#a93226', rotate: 1, trigger: { wordText: 'five', occurrence: 1 } },
-                        { id: 'sc_h',   type: 'circle', target: 'hook2', color: '#a93226', trigger: { afterId: 'hook2', offset: 0.3 } },
-                        { id: 'str1',   type: 'string', from: { target: 'img_h' }, to: { target: 'img_s' }, color: '#a93226', sag: 30, trigger: { afterId: 'img_s', offset: 0.3 } },
-                        { id: 'str2',   type: 'string', from: { target: 'img_s' }, to: { target: 'img_d' }, color: '#a93226', sag: 30, trigger: { afterId: 'img_d', offset: 0.3 } },
+                    { type: 'background', color: '#ece0c4' },
+                    casingLayer('pir-hook', 'EVERY KID\'S DREAM', [
+                        { id: 'hook1', type: 'sticker', text: 'WHY PIRATES?', slot: 'banner-top', size: 60, color: '#211a12', stroke: '#ffffff', rotate: -1, trigger: { atSeconds: 0.1 } },
+                        { id: 'img_kid', type: 'photo', src: peeps.kidPirate, slot: 'mid-left', width: 300, height: 340, caption: 'EVERY KID', pinStyle: 'tape', trigger: { wordText: 'couch', occurrence: 1 } },
+                        { id: 'pz1', type: 'panZoom', ...zoomTo('mid-left', 1.4), duration: 0.9, trigger: { afterId: 'img_kid', offset: 0.15 } },
+                        { id: 'img_ship', type: 'photo', src: img.ship0, slot: 'mid-right', width: 320, height: 220, caption: 'THE DREAM', pinStyle: 'tape', trigger: { wordText: 'dream', occurrence: 1 } },
+                        { id: 'pz2', type: 'panZoom', ...zoomTo('mid-right', 1.5), duration: 0.9, trigger: { afterId: 'img_ship', offset: 0.15 } },
+                        { id: 'pz_out', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: 'img_ship', offset: 0.5 } },
+                        { id: 'hook2', type: 'sticker', text: 'THE REAL STORY', slot: 'banner-bot', size: 64, color: '#ffffff', stroke: '#8a2e2e', bg: '#8a2e2e', rotate: 1, trigger: { wordText: 'story', occurrence: 1 } },
+                        { id: 'sc_h', type: 'circle', target: 'hook2', color: '#8a2e2e', trigger: { afterId: 'hook2', offset: 0.3 } },
+                        { id: 'str1', type: 'string', from: { target: 'img_kid' }, to: { target: 'img_ship' }, color: '#8a2e2e', sag: 30, trigger: { afterId: 'img_ship', offset: 0.3 } },
                     ]),
                 ],
             },
 
-            // ── Scene 1 — #5 LEGS ────────────────────────────────────────
+            // ── Scene 1 — ANCIENT ROOTS ──────────────────────────────────
             {
                 transition: 'wipe-left',
-                tts: {
-                    text: "Number five: legs. Walking on two feet is one of the hardest problems in robotics. Every step is a controlled fall, and one bad slip in mud, rubble or sand puts the machine on the ground. Wheels and tracks have moved heavy machines across rough terrain for a century, with far fewer parts that can break.",
-                    pauseAfter: 0.4,
-                },
+                tts: { text: "Piracy isn't a pirate-ship invention. The word comes from Greek, meaning to attempt or to attack. As far back as the Mediterranean of three thousand years ago, raiders attacked merchant ships for cargo, and sometimes for people to sell. Rome itself lost so much grain to pirate raids that it eventually built a navy just to hunt them down.", pauseAfter: 0.4 },
                 captions: false,
                 layers: [
-                    { type: 'background', color: '#e8dfcd' },
-                    casingLayer('hs-s1', '#5 — LEGS', [
-                        { id: 'num', type: 'sticker', text: '#5', slot: 'top-left', size: 90, color: '#ffffff', stroke: '#1a5276', bg: '#1a5276', rotate: -3, trigger: { atSeconds: 0.1 } },
-                        { id: 's_legs', type: 'sticker', text: 'TWO LEGS =\nTWO WAYS TO FALL', slot: 'mid-left', size: 40, color: '#1a1a1a', stroke: '#ffffff', rotate: -2, trigger: { wordText: 'legs', occurrence: 1 } },
-                        { id: 'pz_l', type: 'panZoom', ...zoomTo('mid-left', 1.5), duration: 0.9, trigger: { afterId: 's_legs', offset: 0.15 } },
-                        { id: 'img_f', type: 'photo', src: img.falling, slot: 'top-center', width: 580, height: 340, rotate: -2, pinStyle: 'tape', caption: 'EVERY STEP IS A CONTROLLED FALL', trigger: { wordText: 'fall', occurrence: 1 } },
-                        { id: 'pz_f', type: 'panZoom', ...zoomTo('top-center', 1.4), duration: 1.0, trigger: { afterId: 'img_f', offset: 0.15 } },
-                        { id: 'img_m', type: 'photo', src: img.mud, slot: 'mid-right', width: 300, height: 210, caption: 'MUD · RUBBLE · SAND', pinStyle: 'tape', trigger: { wordText: 'mud', occurrence: 1 } },
-                        { id: 'pz_m', type: 'panZoom', ...zoomTo('mid-right', 1.6), duration: 0.9, trigger: { afterId: 'img_m', offset: 0.15 } },
-                        { id: 'pz_o1', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'img_m', offset: 0.5 } },
-                        { id: 'img_t', type: 'photo', src: img.tracked, slot: 'banner-low', width: 500, height: 280, caption: 'WHEELS + TRACKS: FEWER PARTS TO BREAK', pinStyle: 'pins', trigger: { wordText: 'tracks', occurrence: 1 } },
-                        { id: 'pz_t', type: 'panZoom', ...zoomTo('banner-low', 1.4), duration: 1.0, trigger: { afterId: 'img_t', offset: 0.15 } },
-                        { id: 'sc_t', type: 'circle', target: 'img_t', color: '#a93226', trigger: { afterId: 'pz_t', offset: 0.3 } },
-                        { id: 'pz_o2', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: 'sc_t', offset: 0.4 } },
+                    { type: 'background', color: '#ece0c4' },
+                    casingLayer('pir-s1', 'WHERE IT STARTS', [
+                        { id: 'num', type: 'sticker', text: '3000 YRS AGO', slot: 'top-left', size: 48, color: '#ffffff', stroke: '#1f5c52', bg: '#1f5c52', rotate: -3, trigger: { atSeconds: 0.1 } },
+                        { id: 'img_o', type: 'photo', src: img.ocean, slot: 'top-center', width: 580, height: 320, rotate: -2, pinStyle: 'tape', caption: 'THE MEDITERRANEAN', trigger: { wordText: 'mediterranean', occurrence: 1 } },
+                        { id: 'pz_o', type: 'panZoom', ...zoomTo('top-center', 1.4), duration: 1.0, trigger: { afterId: 'img_o', offset: 0.15 } },
+                        { id: 'img_s', type: 'photo', src: img.woodship, slot: 'mid-left', width: 300, height: 210, caption: 'RAIDED FOR CARGO', pinStyle: 'tape', trigger: { wordText: 'cargo', occurrence: 1 } },
+                        { id: 'pz_s', type: 'panZoom', ...zoomTo('mid-left', 1.6), duration: 0.9, trigger: { afterId: 'img_s', offset: 0.15 } },
+                        { id: 'img_c', type: 'photo', src: img.cannon, slot: 'mid-right', width: 300, height: 210, caption: 'ROME BUILT A NAVY', pinStyle: 'tape', trigger: { wordText: 'navy', occurrence: 1 } },
+                        { id: 'pz_c', type: 'panZoom', ...zoomTo('mid-right', 1.6), duration: 0.9, trigger: { afterId: 'img_c', offset: 0.15 } },
+                        { id: 'pz_o2', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: 'img_c', offset: 0.5 } },
                     ]),
                 ],
             },
 
-            // ── Scene 2 — #4 FIELD TEST REPORT (inline html) ─────────────
+            // ── Scene 2 — PRIVATEERS ─────────────────────────────────────
             {
                 transition: 'fade',
-                tts: {
-                    text: "Number four: it can't handle the field. When two humanoid robots were tested in Ukraine early this year, hauling supplies, the problems were clear. No waterproofing. Limited payload. Not enough battery life. A war zone is mud, dust, rain and cold, and most humanoid robots today are built for clean factory floors.",
-                    pauseAfter: 0.4,
-                },
+                tts: { text: "For a long time, the fastest way to become a legal pirate was a piece of paper. Kings handed out letters of marque, permission to rob enemy ships and keep a cut. Sir Francis Drake raided Spanish treasure fleets with England's blessing, and came home a knight. The pirate and the national hero were often the exact same person, just with different paperwork.", pauseAfter: 0.4 },
                 captions: false,
                 layers: [
-                    { type: 'background', color: '#e8dfcd' },
-                    inlineLayer(HTML_FIELD_REPORT),
+                    { type: 'background', color: '#ece0c4' },
+                    casingLayer('pir-s2', 'PIRATES WITH PAPERWORK', [
+                        { id: 'num', type: 'sticker', text: 'PRIVATEERS', slot: 'top-left', size: 52, color: '#ffffff', stroke: '#1f5c52', bg: '#1f5c52', rotate: -3, trigger: { atSeconds: 0.1 } },
+                        { id: 'img_p', type: 'photo', src: peeps.privateer, slot: 'top-center', width: 320, height: 360, pinStyle: 'tape', caption: 'LICENSED TO RAID', trigger: { wordText: 'marque', occurrence: 1 } },
+                        { id: 'pz_p', type: 'panZoom', ...zoomTo('top-center', 1.4), duration: 1.0, trigger: { afterId: 'img_p', offset: 0.15 } },
+                        { id: 'img_sp', type: 'photo', src: img.ship1, slot: 'mid-right', width: 300, height: 210, caption: 'SPANISH TREASURE FLEETS', pinStyle: 'tape', trigger: { wordText: 'treasure', occurrence: 1 } },
+                        { id: 'pz_sp', type: 'panZoom', ...zoomTo('mid-right', 1.6), duration: 0.9, trigger: { afterId: 'img_sp', offset: 0.15 } },
+                        { id: 'pz_o1', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'img_sp', offset: 0.5 } },
+                        { id: 's_paper', type: 'sticker', text: 'SAME PERSON.\nDIFFERENT PAPERWORK.', slot: 'banner-low', size: 48, color: '#ffffff', stroke: '#8a2e2e', bg: '#8a2e2e', rotate: -1, trigger: { wordText: 'paperwork', occurrence: 1 } },
+                        { id: 'sc_pp', type: 'circle', target: 's_paper', color: '#8a2e2e', trigger: { afterId: 's_paper', offset: 0.3 } },
+                    ]),
                 ],
             },
 
-            // ── Scene 3 — #3 COST EXCHANGE (inline html) ─────────────────
+            // ── Scene 3 — THE GOLDEN AGE BEGINS (inline timeline) ────────
             {
                 transition: 'wipe-up',
-                tts: {
-                    text: "Number three: the math doesn't work. A capable humanoid robot costs tens of thousands of dollars, or more. A small attack drone costs a few hundred. When one cheap drone can wreck an expensive walking machine, you're not winning a war. You're donating money to the other side.",
-                    pauseAfter: 0.4,
-                },
+                tts: { text: "Then came the turn everyone remembers. When wars ended, governments stopped hiring privateers, but thousands of trained sailors didn't just go home. They drifted to the Caribbean, a maze of islands with weak colonial navies. By the time a wrecked Spanish treasure fleet scattered gold along the coast in 1715, hundreds of opportunists showed up, and the Golden Age of Piracy had begun.", pauseAfter: 0.4 },
                 captions: false,
                 layers: [
-                    { type: 'background', color: '#e8dfcd' },
-                    inlineLayer(HTML_COST),
+                    { type: 'background', color: '#ece0c4' },
+                    inlineLayer(HTML_TIMELINE),
                 ],
             },
 
-            // ── Scene 4 — #2 PAYLOAD ─────────────────────────────────────
+            // ── Scene 4 — BLACKBEARD ─────────────────────────────────────
             {
                 transition: 'wipe-left',
-                tts: {
-                    text: "Number two: it can't carry enough. The Phantom, one of the few humanoids built for the military, is designed to carry about forty-four pounds, weapons included. A soldier routinely hauls more than that, and a small tracked robot can carry several times as much. If your robot helper carries less than the soldier it's supposed to help, who is helping who?",
-                    pauseAfter: 0.4,
-                },
+                tts: { text: "No name defines the era like Blackbeard. Before battle, he reportedly tied lit fuses into his beard, wrapping himself in smoke so he looked like he'd walked out of hell itself. He never needed to actually fight much. Most ships surrendered the moment they saw him coming. His real weapon wasn't his cannons. It was his reputation.", pauseAfter: 0.4 },
                 captions: false,
                 layers: [
-                    { type: 'background', color: '#e8dfcd' },
-                    casingLayer('hs-s4', '#2 — PAYLOAD', [
-                        { id: 'num', type: 'sticker', text: '#2', slot: 'top-left', size: 90, color: '#ffffff', stroke: '#1a5276', bg: '#1a5276', rotate: -3, trigger: { atSeconds: 0.1 } },
-                        { id: 'img_p', type: 'photo', src: img.humanoid1, slot: 'top-center', width: 580, height: 340, rotate: 2, pinStyle: 'tape', caption: 'PHANTOM: ~44 LB MAX, WEAPONS INCLUDED', trigger: { wordText: 'phantom', occurrence: 1 } },
-                        { id: 'pz_p', type: 'panZoom', ...zoomTo('top-center', 1.4), duration: 1.0, trigger: { afterId: 'img_p', offset: 0.15 } },
-                        { id: 's_lb', type: 'sticker', text: '44 LB\nTOTAL', slot: 'mid-left', size: 54, color: '#ffffff', stroke: '#a93226', bg: '#a93226', rotate: 2, trigger: { wordText: 'pounds', occurrence: 1 } },
-                        { id: 'img_sol', type: 'photo', src: img.backpack, slot: 'mid-right', width: 300, height: 210, caption: 'SOLDIER: ROUTINELY MORE', pinStyle: 'tape', trigger: { wordText: 'soldier', occurrence: 1 } },
-                        { id: 'pz_s', type: 'panZoom', ...zoomTo('mid-right', 1.6), duration: 0.9, trigger: { afterId: 'img_sol', offset: 0.15 } },
-                        { id: 'pz_o1', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'img_sol', offset: 0.5 } },
-                        { id: 'img_tr', type: 'photo', src: img.tracked, slot: 'banner-low', width: 500, height: 280, caption: 'TRACKED ROBOT: SEVERAL TIMES MORE', pinStyle: 'pins', trigger: { wordText: 'tracked', occurrence: 1 } },
-                        { id: 'pz_tr', type: 'panZoom', ...zoomTo('banner-low', 1.4), duration: 1.0, trigger: { afterId: 'img_tr', offset: 0.15 } },
-                        { id: 'pz_o2', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'pz_tr', offset: 0.5 } },
-                        { id: 's_who', type: 'sticker', text: 'WHO IS HELPING WHO?', slot: 'banner-bot', size: 56, color: '#ffffff', stroke: '#1a5276', bg: '#1a5276', rotate: -1, trigger: { wordText: 'helping', occurrence: 1 } },
-                        { id: 'sc_who', type: 'circle', target: 's_who', color: '#1a5276', trigger: { afterId: 's_who', offset: 0.3 } },
+                    { type: 'background', color: '#ece0c4' },
+                    casingLayer('pir-s4', 'BLACKBEARD', [
+                        { id: 'num', type: 'sticker', text: 'THE LEGEND', slot: 'top-left', size: 48, color: '#ffffff', stroke: '#8a2e2e', bg: '#8a2e2e', rotate: -3, trigger: { atSeconds: 0.1 } },
+                        { id: 'img_bb', type: 'photo', src: peeps.blackbeard, slot: 'top-center', width: 320, height: 360, pinStyle: 'tape', caption: 'SMOKE IN HIS BEARD', trigger: { wordText: 'beard', occurrence: 1 } },
+                        { id: 'pz_bb', type: 'panZoom', ...zoomTo('top-center', 1.4), duration: 1.0, trigger: { afterId: 'img_bb', offset: 0.15 } },
+                        { id: 'img_ship', type: 'photo', src: img.ship1, slot: 'mid-right', width: 300, height: 210, caption: 'MOST SHIPS JUST SURRENDERED', pinStyle: 'tape', trigger: { wordText: 'surrendered', occurrence: 1 } },
+                        { id: 'pz_ship', type: 'panZoom', ...zoomTo('mid-right', 1.6), duration: 0.9, trigger: { afterId: 'img_ship', offset: 0.15 } },
+                        { id: 'pz_o1', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'img_ship', offset: 0.5 } },
+                        { id: 's_rep', type: 'sticker', text: 'REPUTATION\nWAS THE WEAPON', slot: 'banner-low', size: 48, color: '#ffffff', stroke: '#1f5c52', bg: '#1f5c52', rotate: -1, trigger: { wordText: 'reputation', occurrence: 1 } },
+                        { id: 'sc_r', type: 'circle', target: 's_rep', color: '#1f5c52', trigger: { afterId: 's_rep', offset: 0.3 } },
                     ]),
                 ],
             },
 
-            // ── Scene 5 — #1 THE SHAPE (twist) ───────────────────────────
-            {
-                transition: 'zoom-in',
-                tts: {
-                    text: "And number one: the human shape was never really an engineering choice. It came from movies. We copy the human body because we want a machine that feels like a soldier, not because war demands it. Meanwhile, the real robot soldiers are already here. They fly, they roll, they crawl, and not one of them has a face.",
-                    pauseAfter: 0.4,
-                },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#e8dfcd' },
-                    casingLayer('hs-s5', '#1 — THE SHAPE', [
-                        { id: 'num', type: 'sticker', text: '#1', slot: 'top-left', size: 90, color: '#ffffff', stroke: '#a93226', bg: '#a93226', rotate: -3, trigger: { atSeconds: 0.1 } },
-                        { id: 'img_mv', type: 'photo', src: img.soldier1, slot: 'top-center', width: 580, height: 340, rotate: -3, pinStyle: 'tape', caption: 'DESIGNED BY HOLLYWOOD', trigger: { wordText: 'movies', occurrence: 1 } },
-                        { id: 'pz_mv', type: 'panZoom', ...zoomTo('top-center', 1.4), duration: 1.0, trigger: { afterId: 'img_mv', offset: 0.15 } },
-                        { id: 's_feel', type: 'sticker', text: 'LOOKS RIGHT.\nWORKS WRONG.', slot: 'mid-center', size: 46, color: '#ffffff', stroke: '#a93226', bg: '#a93226', rotate: 2, trigger: { wordText: 'feels', occurrence: 1 } },
-                        { id: 'pz_o1', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 's_feel', offset: 0.6 } },
-                        { id: 'img_fly',   type: 'photo', src: img.fpv1,    slot: 'low-left',   width: 280, height: 200, caption: 'THEY FLY',   pinStyle: 'tape', trigger: { wordText: 'fly', occurrence: 1 } },
-                        { id: 'pz_fly',    type: 'panZoom', ...zoomTo('low-left', 1.6),   duration: 0.9, trigger: { afterId: 'img_fly', offset: 0.15 } },
-                        { id: 'img_roll',  type: 'photo', src: img.tracked, slot: 'low-center', width: 280, height: 200, caption: 'THEY ROLL',  pinStyle: 'tape', trigger: { wordText: 'roll', occurrence: 1 } },
-                        { id: 'pz_roll',   type: 'panZoom', ...zoomTo('low-center', 1.6), duration: 0.9, trigger: { afterId: 'img_roll', offset: 0.15 } },
-                        { id: 'img_crawl', type: 'photo', src: img.bomb,    slot: 'low-right',  width: 280, height: 200, caption: 'THEY CRAWL', pinStyle: 'tape', trigger: { wordText: 'crawl', occurrence: 1 } },
-                        { id: 'pz_crawl',  type: 'panZoom', ...zoomTo('low-right', 1.6),  duration: 0.9, trigger: { afterId: 'img_crawl', offset: 0.15 } },
-                        { id: 'pz_o2', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'img_crawl', offset: 0.5 } },
-                        { id: 's_face', type: 'sticker', text: 'NOT ONE\nHAS A FACE', slot: 'banner-low', size: 64, color: '#ffffff', stroke: '#1a5276', bg: '#1a5276', rotate: -1, trigger: { wordText: 'face', occurrence: 1 } },
-                        { id: 'sc_face', type: 'circle', target: 's_face', color: '#1a5276', trigger: { afterId: 's_face', offset: 0.3 } },
-                    ]),
-                ],
-            },
-
-            // ── Scene 6 — VERDICT + CTA (inline html) ────────────────────
+            // ── Scene 5 — ANNE BONNY & MARY READ ─────────────────────────
             {
                 transition: 'fade',
-                tts: {
-                    text: "Is there a place for humanoids in the military? Maybe. Hauling supplies, or going where it's too dangerous to send a person. But a robot soldier shaped like a soldier is a solution to a movie, not a battlefield. Subscribe for more facts nobody tells you.",
-                    pauseAfter: 0.3,
-                },
+                tts: { text: "Two of the most feared pirates of the era weren't men at all. Anne Bonny and Mary Read sailed together under Calico Jack Rackham, fighting in open combat while most of their crew hid below deck during their final battle. When Jack was captured and sentenced to hang, Anne reportedly told him that if he'd fought like a man, he wouldn't have to die like a dog.", pauseAfter: 0.4 },
                 captions: false,
                 layers: [
-                    { type: 'background', color: '#e8dfcd' },
+                    { type: 'background', color: '#ece0c4' },
+                    casingLayer('pir-s5', 'ANNE & MARY', [
+                        { id: 'num', type: 'sticker', text: 'NOT MEN', slot: 'top-left', size: 52, color: '#ffffff', stroke: '#8a2e2e', bg: '#8a2e2e', rotate: -3, trigger: { atSeconds: 0.1 } },
+                        { id: 'img_ab', type: 'photo', src: peeps.anneBonny, slot: 'mid-left', width: 300, height: 340, caption: 'ANNE BONNY', pinStyle: 'tape', trigger: { wordText: 'bonny', occurrence: 1 } },
+                        { id: 'pz_ab', type: 'panZoom', ...zoomTo('mid-left', 1.4), duration: 0.9, trigger: { afterId: 'img_ab', offset: 0.15 } },
+                        { id: 'img_mr', type: 'photo', src: peeps.maryRead, slot: 'mid-right', width: 300, height: 340, caption: 'MARY READ', pinStyle: 'tape', trigger: { wordText: 'read', occurrence: 1 } },
+                        { id: 'pz_mr', type: 'panZoom', ...zoomTo('mid-right', 1.4), duration: 0.9, trigger: { afterId: 'img_mr', offset: 0.15 } },
+                        { id: 'pz_o1', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'img_mr', offset: 0.5 } },
+                        { id: 's_quote', type: 'sticker', text: '"FOUGHT LIKE A MAN,\nOR DIE LIKE A DOG"', slot: 'banner-low', size: 42, color: '#ffffff', stroke: '#1f5c52', bg: '#1f5c52', rotate: -1, trigger: { wordText: 'dog', occurrence: 1 } },
+                        { id: 'sc_q', type: 'circle', target: 's_quote', color: '#1f5c52', trigger: { afterId: 's_quote', offset: 0.3 } },
+                    ]),
+                ],
+            },
+
+            // ── Scene 6 — THE PIRATE CODE (inline) ───────────────────────
+            {
+                transition: 'wipe-up',
+                tts: { text: "What made a pirate ship different wasn't the flag. It was the democracy. Crews voted their captain in, and could vote him out. Loot was split by fixed shares, agreed on paper before the voyage began. Lose a leg in battle, and the code promised you compensation. The black flag itself was a mercy, not a threat: surrender, and nobody had to die.", pauseAfter: 0.4 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#ece0c4' },
+                    inlineLayer(HTML_CODE),
+                ],
+            },
+
+            // ── Scene 7 — MYTH VS REALITY (inline) ───────────────────────
+            {
+                transition: 'fade',
+                tts: { text: "Most of what we picture is invention. There were no buried treasure maps, because loot was spent, not saved. Walking the plank almost never happened; marooning on an empty island was the real punishment. Even the eyepatch probably wasn't about missing an eye. It likely kept one eye adjusted to darkness for fighting below deck. And pirates rarely sailed alone. They moved in organized fleets.", pauseAfter: 0.4 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#ece0c4' },
+                    inlineLayer(HTML_MYTH),
+                ],
+            },
+
+            // ── Scene 8 — THE CRACKDOWN ───────────────────────────────────
+            {
+                transition: 'wipe-left',
+                tts: { text: "The Golden Age ended because it had to. Pirates were costing empires too much gold, and navies that had once looked away started hunting them down. Public executions were held as warnings, bodies sometimes left hanging in cages at harbor entrances. Within a few decades, a world that once had thousands of pirates had almost none left sailing free.", pauseAfter: 0.4 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#ece0c4' },
+                    casingLayer('pir-s8', 'THE CRACKDOWN', [
+                        { id: 'num', type: 'sticker', text: 'THE END', slot: 'top-left', size: 56, color: '#ffffff', stroke: '#8a2e2e', bg: '#8a2e2e', rotate: -3, trigger: { atSeconds: 0.1 } },
+                        { id: 'img_c', type: 'photo', src: img.cannon, slot: 'top-center', width: 580, height: 320, rotate: -2, pinStyle: 'tape', caption: 'NAVIES STARTED HUNTING', trigger: { wordText: 'hunting', occurrence: 1 } },
+                        { id: 'pz_c', type: 'panZoom', ...zoomTo('top-center', 1.4), duration: 1.0, trigger: { afterId: 'img_c', offset: 0.15 } },
+                        { id: 'img_o', type: 'photo', src: peeps.officer, slot: 'mid-left', width: 280, height: 320, caption: 'PUBLIC EXECUTIONS', pinStyle: 'tape', trigger: { wordText: 'executions', occurrence: 1 } },
+                        { id: 'pz_off', type: 'panZoom', ...zoomTo('mid-left', 1.4), duration: 0.9, trigger: { afterId: 'img_o', offset: 0.15 } },
+                        { id: 'img_w', type: 'photo', src: img.wreck, slot: 'mid-right', width: 300, height: 210, caption: 'ALMOST NONE LEFT', pinStyle: 'pins', trigger: { wordText: 'free', occurrence: 1 } },
+                        { id: 'pz_w', type: 'panZoom', ...zoomTo('mid-right', 1.6), duration: 0.9, trigger: { afterId: 'img_w', offset: 0.15 } },
+                        { id: 'pz_o2', type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: 'img_w', offset: 0.5 } },
+                    ]),
+                ],
+            },
+
+            // ── Scene 9 — HOW THE DREAM WAS BUILT ────────────────────────
+            {
+                transition: 'fade',
+                tts: { text: "So where did the dream actually come from? Mostly from books, decades after the real pirates were gone. Treasure Island gave us the map, the parrot, the one-legged sea cook. Peter Pan gave us Captain Hook. Hollywood gave us the swashbuckling hero. The version every kid fell in love with wasn't history. It was fiction, built on top of history, and it worked perfectly.", pauseAfter: 0.4 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#ece0c4' },
+                    casingLayer('pir-s9', 'BUILDING THE DREAM', [
+                        { id: 'num', type: 'sticker', text: 'THE MYTHMAKERS', slot: 'top-left', size: 46, color: '#ffffff', stroke: '#1f5c52', bg: '#1f5c52', rotate: -3, trigger: { atSeconds: 0.1 } },
+                        { id: 'img_a', type: 'photo', src: peeps.author, slot: 'top-center', width: 300, height: 340, pinStyle: 'tape', caption: 'WRITTEN DECADES LATER', trigger: { wordText: 'books', occurrence: 1 } },
+                        { id: 'pz_a', type: 'panZoom', ...zoomTo('top-center', 1.4), duration: 1.0, trigger: { afterId: 'img_a', offset: 0.15 } },
+                        { id: 'img_m', type: 'photo', src: img.oldmap, slot: 'mid-left', width: 300, height: 210, caption: 'TREASURE ISLAND', pinStyle: 'tape', trigger: { wordText: 'map', occurrence: 1 } },
+                        { id: 'pz_m', type: 'panZoom', ...zoomTo('mid-left', 1.6), duration: 0.9, trigger: { afterId: 'img_m', offset: 0.15 } },
+                        { id: 'img_cap', type: 'photo', src: peeps.captain, slot: 'mid-right', width: 280, height: 320, caption: 'CAPTAIN HOOK', pinStyle: 'tape', trigger: { wordText: 'hook', occurrence: 1 } },
+                        { id: 'pz_cap', type: 'panZoom', ...zoomTo('mid-right', 1.4), duration: 0.9, trigger: { afterId: 'img_cap', offset: 0.15 } },
+                        { id: 'pz_o1', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'img_cap', offset: 0.5 } },
+                        { id: 's_worked', type: 'sticker', text: 'AND IT WORKED\nPERFECTLY', slot: 'banner-low', size: 52, color: '#ffffff', stroke: '#8a2e2e', bg: '#8a2e2e', rotate: -1, trigger: { wordText: 'perfectly', occurrence: 1 } },
+                        { id: 'sc_w', type: 'circle', target: 's_worked', color: '#8a2e2e', trigger: { afterId: 's_worked', offset: 0.3 } },
+                    ]),
+                ],
+            },
+
+            // ── Scene 10 — VERDICT + CTA (inline) ────────────────────────
+            {
+                transition: 'fade',
+                tts: { text: "So why was being a pirate every kid's dream? Not the gold. Not the skull and crossbones. It was the vote, the fair share, a world with no landlord or king telling anyone what to do. That's the part fiction kept, because it's the part that was actually true. Subscribe for more facts nobody tells you.", pauseAfter: 0.3 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#ece0c4' },
                     inlineLayer(HTML_VERDICT),
                 ],
             },
