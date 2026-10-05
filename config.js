@@ -1,26 +1,29 @@
-// config.weapons-backfired.js
-// "Top 5 Weapons That Backfired on Their Own Inventors" — ~2 min, 7 scenes.
-// Voice: am_adam — this one's casual/jokey, not documentary, so Adam fits
-// better than George even though the subject is history.
+// config.nursing-interview.js
+// "What Actually Happens in Your Nursing School Interview" — ~4 min, 21 scenes.
+// Voice: am_michael — casual, friendly, measured (per your voice guide).
 //
-// RUN: VIDEO_CONFIG=config.weapons-backfired.js node engine-ci.js
+// RUN: VIDEO_CONFIG=config.nursing-interview.js node engine-ci.js
 //
-// NO BACKGROUND MUSIC — output.bgMusic intentionally omitted.
-// IMAGES BIG — single dominant visual per beat, not 3-across (lesson from
-//   the pirate config: small photos = can't see them). Zoom kept gentle
-//   (1.1–1.3x) per your last note not to overdo it.
-// FACT-CHECK NOTES (kept honest, not sensationalized):
-//   - Perillos/Brazen Bull: ancient account (Pliny, Diodorus), semi-legendary,
-//     not independently verified — framed as "the story goes," not fact.
-//   - Henry Shrapnel: real, died in genuine financial hardship despite his
-//     shell's widespread military adoption.
-//   - Richard Gatling: his own stated reasoning (reduce army sizes to reduce
-//     deaths) is documented; the irony is real and widely cited.
-//   - Kalashnikov: his late-life letter expressing anguish over the AK-47's
-//     death toll is documented (reported via Russian press/church sources).
-//   - Alfred Nobel: the mistaken obituary ("merchant of death," misprinted
-//     after his brother Ludvig died) prompting his will change is the
-//     widely accepted account of the Nobel Prize's origin.
+// DESIGN DECISIONS (per your feedback across this conversation):
+//   - NO hand-illustrated stick figures / peeps. Real stock photos for every
+//     human moment. Custom minimal line-icons ONLY for abstract beats
+//     (a pause, a thought, a question) where no literal photo makes sense.
+//   - Each "character" (the woman, the man in navy, the man by the window)
+//     is fetched ONCE and the exact same resolved image is reused in every
+//     scene they appear in — guarantees visual continuity instead of three
+//     random different people each time a new photo is fetched.
+//   - ONE big full-bleed image per scene, gentle Ken Burns zoom, no corkboard
+//     clutter — this is flowing narration, not a countdown list.
+//   - NATIVE word-synced highlight captions (captions: {style:'highlight'})
+//     instead of hand-built text reveals — this is the actual mechanism the
+//     "What If" / narration-simulation genre relies on for retention.
+//   - No background music, per your earlier instruction on this project.
+//
+// ICON HONESTY NOTE: the 5 small icons (nervous hands, brain, stopwatch,
+// speech bubble, mailbox) are hand-coded minimal line-art in the same
+// visual language as Feather/Lucide — NOT literal files from those
+// libraries (couldn't reliably fetch them). Swap in real Feather/Lucide
+// SVGs the same way if you want the literal library — same data: URI slot.
 
 const https  = require('https');
 const http   = require('http');
@@ -98,7 +101,7 @@ async function searchSerpApi(query, orientation, imageIndex = 0) {
         const usable = all.filter(r => r.original && !r.original.startsWith('x-raw-image'));
         results = usable.length ? usable : all;
         serpApiResultsCache.set(cacheKey, results);
-        console.log(`[Backfired] SerpAPI cached: ${results.length} result(s) for "${query}"`);
+        console.log(`[Nursing] SerpAPI cached: ${results.length} result(s) for "${query}"`);
     }
     const pick = results[imageIndex % results.length] || results[0];
     if (!pick?.original) throw new Error('No usable image URL');
@@ -161,12 +164,12 @@ async function trySerpApiWithFallback(query, orientation, startIndex) {
         const candidateUrl = attempt === 0 ? firstUrl : results[idx]?.original;
         if (!candidateUrl) continue;
         try {
-            if (attempt > 0) console.log(`[Backfired]  ↻ serpapi retry [#${idx}] for "${query}"`);
+            if (attempt > 0) console.log(`[Nursing]  ↻ serpapi retry [#${idx}] for "${query}"`);
             const { base64, contentType } = await downloadToBase64(candidateUrl);
             return `data:${contentType};base64,${base64}`;
         } catch (e) {
             lastErr = e;
-            console.warn(`[Backfired]  ⚠ serpapi [#${idx}] failed: ${e.message?.slice(0, 60)}`);
+            console.warn(`[Nursing]  ⚠ serpapi [#${idx}] failed: ${e.message?.slice(0, 60)}`);
         }
     }
     throw lastErr || new Error('No working result in cached set');
@@ -179,368 +182,150 @@ async function fetchImageRobust(query, opts = {}) {
         try {
             if (source === 'serpapi') {
                 const uri = await trySerpApiWithFallback(query, orientation, imageIndex);
-                console.log(`[Backfired] ✓ "${query}" #${imageIndex} via serpapi`);
+                console.log(`[Nursing] ✓ "${query}" #${imageIndex} via serpapi`);
                 return uri;
             }
             const imageUrl = await searchSource(source, query, orientation, imageIndex);
             if (!imageUrl) continue;
             const { base64, contentType } = await downloadToBase64(imageUrl);
-            console.log(`[Backfired] ✓ "${query}" via ${source}`);
+            console.log(`[Nursing] ✓ "${query}" via ${source}`);
             return `data:${contentType};base64,${base64}`;
         } catch (e) {
-            console.warn(`[Backfired]  ⚠ ${source} failed for "${query}": ${e.message?.slice(0, 60)}`);
+            console.warn(`[Nursing]  ⚠ ${source} failed for "${query}": ${e.message?.slice(0, 60)}`);
         }
     }
-    console.warn(`[Backfired]  ✗ ALL sources failed for "${query}"`);
+    console.warn(`[Nursing]  ✗ ALL sources failed for "${query}"`);
     return null;
 }
 
-// ── Camera helper ──────────────────────────────────────────────────────
-const SLOT_CENTERS = {
-    'top-left': [180, 270.5], 'top-center': [540, 270.5], 'top-right': [900, 270.5],
-    'mid-left': [180, 511.5], 'mid-center': [540, 511.5], 'mid-right': [900, 511.5],
-    'low-left': [180, 752.5], 'low-center': [540, 752.5], 'low-right': [900, 752.5],
-    'bot-left': [180, 993.5], 'bot-center': [540, 993.5], 'bot-right': [900, 993.5],
-    'deep-left': [180, 1234.5], 'deep-center': [540, 1234.5], 'deep-right': [900, 1234.5],
-    'banner-top': [540, 270.5], 'banner-mid': [540, 752.5], 'banner-low': [540, 1234.5], 'banner-bot': [540, 1475.5],
-};
-function zoomTo(slot, scale) {
-    const c = SLOT_CENTERS[slot] || [540, 960];
-    return { toScale: scale, toX: -scale * (c[0] - 540), toY: -scale * (c[1] - 960) };
-}
-const ZOOM_OUT = { toScale: 1, toX: 0, toY: 0 };
+const THEME = { paper: '#efe9de', ink: '#201c16', accent: '#3a6b8a', accent2: '#8a5a3a' };
 
-const THEME = {
-    paper: '#efe6d3', ink: '#231b12',
-    accent: '#b5402c', accent2: '#2c6b5a',
-    shadow: 'rgba(20,16,10,0.4)',
-};
-
-// ── peep() — same parametric character generator used in the pirate video ─
-function peep({
-    skin = '#caa07a', shirt = '#2d4f5e', pants = '#2b2420',
-    hair = '#2a1e16', hairStyle = 'short',
-    accessory = 'none', beard = false, dress = false, armsUp = false,
-}) {
-    const hairShape = {
-        short: `<path d="M38 70 Q50 30 100 30 Q150 30 162 70 Q150 50 100 50 Q50 50 38 70 Z" fill="${hair}"/>`,
-        bun:   `<path d="M40 66 Q52 32 100 32 Q148 32 160 66 Q148 48 100 48 Q52 48 40 66 Z" fill="${hair}"/><circle cx="100" cy="24" r="14" fill="${hair}"/>`,
-        long:  `<path d="M36 64 Q50 28 100 28 Q150 28 164 64 L160 120 L150 118 L148 70 Q148 48 100 46 Q52 48 52 70 L50 118 L40 120 Z" fill="${hair}"/>`,
-        bald:  '',
-    }[hairStyle] || '';
-
-    const accessoryShape = {
-        none: '',
-        tricorn: `<path d="M26 58 Q100 8 174 58 Q150 36 100 36 Q50 36 26 58 Z" fill="#1a1512"/>
-                  <path d="M26 58 Q60 44 100 44 Q140 44 174 58 Q168 66 100 54 Q32 66 26 58 Z" fill="#1a1512"/>
-                  <circle cx="100" cy="40" r="5" fill="#c9a24b"/>`,
-        bicorne: `<path d="M32 56 Q100 14 100 14 Q100 14 168 56 Q134 30 100 30 Q66 30 32 56 Z" fill="#0f1a24"/>
-                  <circle cx="100" cy="22" r="5" fill="#c9a24b"/>`,
-        toga: `<path d="M50 118 Q100 100 150 118 L150 150 Q100 136 50 150 Z" fill="#ece0c4"/>`,
-        crown: `<path d="M44 60 L60 30 L80 56 L100 24 L120 56 L140 30 L156 60 Z" fill="#c9a24b" stroke="#8a6a2a" stroke-width="3"/>`,
-    }[accessory] || '';
-
-    const eyepatch = `<circle cx="80" cy="94" r="4" fill="#1a1512"/><circle cx="118" cy="94" r="4" fill="#1a1512"/>`;
-
-    const beardShape = beard
-        ? `<path d="M64 100 Q100 150 136 100 Q138 128 100 140 Q62 128 64 100 Z" fill="${hair}"/>`
-        : '';
-
-    const armL = armsUp
-        ? `<path d="M74 150 Q40 120 34 80" stroke="${shirt}" stroke-width="22" stroke-linecap="round" fill="none"/>`
-        : `<path d="M74 150 Q58 190 62 228" stroke="${shirt}" stroke-width="22" stroke-linecap="round" fill="none"/>`;
-    const armR = armsUp
-        ? `<path d="M126 150 Q160 120 166 80" stroke="${shirt}" stroke-width="22" stroke-linecap="round" fill="none"/>`
-        : `<path d="M126 150 Q142 190 138 228" stroke="${shirt}" stroke-width="22" stroke-linecap="round" fill="none"/>`;
-
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260">
-        <rect x="76" y="150" width="20" height="90" fill="${pants}"/>
-        <rect x="104" y="150" width="20" height="90" fill="${pants}"/>
-        ${armL}${armR}
-        ${dress
-            ? `<path d="M64 148 Q100 136 136 148 L150 236 Q100 252 50 236 Z" fill="${shirt}"/>`
-            : `<rect x="64" y="144" width="72" height="80" rx="16" fill="${shirt}"/>`}
-        <circle cx="100" cy="92" r="42" fill="${skin}"/>
-        ${eyepatch}
-        <path d="M86 112 Q100 120 114 112" stroke="#1a1512" stroke-width="3" fill="none" stroke-linecap="round"/>
-        ${beardShape}
-        ${hairShape}
-        ${accessoryShape}
+// ── Minimal hand-coded line icons (Feather/Lucide-spirited, not literal) ──
+function icon(name) {
+    const paths = {
+        nervousHands: `<path d="M20 44 Q30 36 40 44 Q50 36 60 44" stroke-dasharray="4 5"/>
+                       <path d="M20 54 Q30 46 40 54 Q50 46 60 54" stroke-dasharray="4 5"/>
+                       <circle cx="40" cy="20" r="10"/>`,
+        brain: `<path d="M30 14 Q16 14 16 28 Q10 30 10 40 Q10 50 20 52 Q18 60 26 64 Q32 68 40 64
+                 Q48 68 54 64 Q62 60 60 52 Q70 50 70 40 Q70 30 64 28 Q64 14 50 14 Q44 10 40 14 Q36 10 30 14 Z"/>
+                 <path d="M40 14 L40 64 M26 28 Q32 32 26 38 M54 28 Q48 32 54 38"/>`,
+        stopwatch: `<circle cx="40" cy="46" r="26"/><path d="M40 46 L40 30 M40 46 L52 54"/>
+                    <path d="M30 10 L50 10 M40 10 L40 18"/>`,
+        speechBubble: `<path d="M12 18 H68 Q74 18 74 24 V50 Q74 56 68 56 H30 L16 70 V56 H12 Q6 56 6 50 V24 Q6 18 12 18 Z"/>
+                       <path d="M24 32 H56 M24 42 H46"/>`,
+        mailbox: `<rect x="14" y="26" width="52" height="38" rx="4"/><path d="M14 30 L40 50 L66 30"/>
+                  <rect x="34" y="66" width="12" height="8"/>`,
+    };
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none"
+        stroke="${THEME.ink}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+        ${paths[name] || ''}
     </svg>`;
     return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 }
 
-// ── small custom illustration: the Brazen Bull ─────────────────────────
-function bullSVG() {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240">
-        <ellipse cx="160" cy="130" rx="118" ry="62" fill="#a17136"/>
-        <rect x="46" y="162" width="20" height="62" fill="#7c5425"/>
-        <rect x="98" y="162" width="20" height="62" fill="#7c5425"/>
-        <rect x="200" y="162" width="20" height="62" fill="#7c5425"/>
-        <rect x="252" y="162" width="20" height="62" fill="#7c5425"/>
-        <ellipse cx="268" cy="100" rx="42" ry="36" fill="#a17136"/>
-        <path d="M242 72 L220 38" stroke="#5a3a18" stroke-width="9" stroke-linecap="round"/>
-        <path d="M264 66 L258 28" stroke="#5a3a18" stroke-width="9" stroke-linecap="round"/>
-        <circle cx="284" cy="96" r="5" fill="#1a1512"/>
-        <rect x="136" y="100" width="52" height="38" rx="5" fill="#5a3a18" stroke="#2a1a08" stroke-width="3"/>
-        <circle cx="162" cy="119" r="4" fill="#c9a24b"/>
-        <path d="M60 224 L82 190 M108 224 L130 190 M198 224 L220 190 M250 224 L272 190"
-              stroke="#d4703a" stroke-width="7" stroke-linecap="round"/>
-        <path d="M70 224 L72 200 M118 224 L120 200" stroke="#f0a04a" stroke-width="5" stroke-linecap="round"/>
-    </svg>`;
-    return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-}
-
-const BASE_CSS = `
-  *{box-sizing:border-box}
-  html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#efe6d3;
-    font-family:Georgia,'Times New Roman',serif;color:#231b12}
-  .wrap{position:absolute;inset:0;padding:150px 80px 300px;display:flex;flex-direction:column}
-  .badge{align-self:flex-start;background:#2c6b5a;color:#fff;font:900 88px Impact,'Arial Black',sans-serif;
-    padding:6px 34px;transform:rotate(-3deg);box-shadow:6px 6px 0 rgba(20,16,10,.4)}
-  .badge.red{background:#b5402c}
-  h1{font:900 84px/1.04 Impact,'Arial Black',sans-serif;margin:34px 0 10px;letter-spacing:.5px}
-  .sub{font-size:36px;line-height:1.3;margin:0 0 30px;color:#3a3226;max-width:900px}
-  .off{opacity:0;transition:opacity .35s ease}
-  .on{opacity:1}
-`;
-const REVEAL_JS = `
-  var seen = {};
-  function show(id){ if (seen[id]) return; seen[id] = 1;
-    var el = document.getElementById(id); if (el) el.classList.add('on'); }
-  function wire(map, fb){
-    window.addEventListener('apexframe', function(e){
-      var d = e.detail, w = (d.word || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (map[w]) show(map[w]);
-      for (var i = 0; i < fb.length; i++) if (d.t > fb[i][1]) show(fb[i][0]);
-    });
-    document.body.setAttribute('data-ready', '1');
-  }
-`;
-
-// ── Inline scene — #1 NOBEL (newspaper mix-up → Peace Prize) ───────────
-const HTML_NOBEL = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${BASE_CSS}
-  .clip{border:5px solid #231b12;background:#e7dcc3;padding:30px 34px;margin-top:20px;
-    box-shadow:8px 8px 0 rgba(20,16,10,.4);font-family:Georgia,serif;position:relative;
-    opacity:0;transform:translateY(14px);transition:opacity .35s ease,transform .35s ease}
-  .clip.on{opacity:1;transform:translateY(0)}
-  .clip .kicker{font-size:22px;letter-spacing:3px;color:#5a4f3a}
-  .clip h2{font:900 46px Impact,'Arial Black',sans-serif;margin:8px 0;color:#1a1512}
-  .stamp{position:absolute;right:30px;top:30px;border:6px solid #b5402c;color:#b5402c;
-    font:900 42px Impact,'Arial Black',sans-serif;padding:2px 16px;transform:rotate(-8deg) scale(1.6);
-    opacity:0;transition:transform .3s cubic-bezier(.2,1.4,.4,1),opacity .2s ease}
-  .stamp.on{opacity:1;transform:rotate(-8deg) scale(1)}
-  .medal{align-self:center;margin-top:50px;opacity:0;transform:scale(.6);
-    transition:opacity .4s ease,transform .4s cubic-bezier(.2,1.4,.4,1)}
-  .medal.on{opacity:1;transform:scale(1)}
-  .cap{text-align:center;font-size:36px;margin-top:20px;max-width:820px;align-self:center}
-</style></head><body><div class="wrap">
-  <div class="badge red">#1</div>
-  <h1>The paper got<br>it wrong</h1>
-  <div class="clip off" id="paper">
-    <div class="kicker">OBITUARIES</div>
-    <h2>"LE MARCHAND DE LA MORT EST MORT"</h2>
-    <div class="kicker">THE MERCHANT OF DEATH IS DEAD</div>
-    <div class="stamp" id="stamp">WRONG BROTHER</div>
-  </div>
-  <svg class="medal" id="medal" width="260" height="260" viewBox="0 0 260 260">
-    <circle cx="130" cy="130" r="100" fill="#d9ac4e" stroke="#9c7a2e" stroke-width="8"/>
-    <circle cx="130" cy="130" r="74" fill="none" stroke="#9c7a2e" stroke-width="4"/>
-    <path d="M90 150 Q130 190 170 150" stroke="#9c7a2e" stroke-width="6" fill="none"/>
-    <path d="M60 60 L40 10 M200 60 L220 10" stroke="#5a7a4a" stroke-width="10" stroke-linecap="round"/>
-  </svg>
-  <p class="cap off" id="cap">So he rewrote his will. That's how the Nobel Prize was born.</p>
-</div><script>${REVEAL_JS}
-  wire({newspaper:'paper', merchant:'stamp', will:'medal', prize:'cap'},
-       [['paper',6],['stamp',11],['medal',18],['cap',22]]);
-</script></body></html>`;
-
-// ── Inline scene — closing / CTA ────────────────────────────────────────
-const HTML_CLOSE = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${BASE_CSS}
-  .card{border:5px solid #231b12;background:#f4ecdb;padding:32px 40px;box-shadow:8px 8px 0 rgba(20,16,10,.4);margin-top:28px;
-    opacity:0;transform:translateY(14px);transition:opacity .35s ease,transform .35s ease}
-  .card.on{opacity:1;transform:translateY(0)}
-  .card p{font-size:40px;line-height:1.4;margin:0}
-  .cta{margin-top:50px;align-self:center;text-align:center;background:#2c6b5a;color:#fff;border:5px solid #231b12;
-    font:900 74px/1.05 Impact,'Arial Black',sans-serif;padding:20px 50px;transform:rotate(-1deg) scale(1.6);
-    opacity:0;transition:transform .3s cubic-bezier(.2,1.4,.4,1),opacity .2s ease;box-shadow:8px 8px 0 rgba(20,16,10,.4)}
-  .cta.on{opacity:1;transform:rotate(-1deg) scale(1)}
-  .cta small{display:block;font:400 32px Georgia,serif;margin-top:10px;letter-spacing:0}
-</style></head><body><div class="wrap">
-  <div class="badge">The Takeaway</div>
-  <h1>Karma's got<br>jokes</h1>
-  <div class="card off" id="c1"><p>Build something powerful enough, and eventually, it finds its way back to you.</p></div>
-  <div class="cta" id="cta">🔔 SUBSCRIBE<small>for stories nobody tells you</small></div>
-</div><script>${REVEAL_JS}
-  wire({powerful:'c1', subscribe:'cta'}, [['c1',6],['cta',13]]);
-</script></body></html>`;
-
-const inlineLayer = (html) => ({
-    type: 'html-record', html,
-    audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
+// ── Full-bleed photo scene: one big image, gentle Ken Burns zoom ─────────
+const fullBleedLayer = (src) => ({
+    type: 'html-record',
+    html: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        html,body{width:1080px;height:1920px;overflow:hidden;background:#000}
+        .frame{position:absolute;inset:0;overflow:hidden}
+        img{width:100%;height:100%;object-fit:cover;
+            animation:kb 7s ease-out forwards;transform-origin:center center}
+        @keyframes kb{from{transform:scale(1.0)}to{transform:scale(1.12)}}
+        .vignette{position:absolute;left:0;right:0;bottom:0;height:40%;
+            background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0));pointer-events:none}
+    </style></head><body>
+        <div class="frame"><img src="${src}"><div class="vignette"></div></div>
+    </body></html>`,
+    cursor: false, fps: 30,
     viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
 });
-const casingLayer = (tag, title, commands) => ({
-    type: 'html-record', src: `./ApexCasing/paper-sticker-explainer.html?tag=${tag}`,
-    audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
+
+// ── Icon-card scene: one centered icon on the paper theme, for abstract beats ─
+const iconCardLayer = (iconSrc) => ({
+    type: 'html-record',
+    html: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        html,body{width:1080px;height:1920px;overflow:hidden;background:${THEME.paper}}
+        .wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+        img{width:300px;height:300px;opacity:0;transform:scale(.8);
+            animation:pop .6s cubic-bezier(.2,1.3,.4,1) forwards}
+        @keyframes pop{to{opacity:1;transform:scale(1)}}
+    </style></head><body>
+        <div class="wrap"><img src="${iconSrc}"></div>
+    </body></html>`,
+    cursor: false, fps: 30,
     viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-    data: { title, theme: THEME, commands },
 });
+
+// Native word-synced captions — used on every scene instead of hand-built text.
+const CAPTIONS = {
+    style: 'highlight', position: 'bottom',
+    highlightColor: '#f0c24b', textColor: '#ffffff',
+};
 
 module.exports = (async () => {
 
-    console.log('[Backfired] Fetching photos sequentially (short, generic 2-word queries)...');
+    console.log('[Nursing] Fetching character/scene photos — ONE fetch per character, reused across scenes...');
 
     const wanted = [
-        ['shells',   'artillery shell', { source: 'serpapi' }],
-        ['gatling',  'gatling gun',     { source: 'serpapi' }],
-        ['ak47',     'AK 47',          { source: 'serpapi' }],
-        ['dynamite', 'dynamite stick', { source: 'serpapi' }],
+        ['panel0',     'interview panel',   { source: 'serpapi', imageIndex: 0 }],
+        ['panel1',     'interview panel',   { source: 'serpapi', imageIndex: 1 }],
+        ['blazer',     'blazer jacket',     { source: 'pexels' }],
+        ['parkinglot', 'parking lot',       { source: 'pexels' }],
+        ['door',       'office door',       { source: 'serpapi' }],
+        ['window',     'office window',     { source: 'pexels' }],
+        ['handshake1', 'business handshake',{ source: 'serpapi', imageIndex: 0 }],
+        ['handshake2', 'business handshake',{ source: 'serpapi', imageIndex: 1 }],
+        ['sitting',    'person sitting',    { source: 'pexels' }],
+        ['woman',      'woman glasses',     { source: 'pexels' }],
+        ['manNavy',    'man writing',       { source: 'pexels' }],
+        ['manWindow',  'man thinking',      { source: 'pexels' }],
+        ['smiling',    'man smiling',       { source: 'pexels' }],
+        ['hallway',    'office hallway',    { source: 'serpapi' }],
     ];
     const img = {};
     for (const [key, query, opts] of wanted) img[key] = await fetchImageRobust(query, opts);
 
-    console.log('[Backfired] Building illustrations...');
+    console.log('[Nursing] Building config...');
 
-    const art = {
-        bull:       bullSVG(),
-        perillos:   peep({ skin: '#caa07a', shirt: '#9c8a6a', pants: '#6a5a3a', hairStyle: 'short', accessory: 'toga' }),
-        king:       peep({ skin: '#dba074', shirt: '#7a2d3d', pants: '#5a1f2a', hairStyle: 'short', accessory: 'crown' }),
-        shrapnel:   peep({ skin: '#e3c19c', shirt: '#7a1f1f', pants: '#1a1512', hairStyle: 'short', accessory: 'bicorne' }),
-        gatling:    peep({ skin: '#caa07a', shirt: '#2a2a2a', pants: '#1a1512', hairStyle: 'short', beard: true }),
-        kalashnikov:peep({ skin: '#caa07a', shirt: '#3a4a3a', pants: '#1a1512', hairStyle: 'bald' }),
-        nobel:      peep({ skin: '#e3c19c', shirt: '#2a2a2a', pants: '#1a1512', hairStyle: 'short', beard: true }),
-    };
-
-    console.log('[Backfired] Building config...');
+    const beats = [
+        // [tts text, visual layer]
+        [ "The door opens, and three people are already sitting behind a table, folders open, already halfway through your file before you've even said a word — but to really understand this moment, you've got to go back twelve hours first.", fullBleedLayer(img.panel0) ],
+        [ "Last night your blazer was already laid out on the bed, and this morning blurred past in the usual way — the mirror, fixing your collar, one long breath out before you even left the house.", fullBleedLayer(img.blazer) ],
+        [ "Then the drive over, pulling into a parking lot that was already filling up with people dressed exactly like you.", fullBleedLayer(img.parkinglot) ],
+        [ "And now here you are again, standing at that same door, except this time it's open, and for just a second your body simply refuses to move.", fullBleedLayer(img.door) ],
+        [ "Past the panel, two tall windows let in thin stripes of afternoon light through half-closed blinds, and behind you a whiteboard still carries the ghost of whatever lecture used this room a few hours earlier.", fullBleedLayer(img.window) ],
+        [ "The woman on the left is in a blazer the color of dried clay, her reading glasses pushed up into gray-streaked hair, while the man beside her, younger, in a navy jacket with no tie, already has a pen resting in his hand like he's used to writing fast — and the third one, by the window, hasn't looked up yet, still working through your file.", fullBleedLayer(img.panel1) ],
+        [ "They each offer a hand in turn, the woman's grip warm but brief, the man in navy's quick, almost a formality, and it's only the third one, by the window, who finally looks up as he shakes yours, the only one who actually meets your eyes while he does it.", fullBleedLayer(img.handshake1) ],
+        [ "You sit, and the chair is cold enough to feel through your trousers, your back straightening on its own like your spine already knew the rules before you did, while your hands slide flat onto your thighs, out of sight beneath the table.", fullBleedLayer(img.sitting) ],
+        [ "Somewhere behind you a vent hums low, a pen clicks twice, and before the silence can settle, the woman in the clay-colored blazer leans in and asks it — so, why nursing — her eyes staying on you the whole time, steady, waiting.", fullBleedLayer(img.woman) ],
+        [ "Your throat goes dry exactly when you need it least, so you swallow before the first word even makes it out, and under the table your knee starts a small bounce you're hoping nobody can see.", iconCardLayer(icon('nervousHands')) ],
+        [ "Above the table, the woman gives a small nod that could mean almost anything, and the man in navy looks down and starts writing the second your sentence ends, that one second somehow feeling like a verdict all on its own.", fullBleedLayer(img.manNavy) ],
+        [ "He doesn't even look up to ask the next one — a patient's family is upset with you, what do you do — his pen already moving before your mouth has finished opening.", fullBleedLayer(img.manNavy) ],
+        [ "Your brain goes quiet for a beat, not empty, just working fast, flipping through every version of an answer at once.", iconCardLayer(icon('brain')) ],
+        [ "The pause that follows feels enormous, long enough that the one by the window finally sets your file down and actually watches you now, waiting to see what you'll do with the silence instead of rushing to fill it.", iconCardLayer(icon('stopwatch')) ],
+        [ "So you answer anyway, slower this time, and something in the room shifts — the woman's small nod turns into a real one, the kind that means she actually heard you.", fullBleedLayer(img.woman) ],
+        [ "Then the one by the window speaks for the first time, his voice quieter than you expected — what does patient-centered care mean to you — and he's watching your face more than he's listening to the words.", fullBleedLayer(img.manWindow) ],
+        [ "Any questions for us lands, and for the first time all three look at you together, at the exact same moment, like the room just shifted its weight onto your side of the table.", iconCardLayer(icon('speechBubble')) ],
+        [ "You ask something real, not about schedules but about what the program actually feels like once you're inside it, and the man in navy smiles, just slightly, his pen finally going still.", fullBleedLayer(img.smiling) ],
+        [ "Chairs push back, three more handshakes follow, looser this time because the hard part's behind you now, and even the woman's grip feels warmer than it did twenty minutes ago.", fullBleedLayer(img.handshake2) ],
+        [ "You walk back out through the same hallway you came in through, already replaying every answer in your head, certain somewhere in there you said the wrong thing.", fullBleedLayer(img.hallway) ],
+        [ "Here's the part nobody tells you though: nursing school interviews don't hand out same-day answers, so you wait, sometimes for weeks, and that silence isn't a verdict either. Subscribe for more of what's really happening, when nobody explains it.", iconCardLayer(icon('mailbox')) ],
+    ];
 
     return {
         output: {
-            title: 'weapons-that-backfired', format: 'portrait', fps: 30, crf: 23, preset: 'medium',
+            title: 'nursing-interview-what-actually-happens', format: 'portrait', fps: 30, crf: 23, preset: 'medium',
             // No background music, per request — field omitted entirely.
         },
-        defaults: { voice: 'am_adam', speed: 1.05, transition: 'fade', transitionDuration: 0.3 },
+        defaults: { voice: 'am_michael', speed: 0.95, transition: 'fade', transitionDuration: 0.3 },
 
-        scenes: [
-
-            // ── Scene 0 — HOOK ───────────────────────────────────────────
-            {
-                tts: { text: "Ever build something so good it basically came back to bite you? These five inventors found out the hard way, literally. This is Top 5 Weapons That Backfired On Their Own Inventors, and number one is almost too ironic to be real.", pauseAfter: 0.25 },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#efe6d3' },
-                    casingLayer('wb-hook', 'IT CAME BACK AROUND', [
-                        { id: 'hook1', type: 'sticker', text: 'OOPS.', slot: 'banner-top', size: 72, color: '#231b12', stroke: '#ffffff', rotate: -1, trigger: { atSeconds: 0.1 } },
-                        { id: 'img_bull', type: 'photo', src: art.bull, slot: 'mid-center', width: 760, height: 540, caption: 'STORY TIME', pinStyle: 'tape', trigger: { wordText: 'build', occurrence: 1 } },
-                        { id: 'pz1', type: 'panZoom', ...zoomTo('mid-center', 1.15), duration: 1.0, trigger: { afterId: 'img_bull', offset: 0.2 } },
-                        { id: 'pz_out', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'pz1', offset: 0.6 } },
-                        { id: 'hook2', type: 'sticker', text: 'TOP 5', slot: 'banner-bot', size: 70, color: '#ffffff', stroke: '#b5402c', bg: '#b5402c', rotate: 1, trigger: { wordText: 'five', occurrence: 1 } },
-                        { id: 'sc_h', type: 'circle', target: 'hook2', color: '#b5402c', trigger: { afterId: 'hook2', offset: 0.3 } },
-                    ]),
-                ],
-            },
-
-            // ── Scene 1 — #5 PERILLOS & THE BRAZEN BULL ──────────────────
-            {
-                transition: 'wipe-left',
-                tts: { text: "Number five: the Brazen Bull. As the story goes, ancient engineer Perillos designed a hollow bronze bull for a tyrant king. Lock someone inside, light a fire underneath, and their screams come out sounding like a bull roaring. Creative. Also horrifying. So the king decided the best way to test it... was on Perillos himself. Poetic justice much?", pauseAfter: 0.25 },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#efe6d3' },
-                    casingLayer('wb-s1', '#5 — THE BRAZEN BULL', [
-                        { id: 'num', type: 'sticker', text: '#5', slot: 'top-left', size: 86, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -3, trigger: { atSeconds: 0.1 } },
-                        { id: 'img_b', type: 'photo', src: art.bull, slot: 'mid-center', width: 800, height: 560, caption: 'THE BRAZEN BULL', pinStyle: 'tape', trigger: { wordText: 'bronze', occurrence: 1 } },
-                        { id: 'pz_b', type: 'panZoom', ...zoomTo('mid-center', 1.2), duration: 1.0, trigger: { afterId: 'img_b', offset: 0.2 } },
-                        { id: 'pz_o1', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'pz_b', offset: 0.7 } },
-                        { id: 'img_p', type: 'photo', src: art.perillos, slot: 'low-center', width: 420, height: 546, caption: 'PERILLOS, THE DESIGNER', pinStyle: 'pins', trigger: { wordText: 'perillos', occurrence: 2 } },
-                        { id: 'pz_p', type: 'panZoom', ...zoomTo('low-center', 1.25), duration: 1.0, trigger: { afterId: 'img_p', offset: 0.2 } },
-                        { id: 's_tag', type: 'sticker', text: 'TESTED ON\nTHE INVENTOR', slot: 'banner-low', size: 46, color: '#ffffff', stroke: '#b5402c', bg: '#b5402c', rotate: -1, trigger: { wordText: 'justice', occurrence: 1 } },
-                        { id: 'sc_t', type: 'circle', target: 's_tag', color: '#b5402c', trigger: { afterId: 's_tag', offset: 0.3 } },
-                    ]),
-                ],
-            },
-
-            // ── Scene 2 — #4 HENRY SHRAPNEL ───────────────────────────────
-            {
-                transition: 'fade',
-                tts: { text: "Number four: Henry Shrapnel. He poured his own fortune into developing an exploding artillery shell that sprayed metal fragments across the battlefield. Brutally effective, and armies used it for over a century. The British military loved the shell. They just never got around to properly paying the guy who invented it. He died broke. His name didn't.", pauseAfter: 0.25 },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#efe6d3' },
-                    casingLayer('wb-s2', '#4 — HENRY SHRAPNEL', [
-                        { id: 'num', type: 'sticker', text: '#4', slot: 'top-left', size: 86, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -3, trigger: { atSeconds: 0.1 } },
-                        { id: 'img_sh', type: 'photo', src: img.shells, slot: 'mid-center', width: 760, height: 540, caption: 'HIS EXPLODING SHELL', pinStyle: 'tape', trigger: { wordText: 'shell', occurrence: 1 } },
-                        { id: 'pz_sh', type: 'panZoom', ...zoomTo('mid-center', 1.2), duration: 1.0, trigger: { afterId: 'img_sh', offset: 0.2 } },
-                        { id: 'pz_o1', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'pz_sh', offset: 0.7 } },
-                        { id: 'img_hs', type: 'photo', src: art.shrapnel, slot: 'low-center', width: 420, height: 546, caption: 'HENRY SHRAPNEL', pinStyle: 'pins', trigger: { wordText: 'loved', occurrence: 1 } },
-                        { id: 'pz_hs', type: 'panZoom', ...zoomTo('low-center', 1.25), duration: 1.0, trigger: { afterId: 'img_hs', offset: 0.2 } },
-                        { id: 's_tag', type: 'sticker', text: 'DIED BROKE.\nHIS NAME DIDN\'T.', slot: 'banner-low', size: 42, color: '#ffffff', stroke: '#b5402c', bg: '#b5402c', rotate: -1, trigger: { wordText: 'broke', occurrence: 1 } },
-                        { id: 'sc_t', type: 'circle', target: 's_tag', color: '#b5402c', trigger: { afterId: 's_tag', offset: 0.3 } },
-                    ]),
-                ],
-            },
-
-            // ── Scene 3 — #3 RICHARD GATLING ──────────────────────────────
-            {
-                transition: 'wipe-left',
-                tts: { text: "Number three: Richard Gatling. Here's the twist. He actually thought a rapid-fire gun would make war LESS deadly. His logic? Fewer soldiers needed on the field means fewer soldiers dying. Genius idea, terrible math. Instead of shrinking battlefields, the Gatling gun became one of the deadliest weapons of its century. Turns out, making killing more efficient is not a great anti-war strategy.", pauseAfter: 0.25 },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#efe6d3' },
-                    casingLayer('wb-s3', '#3 — RICHARD GATLING', [
-                        { id: 'num', type: 'sticker', text: '#3', slot: 'top-left', size: 86, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -3, trigger: { atSeconds: 0.1 } },
-                        { id: 'img_g', type: 'photo', src: img.gatling, slot: 'mid-center', width: 760, height: 540, caption: 'THE GATLING GUN', pinStyle: 'tape', trigger: { wordText: 'gun', occurrence: 1 } },
-                        { id: 'pz_g', type: 'panZoom', ...zoomTo('mid-center', 1.2), duration: 1.0, trigger: { afterId: 'img_g', offset: 0.2 } },
-                        { id: 'pz_o1', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'pz_g', offset: 0.7 } },
-                        { id: 'img_rg', type: 'photo', src: art.gatling, slot: 'low-center', width: 420, height: 546, caption: 'RICHARD GATLING', pinStyle: 'pins', trigger: { wordText: 'logic', occurrence: 1 } },
-                        { id: 'pz_rg', type: 'panZoom', ...zoomTo('low-center', 1.25), duration: 1.0, trigger: { afterId: 'img_rg', offset: 0.2 } },
-                        { id: 's_tag', type: 'sticker', text: 'TERRIBLE\nMATH.', slot: 'banner-low', size: 54, color: '#ffffff', stroke: '#b5402c', bg: '#b5402c', rotate: -1, trigger: { wordText: 'math', occurrence: 1 } },
-                        { id: 'sc_t', type: 'circle', target: 's_tag', color: '#b5402c', trigger: { afterId: 's_tag', offset: 0.3 } },
-                    ]),
-                ],
-            },
-
-            // ── Scene 4 — #2 MIKHAIL KALASHNIKOV ──────────────────────────
-            {
-                transition: 'fade',
-                tts: { text: "Number two: Mikhail Kalashnikov. He built the AK-47 to defend his homeland. By the end of his life, it had become the most widely used weapon on Earth, armies, gangs, child soldiers, basically everyone, everywhere. Late in life, he reportedly wrote to his church, tormented, asking if he was spiritually responsible for every death it caused. That's not a legacy. That's a haunting.", pauseAfter: 0.25 },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#efe6d3' },
-                    casingLayer('wb-s4', '#2 — MIKHAIL KALASHNIKOV', [
-                        { id: 'num', type: 'sticker', text: '#2', slot: 'top-left', size: 86, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -3, trigger: { atSeconds: 0.1 } },
-                        { id: 'img_ak', type: 'photo', src: img.ak47, slot: 'mid-center', width: 760, height: 540, caption: 'THE AK-47', pinStyle: 'tape', trigger: { wordText: 'defend', occurrence: 1 } },
-                        { id: 'pz_ak', type: 'panZoom', ...zoomTo('mid-center', 1.2), duration: 1.0, trigger: { afterId: 'img_ak', offset: 0.2 } },
-                        { id: 'pz_o1', type: 'panZoom', ...ZOOM_OUT, duration: 0.9, trigger: { afterId: 'pz_ak', offset: 0.7 } },
-                        { id: 'img_mk', type: 'photo', src: art.kalashnikov, slot: 'low-center', width: 420, height: 546, caption: 'MIKHAIL KALASHNIKOV', pinStyle: 'pins', trigger: { wordText: 'tormented', occurrence: 1 } },
-                        { id: 'pz_mk', type: 'panZoom', ...zoomTo('low-center', 1.25), duration: 1.0, trigger: { afterId: 'img_mk', offset: 0.2 } },
-                        { id: 's_tag', type: 'sticker', text: 'A HAUNTING,\nNOT A LEGACY', slot: 'banner-low', size: 42, color: '#ffffff', stroke: '#b5402c', bg: '#b5402c', rotate: -1, trigger: { wordText: 'haunting', occurrence: 1 } },
-                        { id: 'sc_t', type: 'circle', target: 's_tag', color: '#b5402c', trigger: { afterId: 's_tag', offset: 0.3 } },
-                    ]),
-                ],
-            },
-
-            // ── Scene 5 — #1 ALFRED NOBEL (inline, the twist) ─────────────
-            {
-                transition: 'wipe-up',
-                tts: { text: "And number one: Alfred Nobel. He invented dynamite, meant for mining and construction, but armies loved it too. Then one day, a newspaper got confused, printed his obituary by mistake while his brother had actually died, and called him the merchant of death. Nobel read his own death notice. Horrified by how he'd be remembered, he rewrote his will on the spot, and funded what we now call the Nobel Prize.", pauseAfter: 0.25 },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#efe6d3' },
-                    inlineLayer(HTML_NOBEL),
-                ],
-            },
-
-            // ── Scene 6 — CLOSING + CTA (inline) ──────────────────────────
-            {
-                transition: 'fade',
-                tts: { text: "The guy who helped blow things up accidentally invented the Peace Prize. So maybe the universe really does have a sense of humor. Build something powerful enough, and eventually, it finds its way back to you. Subscribe for more stories nobody tells you.", pauseAfter: 0.2 },
-                captions: false,
-                layers: [
-                    { type: 'background', color: '#efe6d3' },
-                    inlineLayer(HTML_CLOSE),
-                ],
-            },
-        ],
+        scenes: beats.map(([text, layer]) => ({
+            tts: { text, pauseAfter: 0.2 },
+            captions: CAPTIONS,
+            layers: [ layer ],
+        })),
     };
 })();
