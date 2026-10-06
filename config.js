@@ -24,9 +24,25 @@
 // visual language as Feather/Lucide — NOT literal files from those
 // libraries (couldn't reliably fetch them). Swap in real Feather/Lucide
 // SVGs the same way if you want the literal library — same data: URI slot.
+//
+// RENDER-CRASH FIX (post-first-run): the first CI run had every single
+// html-record layer fail ("Renderer appears wedged", screenshots timing
+// out, degrading across the whole run). Two real bugs, both fixed here:
+//   1. No layer ever set `duration`, so every recording silently defaulted
+//      to 3s regardless of how long its narration actually takes to say —
+//      estimateSeconds() now computes a real duration from each line's
+//      word count (150wpm) before building its layer.
+//   2. Every photo was embedded at full original resolution (SerpAPI/
+//      Pexels originals can be several MB each). Across 21 recordings in
+//      one continuous Chrome process, that payload kept accumulating —
+//      the likely driver of the progressive wedging. optimizeImage() now
+//      downscales every fetched photo to 1080px max and re-encodes it as
+//      JPEG (quality 0.82) using `canvas`, already a project dependency,
+//      before it's ever embedded.
 
 const https  = require('https');
 const http   = require('http');
+const { createCanvas, loadImage } = require('canvas'); // already a project dep (see Requirements.md)
 
 const SERPAPI_KEY  = process.env.SERPAPI_API_KEY     || null;
 const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY || null;
@@ -223,15 +239,53 @@ function icon(name) {
     return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 }
 
+// ── Downscale + recompress every fetched photo BEFORE embedding it as
+// base64. This is the actual fix for the render crashing: SerpAPI/Pexels
+// return full-resolution originals (often several MB each); embedding 14
+// of those, across 21 recordings in one continuous Chrome process, is what
+// exhausted the CI runner and caused every screenshot to start timing out.
+// The final video is only 1080px wide, so nothing needs more than that.
+async function optimizeImage(dataUri, maxDim = 1080, quality = 0.82) {
+    if (!dataUri) return dataUri;
+    try {
+        const base64 = dataUri.split(',')[1];
+        const buf = Buffer.from(base64, 'base64');
+        const image = await loadImage(buf);
+        const scale = Math.min(1, maxDim / Math.max(image.width, image.height));
+        const w = Math.round(image.width * scale);
+        const h = Math.round(image.height * scale);
+        const canvas = createCanvas(w, h);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0, w, h);
+        const out = canvas.toBuffer('image/jpeg', { quality });
+        console.log(`[Nursing]  ↓ optimized ${(buf.length / 1024).toFixed(0)}KB → ${(out.length / 1024).toFixed(0)}KB (${image.width}x${image.height} → ${w}x${h})`);
+        return `data:image/jpeg;base64,${out.toString('base64')}`;
+    } catch (e) {
+        console.warn(`[Nursing]  ⚠ optimizeImage failed, using original: ${e.message?.slice(0, 80)}`);
+        return dataUri; // fail open — better a big image than a missing one
+    }
+}
+
+// ── Estimate how long a scene needs to be, from its own narration ────────
+// The html-record layer has no idea how long the TTS audio will run unless
+// we tell it. Without this, every recording silently defaulted to 3s
+// regardless of sentence length (the real bug behind the audio/visual
+// mismatch, independent of the crash above).
+function estimateSeconds(text, pauseAfter = 0.2, wpm = 150) {
+    const words = text.trim().split(/\s+/).length;
+    return Math.ceil((words / wpm) * 60 + pauseAfter + 1); // +1s safety buffer
+}
+
 // ── Full-bleed photo scene: one big image, gentle Ken Burns zoom ─────────
-const fullBleedLayer = (src) => ({
+const fullBleedLayer = (src, durationSec) => ({
     type: 'html-record',
+    duration: durationSec,
     html: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         *{margin:0;padding:0;box-sizing:border-box}
         html,body{width:1080px;height:1920px;overflow:hidden;background:#000}
         .frame{position:absolute;inset:0;overflow:hidden}
         img{width:100%;height:100%;object-fit:cover;
-            animation:kb 7s ease-out forwards;transform-origin:center center}
+            animation:kb ${durationSec}s ease-out forwards;transform-origin:center center}
         @keyframes kb{from{transform:scale(1.0)}to{transform:scale(1.12)}}
         .vignette{position:absolute;left:0;right:0;bottom:0;height:40%;
             background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0));pointer-events:none}
@@ -243,8 +297,9 @@ const fullBleedLayer = (src) => ({
 });
 
 // ── Icon-card scene: one centered icon on the paper theme, for abstract beats ─
-const iconCardLayer = (iconSrc) => ({
+const iconCardLayer = (iconSrc, durationSec) => ({
     type: 'html-record',
+    duration: durationSec,
     html: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         *{margin:0;padding:0;box-sizing:border-box}
         html,body{width:1080px;height:1920px;overflow:hidden;background:${THEME.paper}}
@@ -286,33 +341,37 @@ module.exports = (async () => {
         ['hallway',    'office hallway',    { source: 'serpapi' }],
     ];
     const img = {};
-    for (const [key, query, opts] of wanted) img[key] = await fetchImageRobust(query, opts);
+    for (const [key, query, opts] of wanted) {
+        const raw = await fetchImageRobust(query, opts);
+        img[key] = await optimizeImage(raw); // downscale to 1080px max, re-encode as JPEG
+    }
 
     console.log('[Nursing] Building config...');
 
+    // [tts text, 'photo'|'icon', source]  — layer + duration built below,
+    // once we know how long each line of narration actually takes to say.
     const beats = [
-        // [tts text, visual layer]
-        [ "The door opens, and three people are already sitting behind a table, folders open, already halfway through your file before you've even said a word — but to really understand this moment, you've got to go back twelve hours first.", fullBleedLayer(img.panel0) ],
-        [ "Last night your blazer was already laid out on the bed, and this morning blurred past in the usual way — the mirror, fixing your collar, one long breath out before you even left the house.", fullBleedLayer(img.blazer) ],
-        [ "Then the drive over, pulling into a parking lot that was already filling up with people dressed exactly like you.", fullBleedLayer(img.parkinglot) ],
-        [ "And now here you are again, standing at that same door, except this time it's open, and for just a second your body simply refuses to move.", fullBleedLayer(img.door) ],
-        [ "Past the panel, two tall windows let in thin stripes of afternoon light through half-closed blinds, and behind you a whiteboard still carries the ghost of whatever lecture used this room a few hours earlier.", fullBleedLayer(img.window) ],
-        [ "The woman on the left is in a blazer the color of dried clay, her reading glasses pushed up into gray-streaked hair, while the man beside her, younger, in a navy jacket with no tie, already has a pen resting in his hand like he's used to writing fast — and the third one, by the window, hasn't looked up yet, still working through your file.", fullBleedLayer(img.panel1) ],
-        [ "They each offer a hand in turn, the woman's grip warm but brief, the man in navy's quick, almost a formality, and it's only the third one, by the window, who finally looks up as he shakes yours, the only one who actually meets your eyes while he does it.", fullBleedLayer(img.handshake1) ],
-        [ "You sit, and the chair is cold enough to feel through your trousers, your back straightening on its own like your spine already knew the rules before you did, while your hands slide flat onto your thighs, out of sight beneath the table.", fullBleedLayer(img.sitting) ],
-        [ "Somewhere behind you a vent hums low, a pen clicks twice, and before the silence can settle, the woman in the clay-colored blazer leans in and asks it — so, why nursing — her eyes staying on you the whole time, steady, waiting.", fullBleedLayer(img.woman) ],
-        [ "Your throat goes dry exactly when you need it least, so you swallow before the first word even makes it out, and under the table your knee starts a small bounce you're hoping nobody can see.", iconCardLayer(icon('nervousHands')) ],
-        [ "Above the table, the woman gives a small nod that could mean almost anything, and the man in navy looks down and starts writing the second your sentence ends, that one second somehow feeling like a verdict all on its own.", fullBleedLayer(img.manNavy) ],
-        [ "He doesn't even look up to ask the next one — a patient's family is upset with you, what do you do — his pen already moving before your mouth has finished opening.", fullBleedLayer(img.manNavy) ],
-        [ "Your brain goes quiet for a beat, not empty, just working fast, flipping through every version of an answer at once.", iconCardLayer(icon('brain')) ],
-        [ "The pause that follows feels enormous, long enough that the one by the window finally sets your file down and actually watches you now, waiting to see what you'll do with the silence instead of rushing to fill it.", iconCardLayer(icon('stopwatch')) ],
-        [ "So you answer anyway, slower this time, and something in the room shifts — the woman's small nod turns into a real one, the kind that means she actually heard you.", fullBleedLayer(img.woman) ],
-        [ "Then the one by the window speaks for the first time, his voice quieter than you expected — what does patient-centered care mean to you — and he's watching your face more than he's listening to the words.", fullBleedLayer(img.manWindow) ],
-        [ "Any questions for us lands, and for the first time all three look at you together, at the exact same moment, like the room just shifted its weight onto your side of the table.", iconCardLayer(icon('speechBubble')) ],
-        [ "You ask something real, not about schedules but about what the program actually feels like once you're inside it, and the man in navy smiles, just slightly, his pen finally going still.", fullBleedLayer(img.smiling) ],
-        [ "Chairs push back, three more handshakes follow, looser this time because the hard part's behind you now, and even the woman's grip feels warmer than it did twenty minutes ago.", fullBleedLayer(img.handshake2) ],
-        [ "You walk back out through the same hallway you came in through, already replaying every answer in your head, certain somewhere in there you said the wrong thing.", fullBleedLayer(img.hallway) ],
-        [ "Here's the part nobody tells you though: nursing school interviews don't hand out same-day answers, so you wait, sometimes for weeks, and that silence isn't a verdict either. Subscribe for more of what's really happening, when nobody explains it.", iconCardLayer(icon('mailbox')) ],
+        [ "The door opens, and three people are already sitting behind a table, folders open, already halfway through your file before you've even said a word — but to really understand this moment, you've got to go back twelve hours first.", 'photo', img.panel0 ],
+        [ "Last night your blazer was already laid out on the bed, and this morning blurred past in the usual way — the mirror, fixing your collar, one long breath out before you even left the house.", 'photo', img.blazer ],
+        [ "Then the drive over, pulling into a parking lot that was already filling up with people dressed exactly like you.", 'photo', img.parkinglot ],
+        [ "And now here you are again, standing at that same door, except this time it's open, and for just a second your body simply refuses to move.", 'photo', img.door ],
+        [ "Past the panel, two tall windows let in thin stripes of afternoon light through half-closed blinds, and behind you a whiteboard still carries the ghost of whatever lecture used this room a few hours earlier.", 'photo', img.window ],
+        [ "The woman on the left is in a blazer the color of dried clay, her reading glasses pushed up into gray-streaked hair, while the man beside her, younger, in a navy jacket with no tie, already has a pen resting in his hand like he's used to writing fast — and the third one, by the window, hasn't looked up yet, still working through your file.", 'photo', img.panel1 ],
+        [ "They each offer a hand in turn, the woman's grip warm but brief, the man in navy's quick, almost a formality, and it's only the third one, by the window, who finally looks up as he shakes yours, the only one who actually meets your eyes while he does it.", 'photo', img.handshake1 ],
+        [ "You sit, and the chair is cold enough to feel through your trousers, your back straightening on its own like your spine already knew the rules before you did, while your hands slide flat onto your thighs, out of sight beneath the table.", 'photo', img.sitting ],
+        [ "Somewhere behind you a vent hums low, a pen clicks twice, and before the silence can settle, the woman in the clay-colored blazer leans in and asks it — so, why nursing — her eyes staying on you the whole time, steady, waiting.", 'photo', img.woman ],
+        [ "Your throat goes dry exactly when you need it least, so you swallow before the first word even makes it out, and under the table your knee starts a small bounce you're hoping nobody can see.", 'icon', icon('nervousHands') ],
+        [ "Above the table, the woman gives a small nod that could mean almost anything, and the man in navy looks down and starts writing the second your sentence ends, that one second somehow feeling like a verdict all on its own.", 'photo', img.manNavy ],
+        [ "He doesn't even look up to ask the next one — a patient's family is upset with you, what do you do — his pen already moving before your mouth has finished opening.", 'photo', img.manNavy ],
+        [ "Your brain goes quiet for a beat, not empty, just working fast, flipping through every version of an answer at once.", 'icon', icon('brain') ],
+        [ "The pause that follows feels enormous, long enough that the one by the window finally sets your file down and actually watches you now, waiting to see what you'll do with the silence instead of rushing to fill it.", 'icon', icon('stopwatch') ],
+        [ "So you answer anyway, slower this time, and something in the room shifts — the woman's small nod turns into a real one, the kind that means she actually heard you.", 'photo', img.woman ],
+        [ "Then the one by the window speaks for the first time, his voice quieter than you expected — what does patient-centered care mean to you — and he's watching your face more than he's listening to the words.", 'photo', img.manWindow ],
+        [ "Any questions for us lands, and for the first time all three look at you together, at the exact same moment, like the room just shifted its weight onto your side of the table.", 'icon', icon('speechBubble') ],
+        [ "You ask something real, not about schedules but about what the program actually feels like once you're inside it, and the man in navy smiles, just slightly, his pen finally going still.", 'photo', img.smiling ],
+        [ "Chairs push back, three more handshakes follow, looser this time because the hard part's behind you now, and even the woman's grip feels warmer than it did twenty minutes ago.", 'photo', img.handshake2 ],
+        [ "You walk back out through the same hallway you came in through, already replaying every answer in your head, certain somewhere in there you said the wrong thing.", 'photo', img.hallway ],
+        [ "Here's the part nobody tells you though: nursing school interviews don't hand out same-day answers, so you wait, sometimes for weeks, and that silence isn't a verdict either. Subscribe for more of what's really happening, when nobody explains it.", 'icon', icon('mailbox') ],
     ];
 
     return {
@@ -322,10 +381,19 @@ module.exports = (async () => {
         },
         defaults: { voice: 'am_michael', speed: 0.95, transition: 'fade', transitionDuration: 0.3 },
 
-        scenes: beats.map(([text, layer]) => ({
-            tts: { text, pauseAfter: 0.2 },
-            captions: CAPTIONS,
-            layers: [ layer ],
-        })),
+        // Each scene's duration is computed from its own narration length —
+        // this is the fix for the 3s-default/audio-overrun bug.
+        scenes: beats.map(([text, kind, source]) => {
+            const pauseAfter = 0.2;
+            const durationSec = estimateSeconds(text, pauseAfter);
+            const layer = kind === 'photo'
+                ? fullBleedLayer(source, durationSec)
+                : iconCardLayer(source, durationSec);
+            return {
+                tts: { text, pauseAfter },
+                captions: CAPTIONS,
+                layers: [ layer ],
+            };
+        }),
     };
 })();
