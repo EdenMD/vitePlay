@@ -411,26 +411,26 @@ module.exports = {
                                 margin-bottom:24px;border-bottom:1px solid rgba(255,183,3,0.25);
                                 padding-bottom:16px;
                             ">IMBELEKO · NAMING CEREMONY</div>
-                            ${[
-                                ['🐐', 'A goat is slaughtered', 'The family's bond with ancestors is activated'],
-                                ['🔥', 'Fire lit at the homestead', 'Spiritual gateway opens — ancestors are notified'],
-                                ['🗣️', 'Elder speaks your name', 'First time anyone says it aloud — it\'s real now'],
-                                ['👶', 'You are introduced', 'You enter the lineage. You exist in two worlds.'],
-                            ].map(([icon, title, sub], i) => `
-                                <div style="display:flex;align-items:flex-start;gap:22px;margin-bottom:${i < 3 ? '22px' : '0'};">
-                                    <div style="
-                                        width:52px;height:52px;border-radius:12px;
-                                        background:rgba(255,183,3,0.15);
-                                        border:1px solid rgba(255,183,3,0.4);
-                                        display:flex;align-items:center;justify-content:center;
-                                        font-size:26px;flex-shrink:0;
-                                    ">${icon}</div>
-                                    <div>
-                                        <div style="font-size:22px;font-weight:800;line-height:1.2;">${title}</div>
-                                        <div style="font-size:17px;color:rgba(255,255,255,0.55);margin-top:4px;">${sub}</div>
-                                    </div>
-                                </div>
-                            `).join('')}
+${[
+    ['🐐', 'A goat is slaughtered', "The family's bond with ancestors is activated"],
+    ['🔥', 'Fire lit at the homestead', 'Spiritual gateway opens — ancestors are notified'],
+    ['🗣️', 'Elder speaks your name', "First time anyone says it aloud — it's real now"],
+    ['👶', 'You are introduced', 'You enter the lineage. You exist in two worlds.'],
+].map(([icon, title, sub], i) => `
+    <div style="display:flex;align-items:flex-start;gap:22px;margin-bottom:${i < 3 ? '22px' : '0'};">
+        <div style="
+            width:52px;height:52px;border-radius:12px;
+            background:rgba(255,183,3,0.15);
+            border:1px solid rgba(255,183,3,0.4);
+            display:flex;align-items:center;justify-content:center;
+            font-size:26px;flex-shrink:0;
+        ">${icon}</div>
+        <div>
+            <div style="font-size:22px;font-weight:800;line-height:1.2;">${title}</div>
+            <div style="font-size:17px;color:rgba(255,255,255,0.55);margin-top:4px;">${sub}</div>
+        </div>
+    </div>
+`).join('')}
                         </div>
                     `,
                 },
