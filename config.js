@@ -1,155 +1,148 @@
 // config.test-iconscout.js
-// Fast test for IconScout: 3D, SVG Icons, and Lottie (html-record)
+// Test: IconScout 3D (PNG), icon (PNG), Lottie (JSON inlined into html-record).
+// Assets are downloaded in Node during config resolution, saved under
+// ./assets/iconscout/, then used as local files.
+//
+// Run: ICONSCOUT_CLIENT_ID=xxx ICONSCOUT_CLIENT_SECRET=yyy \
+//      VIDEO_CONFIG=config.test-iconscout.js node engine-ci.js
+// In CI: add both as repo secrets and pass them via env. Don't hardcode keys.
+//
+// Auth per IconScout v3: search + item details need header `Client-ID`;
+// downloads (POST /v3/items/{uuid}/api-download?format=...) also need
+// header `Client-Secret`. There is no OAuth token step.
+// Raw responses are logged ([IconScout] RAW ...) so you can see the real
+// shapes in the CI log if a field name differs from what's guessed here.
 
-// ── KEYS (Insert yours here) ──────────────────────────────────────────
-const ICONSCOUT_CLIENT_ID = "‎119061056901559";
-const ICONSCOUT_CLIENT_SECRET = "fqxaM0QNN4a3xtwoyO6xyFRNtd1icxBDquvTaJS";
+const fs   = require('fs');
+const path = require('path');
 
-// Helper: Authenticate and get token
-async function getAuthToken() {
-    const authResponse = await fetch('https://api.iconscout.com/v3/oauth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            client_id: ICONSCOUT_CLIENT_ID,
-            client_secret: ICONSCOUT_CLIENT_SECRET,
-            grant_type: 'client_credentials'
-        })
-    });
-    if (!authResponse.ok) throw new Error(`Auth failed: ${authResponse.status}`);
-    const authData = await authResponse.json();
-    return authData.access_token;
+const CLIENT_ID     = (process.env.ICONSCOUT_CLIENT_ID     || '119061056901559').replace(/[^\x20-\x7E]/g, '').trim();
+const CLIENT_SECRET = (process.env.ICONSCOUT_CLIENT_SECRET || 'fqxaM0QNN4a3xtwoyO6xyFRNtd1icxBDquvTaJS').replace(/[^\x20-\x7E]/g, '').trim();
+const API  = 'https://api.iconscout.com/v3';
+const DIR  = path.join(process.cwd(), 'assets', 'iconscout');
+
+const authHeaders = (withSecret) => ({
+    'Client-ID': CLIENT_ID,
+    ...(withSecret ? { 'Client-Secret': CLIENT_SECRET } : {}),
+});
+
+// Pull the first item out of whatever shape the search returns
+async function search(query, asset) {
+    const url = `${API}/search?query=${encodeURIComponent(query)}&product_type=item&asset=${asset}&per_page=1&page=1`;
+    const res = await fetch(url, { headers: authHeaders(false) });
+    const txt = await res.text();
+    console.log(`[IconScout] RAW search ${asset} (${res.status}): ${txt.slice(0, 400)}`);
+    if (!res.ok) throw new Error(`search ${asset} ${res.status}`);
+    const items = JSON.parse(txt)?.response?.items;
+    const list  = Array.isArray(items) ? items : (items?.data || items?.items || []);
+    return list[0] || null;
 }
 
-// Helper: Search IconScout and return the asset data
-async function fetchAsset(token, query, type) {
-    const url = `https://api.iconscout.com/v3/search?query=${encodeURIComponent(query)}&asset=${type}&per_page=1`;
-    const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!response.ok) throw new Error(`Search failed for ${type}: ${response.status}`);
-    const data = await response.json();
-    
-    if (data.response && data.response.items && data.response.items.length > 0) {
-        return data.response.items[0];
+// Ask for a signed download, return a URL string
+async function getDownloadUrl(uuid, format) {
+    const res = await fetch(`${API}/items/${uuid}/api-download?format=${format}`, {
+        method: 'POST',
+        headers: authHeaders(true),
+    });
+    const txt = await res.text();
+    console.log(`[IconScout] RAW download ${format} (${res.status}): ${txt.slice(0, 400)}`);
+    if (!res.ok) throw new Error(`download ${format} ${res.status}`);
+    const d = JSON.parse(txt)?.response?.download || {};
+    const direct = d.url || d.download_url || d.signed_url || d.link;
+    if (direct) return direct;
+    // Fallback: first http(s) string anywhere in the download object
+    const found = JSON.stringify(d).match(/https?:\/\/[^"\\]+/);
+    return found ? found[0] : null;
+}
+
+async function fetchAndSave(query, asset, format, filename) {
+    try {
+        const item = await search(query, asset);
+        if (!item?.uuid) { console.log(`[IconScout] ${query}: no result`); return null; }
+        const dl = await getDownloadUrl(item.uuid, format);
+        if (!dl) { console.log(`[IconScout] ${query}: no download url`); return null; }
+        const res = await fetch(dl);
+        if (!res.ok) throw new Error(`file fetch ${res.status}`);
+        fs.mkdirSync(DIR, { recursive: true });
+        const out = path.join(DIR, filename);
+        fs.writeFileSync(out, Buffer.from(await res.arrayBuffer()));
+        console.log(`[IconScout] ${query}: saved ${out}`);
+        return out;
+    } catch (e) {
+        console.log(`[IconScout] ${query}: FAILED — ${e.message}`);
+        return null;
     }
-    return null;
 }
 
 module.exports = async () => {
-    console.log("[IconScout] Authenticating for Test...");
-    const token = await getAuthToken();
+    if (!CLIENT_ID) console.log('[IconScout] ICONSCOUT_CLIENT_ID missing — every fetch will fail');
 
-    // ── 1. Fetch 3D Asset ──────────────────────────────────────────────
-    const item3d = await fetchAsset(token, 'rocket', '3d');
-    const url3d = item3d?.assets?.png?.url || item3d?.assets?.svg?.url;
-    console.log(`[IconScout] 3D Rocket: ${url3d ? 'FOUND' : 'FAILED'}`);
+    const png3d   = await fetchAndSave('rocket',         '3d',     'png',  'rocket3d.png');
+    const pngIcon = await fetchAndSave('lightning bolt', 'icon',   'png',  'bolt.png');
+    const lottieF = await fetchAndSave('loading spinner','lottie', 'json', 'spinner.json');
 
-    // ── 2. Fetch SVG Icon ──────────────────────────────────────────────
-    const itemSvg = await fetchAsset(token, 'lightning bolt', 'icon');
-    const urlSvg = itemSvg?.assets?.svg?.url;
-    console.log(`[IconScout] SVG Bolt: ${urlSvg ? 'FOUND' : 'FAILED'}`);
+    let lottieJson = '{}';
+    if (lottieF) { try { lottieJson = fs.readFileSync(lottieF, 'utf8'); JSON.parse(lottieJson); } catch (_) { lottieJson = '{}'; } }
 
-    // ── 3. Fetch Lottie Animation & its JSON ───────────────────────────
-    const itemLottie = await fetchAsset(token, 'loading spinner', 'lottie');
-    const urlLottieJson = itemLottie?.assets?.json?.url;
-    
-    let lottieDataString = "{}";
-    if (urlLottieJson) {
-        console.log(`[IconScout] Lottie JSON found. Fetching data for HTML injection...`);
-        // Fetch the JSON in Node so we don't rely on Puppeteer's network during recording
-        const lottieRes = await fetch(urlLottieJson);
-        const lottieJson = await lottieRes.json();
-        lottieDataString = JSON.stringify(lottieJson); 
-    } else {
-        console.log(`[IconScout] Lottie: FAILED`);
-    }
+    const rel = (p) => './' + path.relative(process.cwd(), p).split(path.sep).join('/');
+    const fail = (label) => ({ type: 'text', text: label + ' FAILED', x: 540, y: 900, fontSize: 60, color: '#ff5555', align: 'center' });
 
     return {
-        output: {
-            title: 'iconscout-master-test',
-            format: 'portrait',
-            fps: 24,           // Low FPS for speed
-            crf: 28,           // Low quality for speed
-            preset: 'ultrafast',
-        },
-        defaults: { transition: 'fade', transitionDuration: 0.2 },
+        output: { title: 'iconscout-test', format: 'portrait', fps: 24, crf: 28, preset: 'ultrafast' },
+        defaults: { voice: 'am_adam', transition: 'fade', transitionDuration: 0.2 },
         scenes: [
-            // ── SCENE 1: 3D Image Layer ───────────────────────────────
             {
-                duration: 3,
-                tts: { text: "First, a 3D rocket.", voice: 'am_michael', pauseAfter: 0.2 },
+                tts: { text: 'First, a three D rocket.', pauseAfter: 0.3 },
                 captions: { style: 'highlight', position: 'bottom', fontSize: 50 },
                 layers: [
                     { type: 'gradient', gradientType: 'radial', colors: ['#1a0a2e', '#000'] },
-                    ...(url3d ? [{
-                        type: 'image', src: url3d, x: 540, y: 600, width: 500, height: 500, fit: 'contain', animation: 'pop'
-                    }] : [{ type: 'text', text: '3D FAILED', x: 540, y: 960, fontSize: 60 }]),
-                    { type: 'text', text: '3D ASSET', x: 540, y: 1300, fontSize: 40, color: '#fff', align: 'center' }
-                ]
+                    png3d ? { type: 'image', src: rel(png3d), x: 290, y: 650, width: 500, height: 500, fit: 'contain', animation: 'pop' } : fail('3D'),
+                    { type: 'text', text: '3D ASSET', x: 540, y: 1300, fontSize: 40, color: '#ffffff', align: 'center' },
+                ],
             },
-
-            // ── SCENE 2: SVG Icon Layer ───────────────────────────────
             {
-                duration: 3,
-                tts: { text: "Second, an SVG icon.", voice: 'am_michael', pauseAfter: 0.2 },
+                tts: { text: 'Second, an icon.', pauseAfter: 0.3 },
                 captions: { style: 'highlight', position: 'bottom', fontSize: 50 },
                 layers: [
                     { type: 'gradient', gradientType: 'radial', colors: ['#0a1a3a', '#000'] },
-                    ...(urlSvg ? [{
-                        type: 'image', src: urlSvg, x: 540, y: 600, width: 400, height: 400, fit: 'contain', animation: 'slide-up'
-                    }] : [{ type: 'text', text: 'SVG FAILED', x: 540, y: 960, fontSize: 60 }]),
-                    { type: 'text', text: 'SVG ICON', x: 540, y: 1200, fontSize: 40, color: '#fff', align: 'center' }
-                ]
+                    pngIcon ? { type: 'image', src: rel(pngIcon), x: 340, y: 700, width: 400, height: 400, fit: 'contain', animation: 'pop' } : fail('ICON'),
+                    { type: 'text', text: 'ICON', x: 540, y: 1250, fontSize: 40, color: '#ffffff', align: 'center' },
+                ],
             },
-
-            // ── SCENE 3: Lottie in html-record ────────────────────────
             {
-                duration: 3,
-                tts: { text: "And finally, a live Lottie animation.", voice: 'am_michael', pauseAfter: 0.2 },
+                tts: { text: 'And finally, a live Lottie animation.', pauseAfter: 0.3 },
                 captions: { style: 'highlight', position: 'bottom', fontSize: 50 },
                 layers: [
                     { type: 'gradient', gradientType: 'linear', colors: ['#0a1a0a', '#000'] },
                     {
                         type: 'html-record',
-                        duration: 3,
+                        duration: 4,
                         viewport: { width: 1080, height: 1920 },
                         x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
                         waitFor: '#ready',
                         html: `
                             <style>
-                                body { margin: 0; background: transparent; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; }
-                                #lottie-box { width: 500px; height: 500px; }
-                                .label { color: #fff; font-size: 40px; margin-top: 40px; font-weight: bold; }
+                                body { margin:0; background:transparent; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; }
+                                #box { width:500px; height:500px; }
+                                .label { color:#fff; font-size:40px; margin-top:40px; font-weight:bold; }
                             </style>
-                            <!-- Load Lottie Web from CDN -->
                             <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
-                            
-                            <div id="lottie-box"></div>
-                            <div class="label">LOTTIE ANIMATION</div>
-                            <div id="ready" style="display:none;">Ready</div>
-
+                            <div id="box"></div>
+                            <div class="label">LOTTIE</div>
+                            <div id="ready" style="display:none">ok</div>
                             <script>
-                                // Inject the Lottie JSON directly from Node to avoid network wait
-                                const animData = ${lottieDataString};
-                                
-                                if (Object.keys(animData).length > 0) {
-                                    lottie.loadAnimation({
-                                        container: document.getElementById('lottie-box'),
-                                        renderer: 'svg',
-                                        loop: true,
-                                        autoplay: true,
-                                        animationData: animData
-                                    });
+                                const anim = ${lottieJson};
+                                if (anim && anim.layers) {
+                                    lottie.loadAnimation({ container: document.getElementById('box'), renderer: 'svg', loop: true, autoplay: true, animationData: anim });
                                 } else {
-                                    document.getElementById('lottie-box').innerHTML = '<h1 style="color:red">Lottie Failed</h1>';
+                                    document.getElementById('box').innerHTML = '<h1 style="color:#f55">Lottie FAILED</h1>';
                                 }
-                                
-                                // Signal to APEX that the animation is loaded
-                                setTimeout(() => document.getElementById('ready').style.display = 'block', 100);
+                                document.getElementById('ready').style.display = 'block';
                             </script>
-                        `
-                    }
-                ]
-            }
-        ]
+                        `,
+                    },
+                ],
+            },
+        ],
     };
 };
