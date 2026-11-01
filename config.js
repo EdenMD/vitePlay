@@ -1,222 +1,384 @@
-// config.democracy-explainer.js
-// "What is democracy — and when does it break?"  Portrait 1080x1920.
+// config.procrastination-icons.js
+// Same script/structure as config.procrastination.js, rebuilt to actually
+// use the Iconify + Lottie pipeline from config.test-all-sources.js — the
+// thing I skipped last time. ~2.5 min, 8 scenes. Voice: am_adam.
 //
-// Argument structure (so it teaches rather than preaches):
-//   1 HOOK            inline-HTML board        — one person, one vote… uninformed? for sale?
-//   2 WHAT IT IS      ApexCasing dossier-audit — demos + kratos, Athens vs today
-//   3 CRITICS #1      ApexCasing dossier-audit — voter ignorance (Brennan / Caplan / Somin, jury analogy)
-//   4 CRITICS #2      ApexCasing dossier-audit — money & incentives (vote buying rises with poverty)… and who's acting
-//   5 CRITICS #3      ApexCasing recap-board   — competence: three proposed fixes
-//   6 REPLIES 1/2     inline-HTML board        — literacy tests, Estlund's "who made you boss?", test designers
-//   7 REPLIES 2/2     inline-HTML board        — Sen, poor != incapable (Malawi), defenders' fix, open question
-//   8 VERDICT         inline-HTML board        — critics vs defenders, Churchill, "where do you land?"
+// RUN: VIDEO_CONFIG=config.procrastination-icons.js node engine-ci.js
 //
-// Casings used (data-injected via layer.data -> window.__APEX_DATA__, see documentations/ApexCasing.md):
-//   ./ApexCasing/dossier-audit-explainer.html   (dark theme, word-triggered commands, needs audioSync:true)
-//   ./ApexCasing/recap-board.html               (title + ranked rows)
-// Each reuse of a casing gets its own ?tag= because the html-record cache key ignores `data`.
+// WHAT CHANGED FROM THE PHOTO VERSION:
+//   - No real photos this time at all — every visual is an icon, heavily,
+//     per the request. Two kinds:
+//     1. Iconify Lucide line-icons (ISC license, keyless API, confirmed
+//        working in your test config) — fetched live, recoloured via the
+//        API's own ?color= param to the theme's ink/accent colors, then
+//        dropped into the casing's normal `photo` slots like any image.
+//        These get the casing's own pop/zoom reveal animation for motion.
+//     2. TWO genuinely animated Lottie moments, for the two beats that
+//        earn it most: the opening "deadline" siren and the closing
+//        "finally done" checkmark — Noto animated emoji (CC BY 4.0, GitHub
+//        raw, same codepoints already verified working in your test
+//        config: 1f6a8 siren, 2705 check). These need inline HTML (the
+//        casing can't run a Lottie player natively), so I built a small
+//        template that reuses the exact paper theme — cream background,
+//        Impact font badge, same ink/accent colors — so it doesn't look
+//        like a different video. Audio-synced via apexframe, same
+//        frame-locked playback pattern as your test config's lottieDoc.
+//   - Everything else (ApexCasing, the winding road-mapper camera, no
+//     background music, the actual script/facts) is unchanged from the
+//     photo version.
 //
-// Editorial note: the "critics" scenes present the epistocracy argument as its defenders make it; scenes 6-8
-// give the strongest replies. "Broke" is treated as an incentives/institutions question (vote buying), not as a
-// claim that poor people or people with mental illness are less capable — the cited research does not say that.
-//
-// Run: VIDEO_CONFIG=config.democracy-explainer.js node engine-ci.js
+// HONESTY NOTE: I can't verify from my sandbox that api.iconify.design or
+// the GitHub-raw Lottie JSON are reachable from inside your CI runner at
+// render time — your own test config is the actual verification for that,
+// and it reported these sources as working. If either source is down when
+// you render, the icon or animation for that one beat will be missing;
+// nothing else in the video depends on it.
 
-// ── palette (dark theme, mixed accents) ──────────────────────────────────
-const TEAL = '#00e5a0', AMBER = '#ffcc33', BLUE = '#4dd0ff', PINK = '#ff7ac6', RED = '#ff5a5f', VIOLET = '#b08cff';
-const INK = '#eaf0f7', PAPER = '#0c1118';
+const ICON_CACHE  = new Map();
+const LOTTIE_CACHE = new Map();
 
-const dossierTheme = { mode: 'dark', paper: PAPER, ink: INK, accent: RED, accent2: BLUE, shadow: 'rgba(0,0,0,0.55)', paperGrain: 0.12 };
+async function fetchText(url, timeoutMs = 15000) {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.text();
+}
+async function fetchJson(url, timeoutMs = 15000) {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
 
-const CAPTIONS = { style: 'highlight', position: 'bottom', fontSize: 46, color: '#ffffff', highlightColor: AMBER, bgColor: 'rgba(0,0,0,0.72)', wordsPerChunk: 3, maxWidth: 0.9 };
-
-// ── inline HTML board (beats revealed on their spoken sentence; Noto emoji from Iconify) ──
-// All content comes from layer.data (window.__APEX_DATA__): { tag, title, hero, color, beats:[{say,h,d,emoji,c}] }.
-function board() {
-    var D = window.__APEX_DATA__ || { beats: [] }, $ = function (i) { return document.getElementById(i); };
-    var COL = ['#00e5a0', '#ffcc33', '#4dd0ff', '#ff7ac6', '#b08cff', '#ff9d4d'];
-    document.documentElement.style.setProperty('--c', D.color || '#00e5a0');
-    $('chips').innerHTML = (D.tag ? '<span class="chip" style="--c:' + D.color + '">' + D.tag + '</span>' : '');
-    $('title').textContent = D.title || '';
-    if (D.beats.length >= 5) $('list').className = 'dense';
-    var cache = {};
-    function emoji(n) { if (!n) return Promise.resolve(''); if (cache[n]) return cache[n]; return cache[n] = fetch('https://api.iconify.design/noto/' + n + '.svg').then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) { return t.indexOf('<svg') >= 0 ? t : ''; }).catch(function () { return ''; }); }
-    var nTok = 0, wis = D.beats.map(function (b) { var w = nTok; nTok += String(b.say || '').split(/\s+/).filter(Boolean).length; return w; });
-    var els = [];
-    Promise.all(D.beats.map(function (b) { return emoji(b.emoji); }).concat([emoji(D.hero)])).then(function (svgs) {
-        $('hero').innerHTML = svgs[svgs.length - 1] || '';
-        D.beats.forEach(function (b, i) {
-            var el = document.createElement('div'); el.className = 'beat'; el.style.setProperty('--c', b.c || COL[i % COL.length]);
-            el.innerHTML = (svgs[i] ? '<div class="em">' + svgs[i] + '</div>' : '<div class="num">' + (i + 1) + '</div>') + '<div><div class="h">' + (b.h || '') + '</div><div class="d">' + (b.d || '') + '</div></div>';
-            $('list').appendChild(el); els.push(el);
-        });
-        document.body.setAttribute('data-ready', '1');
-    });
-    var inited = false;
-    function init() {
-        var A = window.__APEX_AUDIO__ || {}, ws = A.words || [], dur = A.duration || 10;
-        els.forEach(function (el, i) { el.__t = ws.length ? ws[Math.min(ws.length - 1, Math.round(wis[i] * ws.length / Math.max(1, nTok)))].start : (i / Math.max(1, els.length)) * dur * 0.85; });
-        inited = true;
+// ── Iconify — Lucide line-icons, recoloured to match the paper theme ─────
+async function iconifyDataUri(name, color) {
+    const key = `${name}::${color}`;
+    if (ICON_CACHE.has(key)) return ICON_CACHE.get(key);
+    try {
+        const svg = await fetchText(`https://api.iconify.design/lucide/${name}.svg?color=${encodeURIComponent(color)}`);
+        if (!svg.includes('<svg')) throw new Error('not an svg');
+        const uri = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+        ICON_CACHE.set(key, uri);
+        console.log(`[Icons] ✓ lucide/${name} (${color})`);
+        return uri;
+    } catch (e) {
+        console.warn(`[Icons] ⚠ lucide/${name} failed: ${e.message}`);
+        ICON_CACHE.set(key, null);
+        return null;
     }
-    window.addEventListener('apexframe', function (e) {
-        if (!els.length) return; if (!inited) init();
-        var t = e.detail.t || 0, last = -1;
-        els.forEach(function (el, i) { if (t >= el.__t - 0.05) { el.classList.add('on'); last = i; } else el.classList.remove('on'); });
-        els.forEach(function (el, i) { if (i === last) el.classList.add('cur'); else el.classList.remove('cur'); });
-    });
-}
-const BOARD_CSS = '*{box-sizing:border-box;margin:0;padding:0}html,body{width:100%;height:100%;overflow:hidden;background:transparent;font-family:Arial,Helvetica,sans-serif;color:#fff}' +
-    '#top{position:absolute;top:7.3%;left:5.5%;right:5.5%;text-align:center}.chips{display:flex;gap:14px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}' +
-    '.chip{padding:10px 26px;border-radius:999px;font-weight:900;letter-spacing:3px;font-size:27px;border:3px solid var(--c);color:var(--c);background:rgba(255,255,255,.05)}' +
-    '#hero{width:170px;height:170px;margin:0 auto 12px}#hero svg,.em svg{width:100%;height:100%}#title{font-size:58px;font-weight:900;line-height:1.1}' +
-    '#list{position:absolute;left:5.5%;right:5.5%;top:30%;height:44%;display:flex;flex-direction:column;gap:18px}' +
-    '.beat{display:flex;align-items:center;gap:26px;padding:20px 28px;border-radius:30px;background:rgba(255,255,255,.07);border-left:12px solid var(--c);opacity:0;transform:translateY(40px) scale(.97);transition:opacity .45s ease,transform .5s cubic-bezier(.2,.9,.3,1.15),background .3s}' +
-    '.beat.on{opacity:.5;transform:none}.beat.cur{opacity:1;background:rgba(255,255,255,.14);box-shadow:0 0 50px -14px var(--c)}' +
-    '.em{width:100px;height:100px;flex:none}.num{width:100px;height:100px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:900;background:var(--c);color:#06121c}' +
-    '.h{font-size:44px;font-weight:900;color:var(--c);line-height:1.1}.d{font-size:30px;color:#cfdce6;margin-top:6px}' +
-    '.dense .beat{padding:12px 24px;gap:22px}.dense .em,.dense .num{width:82px;height:82px}.dense .h{font-size:40px}.dense .d{font-size:27px}';
-const BOARD_HTML = '<style>' + BOARD_CSS + '</style><div id="top"><div class="chips" id="chips"></div><div id="hero"></div><div id="title"></div></div><div id="list"></div><script>(' + board.toString() + ')();<\/script>';
-
-// scene = narration (beats joined) + inline board; beats are [say, heading, hint, noto-emoji-name]
-function boardScene(o) {
-    const beats = o.beats.map((b, i) => ({ say: b[0], h: b[1], d: b[2], emoji: b[3], c: [TEAL, AMBER, BLUE, PINK, VIOLET][i % 5] }));
-    return {
-        transition: o.transition || 'fade',
-        tts: { text: beats.map(b => b.say).join(' '), voice: 'am_adam', pauseAfter: 0.5 },
-        captions: CAPTIONS,
-        layers: [
-            { type: 'gradient', gradientType: 'linear', colors: [o.bgA || '#070b12', o.bgB || '#122033'], angle: 160 },
-            { type: 'html-record', html: BOARD_HTML, audioSync: true, cursor: false, fps: 30,
-              data: { tag: o.tag, title: o.title, hero: o.hero, color: o.color || TEAL, beats },
-              viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover', waitFor: '[data-ready="1"]' },
-        ],
-    };
 }
 
-// scene = narration + dossier-audit-explainer casing driven by word-triggered commands
-function dossierScene(o) {
-    return {
-        transition: o.transition || 'wipe-up',
-        tts: { text: o.say, voice: 'am_adam', pauseAfter: 0.5 },
-        captions: CAPTIONS,
-        layers: [
-            { type: 'html-record', src: './ApexCasing/dossier-audit-explainer.html?tag=' + o.tag, audioSync: true, cursor: false, fps: 30,
-              data: { title: o.title, theme: dossierTheme, captionSafe: true, commands: o.commands },
-              viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover', waitFor: '[data-ready="1"]' },
-        ],
-    };
+// ── Noto animated Lottie — the two codepoints already verified in
+// config.test-all-sources.js: 1f6a8 (siren) and 2705 (check mark).
+const NOTO_RAW = (cp) => `https://raw.githubusercontent.com/rbozan/animated-emojis-rs/HEAD/static/noto_animated_emoji/lottie/${cp}/lottie.json`;
+async function lottieJson(codepoint) {
+    if (LOTTIE_CACHE.has(codepoint)) return LOTTIE_CACHE.get(codepoint);
+    try {
+        const j = await fetchJson(NOTO_RAW(codepoint));
+        if (!j || !Array.isArray(j.layers)) throw new Error('not a lottie json');
+        LOTTIE_CACHE.set(codepoint, j);
+        console.log(`[Icons] ✓ Noto Lottie ${codepoint}`);
+        return j;
+    } catch (e) {
+        console.warn(`[Icons] ⚠ Noto Lottie ${codepoint} failed: ${e.message}`);
+        LOTTIE_CACHE.set(codepoint, null);
+        return null;
+    }
 }
-const w = (word, occurrence) => ({ wordText: word, occurrence: occurrence || 1 });
 
-module.exports = {
-    output: {
-        title: 'democracy-explained',
-        format: 'portrait', fps: 30, crf: 23, preset: 'fast',
-        bgMusic: { mood: 'documentary' }, bgMusicVol: 0.06,
-        postProcess: { vignette: true, vignetteStrength: 0.35, grain: true, grainStrength: 0.012 },
-    },
-    defaults: { voice: 'am_adam', transition: 'fade', transitionDuration: 0.35 },
-
-    scenes: [
-        // ── 1. HOOK ────────────────────────────────────────────────────────
-        boardScene({
-            tag: 'DEMOCRACY', title: 'Who Gets To Decide?', hero: 'ballot-box-with-ballot', color: AMBER, transition: 'zoom-in',
-            beats: [
-                ['One person, one vote.', 'One person, one vote', 'It sounds perfectly fair', 'ballot-box-with-ballot'],
-                ['But what happens when the vote is uninformed, or for sale?', 'Uninformed? For sale?', "The critics' worry", 'money-with-wings'],
-                ["Let's look at what democracy is, and the strongest case against it.", 'The strongest case against', 'Then the strongest reply', 'balance-scale'],
-            ],
-        }),
-
-        // ── 2. WHAT DEMOCRACY IS ───────────────────────────────────────────
-        dossierScene({
-            tag: 'dem-what', title: 'WHAT IS DEMOCRACY?',
-            say: 'Democracy means rule by the people. The word comes from Greek: demos, the people, and kratos, power. In ancient Athens, citizens voted directly. Today most countries use representative democracy: you vote, and the people you elect make the decisions.',
-            commands: [
-                { id: 'a1', type: 'sticker', text: 'DEMOCRACY', x: 540, y: 330, size: 120, color: AMBER, stroke: PAPER, trigger: { atSeconds: 0.3 } },
-                { id: 'a2', type: 'icon', icon: 'noto:ballot-box-with-ballot', x: 540, y: 640, size: 240, bg: 'circle', trigger: { afterId: 'a1', offset: 0.5 } },
-                { id: 'a3', type: 'label', text: 'demos = the people', x: 310, y: 930, size: 46, color: TEAL, trigger: w('demos') },
-                { id: 'a4', type: 'label', text: 'kratos = power', x: 780, y: 930, size: 46, color: PINK, trigger: w('kratos') },
-                { id: 'a5', type: 'ledgerLine', label: 'ATHENS (5TH C. BCE)', value: 'DIRECT VOTE', x: 540, y: 1110, width: 940, size: 34, trigger: w('athens') },
-                { id: 'a6', type: 'ledgerLine', label: 'TODAY (MOST COUNTRIES)', value: 'ELECTED REPS', x: 540, y: 1200, width: 940, size: 34, trigger: w('today') },
-                { id: 'a7', type: 'sticker', text: 'YOU VOTE, THEY DECIDE', x: 540, y: 1420, size: 62, color: BLUE, stroke: PAPER, trigger: w('elect') },
-            ],
-        }),
-
-        // ── 3. CRITICS #1: IGNORANCE ───────────────────────────────────────
-        dossierScene({
-            tag: 'dem-ignorance', title: 'THE CRITICS: IGNORANCE',
-            say: 'Now the critics\' case. Philosophers and economists like Jason Brennan, Bryan Caplan and Ilya Somin argue that many voters know little about the policies they decide. And since one vote rarely changes the result, there is little reason to learn. Brennan compares it to a jury: you would not let a jury that ignored the trial decide a murder case.',
-            commands: [
-                { id: 'b1', type: 'sticker', text: "THE CRITICS' CASE", x: 540, y: 300, size: 84, color: AMBER, stroke: PAPER, trigger: { atSeconds: 0.3 } },
-                { id: 'b2', type: 'stamp', text: 'UNINFORMED?', x: 540, y: 520, size: 74, rotate: -6, color: RED, trigger: w('little') },
-                { id: 'b3', type: 'ledgerLine', label: 'BRENNAN 2016', value: 'AGAINST DEMOCRACY', x: 540, y: 730, width: 960, size: 32, trigger: w('brennan') },
-                { id: 'b4', type: 'ledgerLine', label: 'CAPLAN 2007', value: 'THE MYTH OF THE RATIONAL VOTER', x: 540, y: 820, width: 960, size: 32, trigger: w('bryan') },
-                { id: 'b5', type: 'ledgerLine', label: 'SOMIN 2013', value: 'DEMOCRACY & POLITICAL IGNORANCE', x: 540, y: 910, width: 960, size: 32, trigger: w('ilya') },
-                { id: 'b6', type: 'icon', icon: 'noto:balance-scale', x: 540, y: 1190, size: 230, bg: 'circle', trigger: w('jury') },
-                { id: 'b7', type: 'label', text: 'AN INATTENTIVE JURY, A REAL VERDICT?', x: 540, y: 1410, size: 44, color: PINK, trigger: w('murder') },
-            ],
-        }),
-
-        // ── 4. CRITICS #2: MONEY & INCENTIVES ──────────────────────────────
-        dossierScene({
-            tag: 'dem-money', title: 'THE CRITICS: MONEY',
-            say: 'A second worry is money. In studies from Colombia, vote buying rises with poverty, and in the Philippines campaigns target poorer voters with food or cash. Critics say financial desperation makes a vote easy to rent. But notice who is acting here: it is the politician\'s strategy, and in the Philippines only about two thirds of those who accepted a gift actually voted for the giver.',
-            commands: [
-                { id: 'c1', type: 'sticker', text: 'THE MONEY PROBLEM', x: 540, y: 300, size: 80, color: AMBER, stroke: PAPER, trigger: { atSeconds: 0.3 } },
-                { id: 'c2', type: 'icon', icon: 'noto:money-bag', x: 540, y: 570, size: 220, bg: 'circle', trigger: w('money') },
-                { id: 'c3', type: 'ledgerLine', label: 'COLOMBIA', value: 'VOTE BUYING RISES WITH POVERTY', x: 540, y: 810, width: 960, size: 31, trigger: w('colombia') },
-                { id: 'c4', type: 'ledgerLine', label: 'PHILIPPINES', value: 'POORER VOTERS TARGETED', x: 540, y: 900, width: 960, size: 31, trigger: w('philippines') },
-                { id: 'c5', type: 'meter', label: 'TOOK THE GIFT AND VOTED FOR THE GIVER (ABOUT 2 IN 3)', value: 67, x: 540, y: 1130, width: 880, color: AMBER, trigger: w('thirds') },
-                { id: 'c6', type: 'stamp', text: "THE BUYER'S STRATEGY", x: 540, y: 1410, size: 60, rotate: -4, color: RED, trigger: w('politicians') },
-            ],
-        }),
-
-        // ── 5. CRITICS #3: COMPETENCE — recap-board casing ──────────────────
-        {
-            transition: 'slide-left',
-            tts: { text: 'The third argument is about competence. We license drivers, pilots and surgeons, so critics ask: why not require some competence from voters, or from people who hold office? They propose three fixes: a knowledge test to vote, extra votes for the well informed, or an elected government checked by a council of experts with a veto.', voice: 'am_adam', pauseAfter: 0.5 },
-            captions: CAPTIONS,
-            layers: [
-                { type: 'html-record', src: './ApexCasing/recap-board.html?tag=dem-fixes', duration: 3, fps: 30,
-                  data: { title: 'THREE PROPOSED FIXES', items: [
-                      { rank: 1, name: 'A knowledge test to vote', stat: 'like a driving licence' },
-                      { rank: 2, name: 'Extra votes for the informed', stat: "plural voting, an idea from J.S. Mill" },
-                      { rank: 3, name: 'Elected, but checked by experts', stat: 'a council that can veto, not legislate' } ] },
-                  viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover', waitFor: '[data-ready="1"]' },
-            ],
-        },
-
-        // ── 6. REPLIES 1/2 ─────────────────────────────────────────────────
-        boardScene({
-            tag: 'THE REPLIES  1/2', title: 'The Strongest Answers', hero: 'shield', color: BLUE, bgA: '#06101a', bgB: '#0e2a3d', transition: 'wipe-up',
-            beats: [
-                ['First, who writes the test? Literacy tests began in Connecticut in 1855, were used for political ends, and were banned outright only in 1975.', 'Who writes the test?', 'Literacy tests: 1855 to 1975', 'memo'],
-                ['Second, educated voters are not neutral either, so excluding people can skew decisions. As philosopher David Estlund asked: who made you boss?', 'Educated is not neutral', 'Estlund: "who made you boss?"', 'thinking-face'],
-                ['Third, critics warn that whoever designs the test can shape the electorate.', 'Test designers hold power', 'the selection-bias objection', 'locked'],
-            ],
-        }),
-
-        // ── 7. REPLIES 2/2 ─────────────────────────────────────────────────
-        boardScene({
-            tag: 'THE REPLIES  2/2', title: 'Track Record And Poverty', hero: 'shield', color: TEAL, bgA: '#06130f', bgB: '#0d2c25', transition: 'fade',
-            beats: [
-                ['Fourth, track record. Economist Amartya Sen argued that no famine has ever struck a functioning democracy, because leaders must face voters.', 'Track record', 'Sen: no famine in a functioning democracy', 'bar-chart'],
-                ['Fifth, being poor is not being incapable. In a Malawi study, poor respondents preferred candidates promising community goods over cash for votes.', 'Poor is not incapable', 'Malawi study: community goods preferred', 'busts-in-silhouette'],
-                ['Defenders say the fix for vote buying is a secret ballot and enforcement, not taking votes away.', "Defenders' fix", 'Secret ballot + enforcement', 'locked'],
-                ['Even Brennan has said whether epistocracy would work better is partly an empirical question.', 'Still an open question', 'Brennan: partly empirical', 'magnifying-glass-tilted-left'],
-            ],
-        }),
-
-        // ── 8. VERDICT ─────────────────────────────────────────────────────
-        boardScene({
-            tag: 'YOUR CALL', title: 'So, Is Democracy The Problem?', hero: 'thinking-face', color: AMBER, bgA: '#0f0a1a', bgB: '#241a3d', transition: 'zoom-in',
-            beats: [
-                ['So is democracy bad when uninformed or desperate people vote?', 'The question', 'Uninformed or desperate voters', 'thinking-face'],
-                ['Critics point to real problems: voter ignorance and vote buying.', 'Critics say', 'Ignorance + vote buying', 'warning'],
-                ['Defenders answer: fix information, institutions and secrecy, not who gets to vote.', 'Defenders say', 'Better institutions, not fewer voters', 'shield'],
-                ['Churchill is famous for calling democracy the worst form of government, except for all the others. Where do you land? Tell me below.', "Churchill's famous line", '"the worst, except all the others"', 'speech-balloon'],
-            ],
-        }),
-    ],
+// ── Camera helper (same winding road-mapper as the last three configs) ───
+const SLOT_CENTERS = {
+    'top-left': [180, 270.5], 'top-center': [540, 270.5], 'top-right': [900, 270.5],
+    'mid-left': [180, 511.5], 'mid-center': [540, 511.5], 'mid-right': [900, 511.5],
+    'low-left': [180, 752.5], 'low-center': [540, 752.5], 'low-right': [900, 752.5],
+    'bot-left': [180, 993.5], 'bot-center': [540, 993.5], 'bot-right': [900, 993.5],
+    'deep-left': [180, 1234.5], 'deep-center': [540, 1234.5], 'deep-right': [900, 1234.5],
+    'banner-top': [540, 270.5], 'banner-mid': [540, 752.5], 'banner-low': [540, 1234.5], 'banner-bot': [540, 1475.5],
 };
+function zoomTo(slot, scale) {
+    const c = SLOT_CENTERS[slot] || [540, 960];
+    return { toScale: scale, toX: -scale * (c[0] - 540), toY: -scale * (c[1] - 960) };
+}
+const ZOOM_OUT = { toScale: 1, toX: 0, toY: 0 };
+
+const ROAD_TIERS = ['top', 'mid', 'low', 'bot', 'deep'];
+const ROAD_X     = ['left', 'center', 'right'];
+function randomRoadSlots(n) {
+    const slots = [];
+    let lastX = null;
+    for (let i = 0; i < n && i < ROAD_TIERS.length; i++) {
+        let x;
+        do { x = ROAD_X[Math.floor(Math.random() * ROAD_X.length)]; } while (x === lastX);
+        lastX = x;
+        slots.push(`${ROAD_TIERS[i]}-${x}`);
+    }
+    return slots;
+}
+
+const THEME = {
+    paper: '#efe6d3', ink: '#231b12',
+    accent: '#b5402c', accent2: '#2c6b5a',
+    shadow: 'rgba(20,16,10,0.4)',
+};
+
+const casingLayer = (tag, title, commands) => ({
+    type: 'html-record', src: `./ApexCasing/paper-sticker-explainer.html?tag=${tag}`,
+    audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
+    viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+    data: { title, theme: THEME, commands },
+});
+
+function roadDown(images, zoomScale = 1.35) {
+    const slots = randomRoadSlots(images.length);
+    const cmds = [];
+    let prevId = null;
+    images.forEach((img, i) => {
+        const slot = slots[i];
+        const photoId = `${img.id}_photo`;
+        const zoomId  = `${img.id}_zoom`;
+        cmds.push({
+            id: photoId, type: 'photo', src: img.src, slot,
+            width: img.width || 340, height: img.height || 340,
+            caption: img.caption, pinStyle: i % 2 === 0 ? 'tape' : 'pins',
+            trigger: prevId
+                ? { afterId: prevId, offset: 0.1 }
+                : { wordText: img.triggerWord, occurrence: img.occurrence || 1 },
+        });
+        cmds.push({
+            id: zoomId, type: 'panZoom', ...zoomTo(slot, img.scale || zoomScale),
+            duration: 1.0, trigger: { afterId: photoId, offset: 0.15 },
+        });
+        prevId = zoomId;
+    });
+    cmds.push({ id: `road_out_${images[0]?.id || 'x'}`, type: 'panZoom', ...ZOOM_OUT, duration: 1.1, trigger: { afterId: prevId, offset: 0.6 } });
+    return cmds;
+}
+
+// ── Inline Lottie beat — paper-sticker themed, for the two true-animation
+// moments. Audio-synced: apexframe drives playback so the animation is
+// frame-locked to the narration, same mechanic as your test config.
+function lottieBeat({ badge, label, json, size = 420 }) {
+    const hasJson = !!json;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1080px;height:1920px;overflow:hidden;background:${THEME.paper};
+    font-family:Georgia,'Times New Roman',serif;color:${THEME.ink}}
+  .wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .badge{position:absolute;top:150px;background:${THEME.accent};color:#fff;font:900 70px Impact,'Arial Black',sans-serif;
+    padding:6px 34px;transform:rotate(-2deg);box-shadow:6px 6px 0 ${THEME.shadow};
+    opacity:0;transition:opacity .4s ease,transform .4s cubic-bezier(.2,1.4,.4,1)}
+  .badge.on{opacity:1;transform:rotate(-2deg) scale(1)}
+  .box{width:${size}px;height:${size}px;opacity:0;transform:scale(.7);
+    transition:opacity .4s ease,transform .4s cubic-bezier(.2,1.4,.4,1)}
+  .box.on{opacity:1;transform:scale(1)}
+  .lbl{margin-top:30px;font:900 52px Impact,'Arial Black',sans-serif;color:${THEME.ink};
+    opacity:0;transition:opacity .4s ease}
+  .lbl.on{opacity:1}
+  #fail{position:absolute;bottom:180px;left:60px;right:60px;text-align:center;
+    font-size:28px;color:${THEME.accent};font-weight:900;display:none}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script></head><body>
+  <div class="badge off" id="badge">${badge}</div>
+  <div class="wrap">
+    <div class="box off" id="box"></div>
+    <div class="lbl off" id="lbl">${label}</div>
+  </div>
+  <div id="fail">(animation unavailable this render — falling back to label only)</div>
+<script>
+(function () {
+  var json = ${hasJson ? JSON.stringify(json) : 'null'};
+  var anim = null;
+  function show(id){ var el = document.getElementById(id); if (el) el.classList.add('on'); }
+  if (window.lottie && json) {
+    try {
+      anim = lottie.loadAnimation({
+        container: document.getElementById('box'), renderer: 'svg',
+        loop: true, autoplay: false, animationData: json,
+      });
+    } catch (e) { document.getElementById('fail').style.display = 'block'; }
+  } else {
+    document.getElementById('fail').style.display = 'block';
+  }
+  window.addEventListener('apexframe', function (e) {
+    var t = (e.detail && e.detail.t) || 0;
+    show('badge'); show('box'); show('lbl');
+    if (anim && anim.totalFrames > 0) {
+      var fr = anim.frameRate || 30;
+      anim.goToAndStop(Math.floor((t * fr) % anim.totalFrames), true);
+    }
+  });
+  document.body.setAttribute('data-ready', '1');
+})();
+</script>
+</body></html>`;
+    return {
+        type: 'html-record', html,
+        audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
+        viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
+    };
+}
+
+module.exports = (async () => {
+
+    console.log('[Icons] Fetching Lucide icons (recoloured to theme) + the two Lottie moments...');
+
+    const INK = '#231b12', RED = '#b5402c', GREEN = '#2c6b5a';
+
+    const icon = {};
+    const iconWanted = [
+        ['zap',          INK],    // adrenaline rush
+        ['activity',     INK],    // cortisol spike
+        ['target',       INK],    // focus narrows
+        ['alert-triangle', RED],  // the pivot / surprise
+        ['trending-down', RED],   // lower grades
+        ['frown',         RED],   // "felt fine" mismatch
+        ['calendar',      RED],   // more planning tools
+        ['smartphone',    RED],   // more apps
+        ['heart-crack',   RED],   // health cost
+        ['moon',          RED],   // sleepless nights
+        ['brain',         GREEN], // the real reason — emotion regulation
+        ['shield-alert',  GREEN], // brain treats task as a threat
+    ];
+    for (const [name, color] of iconWanted) icon[name] = await iconifyDataUri(name, color);
+
+    console.log('[Icons] Fetching the two Lottie moments (Noto animated emoji)...');
+    const lottieSiren = await lottieJson('1f6a8'); // 🚨 siren — the deadline
+    const lottieCheck = await lottieJson('2705');  // ✅ check — finally done
+
+    console.log('[Icons] Building config...');
+
+    return {
+        output: {
+            title: 'procrastination-dumb-idea-icons', format: 'portrait', fps: 30, crf: 23, preset: 'medium',
+            // No background music, same rule as the last few videos.
+        },
+        defaults: { voice: 'am_adam', speed: 1.02, transition: 'fade', transitionDuration: 0.3 },
+
+        scenes: [
+
+            // ── Scene 0 — HOOK (Lottie siren) ─────────────────────────────
+            {
+                tts: { text: "You know that feeling right before a deadline? Pure adrenaline, laser focus, suddenly you're a machine. Procrastination basically feels like a cheat code. Wait till you hear why it's actually one of the worst things you can do to yourself.", pauseAfter: 0.25 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#efe6d3' },
+                    lottieBeat({ badge: 'THE DEADLINE', label: 'ADRENALINE. FOCUS. GO.', json: lottieSiren, size: 440 }),
+                ],
+            },
+
+            // ── Scene 1 — why it feels real ────────────────────────────────
+            {
+                transition: 'wipe-left',
+                tts: { text: "And it's not just in your head. Pressure genuinely does something to your brain — cortisol spikes, focus narrows, you get this rush of 'I work better like this.' Millions of people have built their entire work style around exactly that feeling.", pauseAfter: 0.25 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#efe6d3' },
+                    casingLayer('proci-s1', 'NOT JUST IN YOUR HEAD', [
+                        ...roadDown([
+                            { id: 'act', src: icon.activity, caption: 'CORTISOL SPIKES', triggerWord: 'cortisol', occurrence: 1 },
+                            { id: 'tgt', src: icon.target, caption: 'FOCUS NARROWS', triggerWord: 'narrows', occurrence: 1 },
+                            { id: 'zap', src: icon.zap, caption: '"I WORK BETTER LIKE THIS"', triggerWord: 'rush', occurrence: 1 },
+                        ]),
+                    ]),
+                ],
+            },
+
+            // ── Scene 2 — THE PIVOT ───────────────────────────────────────
+            {
+                transition: 'fade',
+                tts: { text: "Except here's the surprise: it doesn't actually work the way it feels like it does. Let me show you what the research actually says.", pauseAfter: 0.3 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#efe6d3' },
+                    casingLayer('proci-s2', 'THE SURPRISE', [
+                        { id: 'badge', type: 'sticker', text: 'BUT...', slot: 'banner-top', size: 70, color: '#ffffff', stroke: '#b5402c', bg: '#b5402c', rotate: 1, trigger: { atSeconds: 0.1 } },
+                        ...roadDown([
+                            { id: 'alert', src: icon['alert-triangle'], caption: 'WHAT THE RESEARCH SAYS', triggerWord: 'research', occurrence: 1, width: 400, height: 400, scale: 1.4 },
+                        ]),
+                    ]),
+                ],
+            },
+
+            // ── Scene 3 — REASON 1: quality suffers ───────────────────────
+            {
+                transition: 'wipe-left',
+                tts: { text: "Reason one: the work itself gets worse. Studies on procrastinators consistently show lower grades, lower performance ratings, even when the person swears they 'did fine.' Feeling fine and actually doing well are not the same thing.", pauseAfter: 0.25 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#efe6d3' },
+                    casingLayer('proci-s3', 'REASON #1 — THE WORK SUFFERS', [
+                        { id: 'num', type: 'sticker', text: '#1', slot: 'top-left', size: 86, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -3, trigger: { atSeconds: 0.1 } },
+                        ...roadDown([
+                            { id: 'td', src: icon['trending-down'], caption: 'LOWER GRADES', triggerWord: 'grades', occurrence: 1 },
+                            { id: 'fr', src: icon.frown, caption: '"I DID FINE"', triggerWord: 'fine', occurrence: 1 },
+                        ]),
+                    ]),
+                ],
+            },
+
+            // ── Scene 4 — REASON 2: not a time problem ────────────────────
+            {
+                transition: 'fade',
+                tts: { text: "Reason two: more planning tools, more calendar apps, more to-do lists — none of it fixes chronic procrastination, because the problem was never time management in the first place.", pauseAfter: 0.25 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#efe6d3' },
+                    casingLayer('proci-s4', 'REASON #2 — NOT A TIME PROBLEM', [
+                        { id: 'num', type: 'sticker', text: '#2', slot: 'top-left', size: 86, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -3, trigger: { atSeconds: 0.1 } },
+                        ...roadDown([
+                            { id: 'cal', src: icon.calendar, caption: 'MORE PLANNING TOOLS', triggerWord: 'calendar', occurrence: 1 },
+                            { id: 'sp', src: icon.smartphone, caption: 'MORE APPS', triggerWord: 'apps', occurrence: 1 },
+                        ]),
+                        { id: 's_tag', type: 'sticker', text: 'NEVER A TIME\nPROBLEM', slot: 'banner-low', size: 46, color: '#ffffff', stroke: '#b5402c', bg: '#b5402c', rotate: -1, trigger: { wordText: 'place', occurrence: 1 } },
+                        { id: 'sc_t', type: 'circle', target: 's_tag', color: '#b5402c', trigger: { afterId: 's_tag', offset: 0.3 } },
+                    ]),
+                ],
+            },
+
+            // ── Scene 5 — REASON 3: health cost ───────────────────────────
+            {
+                transition: 'wipe-left',
+                tts: { text: "Reason three: chronic procrastinators report more stress, more anxiety, even worse physical health over time. Pushing everything to the deadline doesn't just cost you a grade. It costs your body.", pauseAfter: 0.25 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#efe6d3' },
+                    casingLayer('proci-s5', 'REASON #3 — THE HEALTH COST', [
+                        { id: 'num', type: 'sticker', text: '#3', slot: 'top-left', size: 86, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -3, trigger: { atSeconds: 0.1 } },
+                        ...roadDown([
+                            { id: 'hc', src: icon['heart-crack'], caption: 'MORE STRESS. MORE ANXIETY.', triggerWord: 'anxiety', occurrence: 1 },
+                            { id: 'mn', src: icon.moon, caption: 'COSTS YOUR BODY', triggerWord: 'body', occurrence: 1 },
+                        ]),
+                    ]),
+                ],
+            },
+
+            // ── Scene 6 — THE TWIST: emotion regulation ───────────────────
+            {
+                transition: 'wipe-up',
+                tts: { text: "So if it's not laziness and it's not bad time management, what actually is it? Psychologists now call it an emotion regulation problem. Your brain treats a boring, stressful task like an actual threat, and procrastinating is just your brain buying a few minutes of relief from that feeling. You're not managing time badly. You're managing a feeling badly.", pauseAfter: 0.25 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#efe6d3' },
+                    casingLayer('proci-s6', 'THE REAL REASON', [
+                        { id: 'num', type: 'sticker', text: '#1', slot: 'top-left', size: 90, color: '#ffffff', stroke: '#b5402c', bg: '#b5402c', rotate: -3, trigger: { atSeconds: 0.1 } },
+                        ...roadDown([
+                            { id: 'br', src: icon.brain, caption: 'AN EMOTION REGULATION PROBLEM', triggerWord: 'emotion', occurrence: 1, width: 400, height: 400, scale: 1.3 },
+                            { id: 'sh', src: icon['shield-alert'], caption: 'YOUR BRAIN SEES A THREAT', triggerWord: 'threat', occurrence: 1 },
+                        ]),
+                        { id: 's_tag', type: 'sticker', text: 'MANAGING A FEELING,\nNOT A SCHEDULE', slot: 'banner-low', size: 40, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -1, trigger: { wordText: 'badly', occurrence: 2 } },
+                        { id: 'sc_t', type: 'circle', target: 's_tag', color: '#2c6b5a', trigger: { afterId: 's_tag', offset: 0.3 } },
+                    ]),
+                ],
+            },
+
+            // ── Scene 7 — CLOSE + CTA (Lottie checkmark) ──────────────────
+            {
+                transition: 'fade',
+                tts: { text: "So next time you're pushing something to the last minute, it's not that you're lazy. It's that your brain just really, really wanted to feel better for five minutes. Subscribe for more of what's really happening, when nobody explains it.", pauseAfter: 0.2 },
+                captions: false,
+                layers: [
+                    { type: 'background', color: '#efe6d3' },
+                    lottieBeat({ badge: '🔔 SUBSCRIBE', label: 'FINALLY DONE.', json: lottieCheck, size: 420 }),
+                ],
+            },
+        ],
+    };
+})();
