@@ -1,90 +1,208 @@
-// config.procrastination-icons.js
-// Same script/structure as config.procrastination.js, rebuilt to actually
-// use the Iconify + Lottie pipeline from config.test-all-sources.js — the
-// thing I skipped last time. ~2.5 min, 8 scenes. Voice: am_adam.
+// config.procrastination.js
+// "Why Procrastination Is a Dumb Idea (and why literally everyone does it
+// anyway)" — ~2.5 min, 8 scenes. Voice: am_adam, casual, normal pace.
 //
-// RUN: VIDEO_CONFIG=config.procrastination-icons.js node engine-ci.js
+// RUN: VIDEO_CONFIG=config.procrastination.js node engine-ci.js
 //
-// WHAT CHANGED FROM THE PHOTO VERSION:
-//   - No real photos this time at all — every visual is an icon, heavily,
-//     per the request. Two kinds:
-//     1. Iconify Lucide line-icons (ISC license, keyless API, confirmed
-//        working in your test config) — fetched live, recoloured via the
-//        API's own ?color= param to the theme's ink/accent colors, then
-//        dropped into the casing's normal `photo` slots like any image.
-//        These get the casing's own pop/zoom reveal animation for motion.
-//     2. TWO genuinely animated Lottie moments, for the two beats that
-//        earn it most: the opening "deadline" siren and the closing
-//        "finally done" checkmark — Noto animated emoji (CC BY 4.0, GitHub
-//        raw, same codepoints already verified working in your test
-//        config: 1f6a8 siren, 2705 check). These need inline HTML (the
-//        casing can't run a Lottie player natively), so I built a small
-//        template that reuses the exact paper theme — cream background,
-//        Impact font badge, same ink/accent colors — so it doesn't look
-//        like a different video. Audio-synced via apexframe, same
-//        frame-locked playback pattern as your test config's lottieDoc.
-//   - Everything else (ApexCasing, the winding road-mapper camera, no
-//     background music, the actual script/facts) is unchanged from the
-//     photo version.
+// Same production rules as the last two Tesla configs: ApexCasing only (no
+// inline HTML), the winding "road mapper" panZoom camera, every concrete
+// noun in the narration gets its own real photo, no background music.
 //
-// HONESTY NOTE: I can't verify from my sandbox that api.iconify.design or
-// the GitHub-raw Lottie JSON are reachable from inside your CI runner at
-// render time — your own test config is the actual verification for that,
-// and it reported these sources as working. If either source is down when
-// you render, the icon or animation for that one beat will be missing;
-// nothing else in the video depends on it.
+// STRUCTURE: compliment (why the deadline rush genuinely feels good) ->
+// pivot ("but here's the surprise") -> 3 real disadvantages -> twist (the
+// actual psychological reason, backed by real research) -> close/CTA.
+//
+// FACTS USED (verified via live search):
+//   - Dr. Tim Pychyl (Carleton University, Procrastination Research Group):
+//     "Procrastination is an emotion regulation problem, not a time
+//     management problem" — the central, most-cited finding in modern
+//     procrastination research.
+//   - Temporal discounting / present bias: people systematically value
+//     immediate relief over larger future rewards — well-established in
+//     behavioral economics and procrastination research.
+//   - Procrastinators show lower academic/work performance on average,
+//     even when they self-report feeling fine about their output — a
+//     repeated finding across the literature (Sirois, Pychyl, Steel et al.).
+//   - Chronic procrastination correlates with higher reported stress,
+//     anxiety, and worse physical health over time — consistent finding
+//     across multiple studies cited by Sirois and colleagues.
+//   - Roughly 80-95% of college students report problematic procrastination;
+//     15-20% of adults are classified as chronic procrastinators.
 
-const ICON_CACHE  = new Map();
-const LOTTIE_CACHE = new Map();
+const https  = require('https');
+const http   = require('http');
 
-async function fetchText(url, timeoutMs = 15000) {
-    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.text();
+const SERPAPI_KEY  = process.env.SERPAPI_API_KEY     || null;
+const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY || null;
+const PEXELS_KEY   = process.env.PEXELS_API_KEY      || null;
+const PIXABAY_KEY  = process.env.PIXABAY_API_KEY     || null;
+
+const serpApiResultsCache = new Map();
+
+function getSourceChain(preferred) {
+    const chain = [];
+    if (preferred) chain.push(preferred);
+    if (!chain.includes('serpapi')  && SERPAPI_KEY)  chain.push('serpapi');
+    if (!chain.includes('unsplash') && UNSPLASH_KEY) chain.push('unsplash');
+    if (!chain.includes('pexels')   && PEXELS_KEY)   chain.push('pexels');
+    if (!chain.includes('pixabay')  && PIXABAY_KEY)  chain.push('pixabay');
+    if (!chain.includes('picsum'))                    chain.push('picsum');
+    return chain;
 }
-async function fetchJson(url, timeoutMs = 15000) {
-    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+
+function fetchJSON(url, headers = {}) {
+    return new Promise((resolve, reject) => {
+        const lib  = url.startsWith('https') ? https : http;
+        const opts = { headers: { 'User-Agent': 'APEX-Engine/2.0', ...headers }, timeout: 10000 };
+        lib.get(url, opts, res => {
+            if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+                res.resume();
+                return fetchJSON(new URL(res.headers.location, url).toString(), headers).then(resolve).catch(reject);
+            }
+            if (res.statusCode !== 200) { res.resume(); return reject(new Error(`HTTP ${res.statusCode}`)); }
+            let data = '';
+            res.on('data', c => data += c);
+            res.on('end', () => { try { resolve(JSON.parse(data)); } catch (e) { reject(new Error('JSON parse error')); } });
+        }).on('error', reject).on('timeout', () => reject(new Error('Timeout')));
+    });
 }
 
-// ── Iconify — Lucide line-icons, recoloured to match the paper theme ─────
-async function iconifyDataUri(name, color) {
-    const key = `${name}::${color}`;
-    if (ICON_CACHE.has(key)) return ICON_CACHE.get(key);
-    try {
-        const svg = await fetchText(`https://api.iconify.design/lucide/${name}.svg?color=${encodeURIComponent(color)}`);
-        if (!svg.includes('<svg')) throw new Error('not an svg');
-        const uri = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-        ICON_CACHE.set(key, uri);
-        console.log(`[Icons] ✓ lucide/${name} (${color})`);
-        return uri;
-    } catch (e) {
-        console.warn(`[Icons] ⚠ lucide/${name} failed: ${e.message}`);
-        ICON_CACHE.set(key, null);
-        return null;
+function downloadToBase64(fileUrl, headers = {}) {
+    return new Promise((resolve, reject) => {
+        const opts = { headers: { 'User-Agent': 'APEX-Engine/2.0', ...headers }, timeout: 30000 };
+        const makeReq = (url) => {
+            const proto = url.startsWith('https') ? https : http;
+            proto.get(url, opts, res => {
+                if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+                    res.resume();
+                    return makeReq(new URL(res.headers.location, url).toString());
+                }
+                if (res.statusCode !== 200) { res.resume(); return reject(new Error(`HTTP ${res.statusCode}`)); }
+                const ct = res.headers['content-type'] || '';
+                if (ct.includes('text/html')) { res.resume(); return reject(new Error('Server returned HTML instead of image')); }
+                const chunks = [];
+                res.on('data', c => chunks.push(c));
+                res.on('end', () => {
+                    const buf = Buffer.concat(chunks);
+                    if (buf.length < 1024) return reject(new Error(`File too small (${buf.length}B)`));
+                    resolve({ base64: buf.toString('base64'), contentType: ct.split(';')[0] || 'image/jpeg' });
+                });
+            }).on('error', reject).on('timeout', () => reject(new Error('Download timeout')));
+        };
+        makeReq(fileUrl);
+    });
+}
+
+async function searchSerpApi(query, orientation, imageIndex = 0) {
+    if (!SERPAPI_KEY) throw new Error('SERPAPI_API_KEY not set');
+    const cacheKey = `${query.toLowerCase().trim()}::${orientation}`;
+    let results = serpApiResultsCache.get(cacheKey);
+    if (!results) {
+        const url = `https://serpapi.com/search.json?engine=google_images&q=${encodeURIComponent(query)}&ijn=0&num=100&safe=active&api_key=${SERPAPI_KEY}`;
+        const data = await fetchJSON(url, { Authorization: `Bearer ${SERPAPI_KEY}` });
+        const all = data?.images_results || [];
+        if (!all.length) throw new Error('No image results from SerpAPI');
+        const usable = all.filter(r => r.original && !r.original.startsWith('x-raw-image'));
+        results = usable.length ? usable : all;
+        serpApiResultsCache.set(cacheKey, results);
+        console.log(`[Procrastination] SerpAPI cached: ${results.length} result(s) for "${query}"`);
+    }
+    const pick = results[imageIndex % results.length] || results[0];
+    if (!pick?.original) throw new Error('No usable image URL');
+    return pick.original;
+}
+
+async function searchUnsplash(query, orientation) {
+    if (!UNSPLASH_KEY) throw new Error('No UNSPLASH_ACCESS_KEY');
+    const data = await fetchJSON(`https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)}&orientation=${orientation}&content_filter=high&client_id=${UNSPLASH_KEY}`);
+    return data?.urls?.regular || data?.urls?.full || null;
+}
+
+async function searchPexels(query, orientation) {
+    if (!PEXELS_KEY) throw new Error('No PEXELS_API_KEY');
+    const orMap = { portrait: 'portrait', landscape: 'landscape', squarish: 'square' };
+    const data = await fetchJSON(
+        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=${orMap[orientation] || 'portrait'}&per_page=5&page=1`,
+        { Authorization: PEXELS_KEY });
+    const photos = data?.photos;
+    if (!photos?.length) return null;
+    const p = photos[Math.floor(Math.random() * photos.length)];
+    return p?.src?.large2x || p?.src?.large || null;
+}
+
+async function searchPixabay(query, orientation) {
+    if (!PIXABAY_KEY) throw new Error('No PIXABAY_API_KEY');
+    const orMap = { portrait: 'vertical', landscape: 'horizontal', squarish: 'square' };
+    const data = await fetchJSON(
+        `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(query)}&image_type=photo&orientation=${orMap[orientation] || 'vertical'}&safesearch=true&per_page=5&min_width=1080`);
+    const hits = data?.hits;
+    if (!hits?.length) return null;
+    const h = hits[Math.floor(Math.random() * hits.length)];
+    return h?.largeImageURL || h?.webformatURL || null;
+}
+
+async function getPicsum(orientation) {
+    const w = orientation === 'landscape' ? 1920 : 1080;
+    const h = orientation === 'landscape' ? 1080 : 1920;
+    return `https://picsum.photos/seed/${Math.floor(Math.random() * 1000)}/${w}/${h}`;
+}
+
+async function searchSource(source, query, orientation, imageIndex) {
+    switch (source) {
+        case 'serpapi':  return searchSerpApi(query, orientation, imageIndex);
+        case 'unsplash': return searchUnsplash(query, orientation);
+        case 'pexels':   return searchPexels(query, orientation);
+        case 'pixabay':  return searchPixabay(query, orientation);
+        case 'picsum':   return getPicsum(orientation);
+        default:         return null;
     }
 }
 
-// ── Noto animated Lottie — the two codepoints already verified in
-// config.test-all-sources.js: 1f6a8 (siren) and 2705 (check mark).
-const NOTO_RAW = (cp) => `https://raw.githubusercontent.com/rbozan/animated-emojis-rs/HEAD/static/noto_animated_emoji/lottie/${cp}/lottie.json`;
-async function lottieJson(codepoint) {
-    if (LOTTIE_CACHE.has(codepoint)) return LOTTIE_CACHE.get(codepoint);
-    try {
-        const j = await fetchJson(NOTO_RAW(codepoint));
-        if (!j || !Array.isArray(j.layers)) throw new Error('not a lottie json');
-        LOTTIE_CACHE.set(codepoint, j);
-        console.log(`[Icons] ✓ Noto Lottie ${codepoint}`);
-        return j;
-    } catch (e) {
-        console.warn(`[Icons] ⚠ Noto Lottie ${codepoint} failed: ${e.message}`);
-        LOTTIE_CACHE.set(codepoint, null);
-        return null;
+async function trySerpApiWithFallback(query, orientation, startIndex) {
+    const firstUrl = await searchSerpApi(query, orientation, startIndex);
+    const results  = serpApiResultsCache.get(`${query.toLowerCase().trim()}::${orientation}`) || [];
+    const total    = results.length || 1;
+    let lastErr = null;
+    for (let attempt = 0; attempt < total; attempt++) {
+        const idx = (startIndex + attempt) % total;
+        const candidateUrl = attempt === 0 ? firstUrl : results[idx]?.original;
+        if (!candidateUrl) continue;
+        try {
+            if (attempt > 0) console.log(`[Procrastination]  ↻ serpapi retry [#${idx}] for "${query}"`);
+            const { base64, contentType } = await downloadToBase64(candidateUrl);
+            return `data:${contentType};base64,${base64}`;
+        } catch (e) {
+            lastErr = e;
+            console.warn(`[Procrastination]  ⚠ serpapi [#${idx}] failed: ${e.message?.slice(0, 60)}`);
+        }
     }
+    throw lastErr || new Error('No working result in cached set');
 }
 
-// ── Camera helper (same winding road-mapper as the last three configs) ───
+async function fetchImageRobust(query, opts = {}) {
+    const orientation = opts.orientation || 'portrait';
+    const imageIndex  = opts.imageIndex || 0;
+    for (const source of getSourceChain(opts.source || null)) {
+        try {
+            if (source === 'serpapi') {
+                const uri = await trySerpApiWithFallback(query, orientation, imageIndex);
+                console.log(`[Procrastination] ✓ "${query}" #${imageIndex} via serpapi`);
+                return uri;
+            }
+            const imageUrl = await searchSource(source, query, orientation, imageIndex);
+            if (!imageUrl) continue;
+            const { base64, contentType } = await downloadToBase64(imageUrl);
+            console.log(`[Procrastination] ✓ "${query}" via ${source}`);
+            return `data:${contentType};base64,${base64}`;
+        } catch (e) {
+            console.warn(`[Procrastination]  ⚠ ${source} failed for "${query}": ${e.message?.slice(0, 60)}`);
+        }
+    }
+    console.warn(`[Procrastination]  ✗ ALL sources failed for "${query}"`);
+    return null;
+}
+
+// ── Camera helper (same winding road-mapper as the last two configs) ─────
 const SLOT_CENTERS = {
     'top-left': [180, 270.5], 'top-center': [540, 270.5], 'top-right': [900, 270.5],
     'mid-left': [180, 511.5], 'mid-center': [540, 511.5], 'mid-right': [900, 511.5],
@@ -136,7 +254,7 @@ function roadDown(images, zoomScale = 1.35) {
         const zoomId  = `${img.id}_zoom`;
         cmds.push({
             id: photoId, type: 'photo', src: img.src, slot,
-            width: img.width || 340, height: img.height || 340,
+            width: img.width || 460, height: img.height || 340,
             caption: img.caption, pinStyle: i % 2 === 0 ? 'tape' : 'pins',
             trigger: prevId
                 ? { afterId: prevId, offset: 0.1 }
@@ -152,130 +270,64 @@ function roadDown(images, zoomScale = 1.35) {
     return cmds;
 }
 
-// ── Inline Lottie beat — paper-sticker themed, for the two true-animation
-// moments. Audio-synced: apexframe drives playback so the animation is
-// frame-locked to the narration, same mechanic as your test config.
-function lottieBeat({ badge, label, json, size = 420 }) {
-    const hasJson = !!json;
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{width:1080px;height:1920px;overflow:hidden;background:${THEME.paper};
-    font-family:Georgia,'Times New Roman',serif;color:${THEME.ink}}
-  .wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-  .badge{position:absolute;top:150px;background:${THEME.accent};color:#fff;font:900 70px Impact,'Arial Black',sans-serif;
-    padding:6px 34px;transform:rotate(-2deg);box-shadow:6px 6px 0 ${THEME.shadow};
-    opacity:0;transition:opacity .4s ease,transform .4s cubic-bezier(.2,1.4,.4,1)}
-  .badge.on{opacity:1;transform:rotate(-2deg) scale(1)}
-  .box{width:${size}px;height:${size}px;opacity:0;transform:scale(.7);
-    transition:opacity .4s ease,transform .4s cubic-bezier(.2,1.4,.4,1)}
-  .box.on{opacity:1;transform:scale(1)}
-  .lbl{margin-top:30px;font:900 52px Impact,'Arial Black',sans-serif;color:${THEME.ink};
-    opacity:0;transition:opacity .4s ease}
-  .lbl.on{opacity:1}
-  #fail{position:absolute;bottom:180px;left:60px;right:60px;text-align:center;
-    font-size:28px;color:${THEME.accent};font-weight:900;display:none}
-</style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script></head><body>
-  <div class="badge off" id="badge">${badge}</div>
-  <div class="wrap">
-    <div class="box off" id="box"></div>
-    <div class="lbl off" id="lbl">${label}</div>
-  </div>
-  <div id="fail">(animation unavailable this render — falling back to label only)</div>
-<script>
-(function () {
-  var json = ${hasJson ? JSON.stringify(json) : 'null'};
-  var anim = null;
-  function show(id){ var el = document.getElementById(id); if (el) el.classList.add('on'); }
-  if (window.lottie && json) {
-    try {
-      anim = lottie.loadAnimation({
-        container: document.getElementById('box'), renderer: 'svg',
-        loop: true, autoplay: false, animationData: json,
-      });
-    } catch (e) { document.getElementById('fail').style.display = 'block'; }
-  } else {
-    document.getElementById('fail').style.display = 'block';
-  }
-  window.addEventListener('apexframe', function (e) {
-    var t = (e.detail && e.detail.t) || 0;
-    show('badge'); show('box'); show('lbl');
-    if (anim && anim.totalFrames > 0) {
-      var fr = anim.frameRate || 30;
-      anim.goToAndStop(Math.floor((t * fr) % anim.totalFrames), true);
-    }
-  });
-  document.body.setAttribute('data-ready', '1');
-})();
-</script>
-</body></html>`;
-    return {
-        type: 'html-record', html,
-        audioSync: true, cursor: false, waitFor: '[data-ready="1"]', fps: 30,
-        viewport: { width: 1080, height: 1920 }, x: 0, y: 0, width: 1080, height: 1920, fit: 'cover',
-    };
-}
-
 module.exports = (async () => {
 
-    console.log('[Icons] Fetching Lucide icons (recoloured to theme) + the two Lottie moments...');
+    console.log('[Procrastination] Fetching photos sequentially (short, generic 2-word queries)...');
 
-    const INK = '#231b12', RED = '#b5402c', GREEN = '#2c6b5a';
-
-    const icon = {};
-    const iconWanted = [
-        ['zap',          INK],    // adrenaline rush
-        ['activity',     INK],    // cortisol spike
-        ['target',       INK],    // focus narrows
-        ['alert-triangle', RED],  // the pivot / surprise
-        ['trending-down', RED],   // lower grades
-        ['frown',         RED],   // "felt fine" mismatch
-        ['calendar',      RED],   // more planning tools
-        ['smartphone',    RED],   // more apps
-        ['heart-crack',   RED],   // health cost
-        ['moon',          RED],   // sleepless nights
-        ['brain',         GREEN], // the real reason — emotion regulation
-        ['shield-alert',  GREEN], // brain treats task as a threat
+    const wanted = [
+        ['clock',    'alarm clock',     { source: 'serpapi' }],
+        ['laptop',   'stressed laptop', { source: 'serpapi' }],
+        ['coffee',   'coffee cup',      { source: 'pexels'  }],
+        ['grade',    'bad grade',       { source: 'serpapi' }],
+        ['study',    'student studying',{ source: 'serpapi' }],
+        ['planner',  'calendar planner',{ source: 'pexels'  }],
+        ['apps',     'phone apps',      { source: 'pexels'  }],
+        ['stressed', 'stressed person', { source: 'serpapi' }],
+        ['sleepless','sleepless night', { source: 'serpapi' }],
+        ['brain',    'human brain',     { source: 'serpapi' }],
+        ['scrolling','phone scrolling', { source: 'pexels'  }],
     ];
-    for (const [name, color] of iconWanted) icon[name] = await iconifyDataUri(name, color);
+    const img = {};
+    for (const [key, query, opts] of wanted) img[key] = await fetchImageRobust(query, opts);
 
-    console.log('[Icons] Fetching the two Lottie moments (Noto animated emoji)...');
-    const lottieSiren = await lottieJson('1f6a8'); // 🚨 siren — the deadline
-    const lottieCheck = await lottieJson('2705');  // ✅ check — finally done
-
-    console.log('[Icons] Building config...');
+    console.log('[Procrastination] Building config...');
 
     return {
         output: {
-            title: 'procrastination-dumb-idea-icons', format: 'portrait', fps: 30, crf: 23, preset: 'medium',
+            title: 'procrastination-dumb-idea', format: 'portrait', fps: 30, crf: 23, preset: 'medium',
             // No background music, same rule as the last few videos.
         },
         defaults: { voice: 'am_adam', speed: 1.02, transition: 'fade', transitionDuration: 0.3 },
 
         scenes: [
 
-            // ── Scene 0 — HOOK (Lottie siren) ─────────────────────────────
+            // ── Scene 0 — COMPLIMENT 1: the rush ──────────────────────────
             {
                 tts: { text: "You know that feeling right before a deadline? Pure adrenaline, laser focus, suddenly you're a machine. Procrastination basically feels like a cheat code. Wait till you hear why it's actually one of the worst things you can do to yourself.", pauseAfter: 0.25 },
                 captions: false,
                 layers: [
                     { type: 'background', color: '#efe6d3' },
-                    lottieBeat({ badge: 'THE DEADLINE', label: 'ADRENALINE. FOCUS. GO.', json: lottieSiren, size: 440 }),
+                    casingLayer('proc-s0', 'THE DEADLINE RUSH', [
+                        { id: 'badge', type: 'sticker', text: 'THE CHEAT CODE', slot: 'banner-top', size: 54, color: '#231b12', stroke: '#ffffff', rotate: -1, trigger: { atSeconds: 0.1 } },
+                        ...roadDown([
+                            { id: 'c1', src: img.clock, caption: 'RIGHT BEFORE THE DEADLINE', triggerWord: 'deadline', occurrence: 1, width: 500, height: 340 },
+                            { id: 'l1', src: img.laptop, caption: 'SUDDENLY A MACHINE', triggerWord: 'machine', occurrence: 1, width: 500, height: 360 },
+                        ]),
+                    ]),
                 ],
             },
 
-            // ── Scene 1 — why it feels real ────────────────────────────────
+            // ── Scene 1 — COMPLIMENT 2: why it feels real ─────────────────
             {
                 transition: 'wipe-left',
                 tts: { text: "And it's not just in your head. Pressure genuinely does something to your brain — cortisol spikes, focus narrows, you get this rush of 'I work better like this.' Millions of people have built their entire work style around exactly that feeling.", pauseAfter: 0.25 },
                 captions: false,
                 layers: [
                     { type: 'background', color: '#efe6d3' },
-                    casingLayer('proci-s1', 'NOT JUST IN YOUR HEAD', [
+                    casingLayer('proc-s1', 'NOT JUST IN YOUR HEAD', [
                         ...roadDown([
-                            { id: 'act', src: icon.activity, caption: 'CORTISOL SPIKES', triggerWord: 'cortisol', occurrence: 1 },
-                            { id: 'tgt', src: icon.target, caption: 'FOCUS NARROWS', triggerWord: 'narrows', occurrence: 1 },
-                            { id: 'zap', src: icon.zap, caption: '"I WORK BETTER LIKE THIS"', triggerWord: 'rush', occurrence: 1 },
+                            { id: 'cof', src: img.coffee, caption: 'THE LATE-NIGHT GRIND', triggerWord: 'cortisol', occurrence: 1, width: 480, height: 340 },
+                            { id: 'c2', src: img.clock, caption: '"I WORK BETTER LIKE THIS"', triggerWord: 'rush', occurrence: 1, width: 500, height: 340 },
                         ]),
                     ]),
                 ],
@@ -288,10 +340,10 @@ module.exports = (async () => {
                 captions: false,
                 layers: [
                     { type: 'background', color: '#efe6d3' },
-                    casingLayer('proci-s2', 'THE SURPRISE', [
+                    casingLayer('proc-s2', 'THE SURPRISE', [
                         { id: 'badge', type: 'sticker', text: 'BUT...', slot: 'banner-top', size: 70, color: '#ffffff', stroke: '#b5402c', bg: '#b5402c', rotate: 1, trigger: { atSeconds: 0.1 } },
                         ...roadDown([
-                            { id: 'alert', src: icon['alert-triangle'], caption: 'WHAT THE RESEARCH SAYS', triggerWord: 'research', occurrence: 1, width: 400, height: 400, scale: 1.4 },
+                            { id: 'st1', src: img.study, caption: 'WHAT THE RESEARCH SAYS', triggerWord: 'research', occurrence: 1, width: 460, height: 560 },
                         ]),
                     ]),
                 ],
@@ -304,11 +356,11 @@ module.exports = (async () => {
                 captions: false,
                 layers: [
                     { type: 'background', color: '#efe6d3' },
-                    casingLayer('proci-s3', 'REASON #1 — THE WORK SUFFERS', [
+                    casingLayer('proc-s3', 'REASON #1 — THE WORK SUFFERS', [
                         { id: 'num', type: 'sticker', text: '#1', slot: 'top-left', size: 86, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -3, trigger: { atSeconds: 0.1 } },
                         ...roadDown([
-                            { id: 'td', src: icon['trending-down'], caption: 'LOWER GRADES', triggerWord: 'grades', occurrence: 1 },
-                            { id: 'fr', src: icon.frown, caption: '"I DID FINE"', triggerWord: 'fine', occurrence: 1 },
+                            { id: 'gr', src: img.grade, caption: 'LOWER GRADES', triggerWord: 'grades', occurrence: 1, width: 500, height: 340 },
+                            { id: 'st2', src: img.study, caption: '"I DID FINE"', triggerWord: 'fine', occurrence: 1, width: 440, height: 540 },
                         ]),
                     ]),
                 ],
@@ -321,11 +373,11 @@ module.exports = (async () => {
                 captions: false,
                 layers: [
                     { type: 'background', color: '#efe6d3' },
-                    casingLayer('proci-s4', 'REASON #2 — NOT A TIME PROBLEM', [
+                    casingLayer('proc-s4', 'REASON #2 — NOT A TIME PROBLEM', [
                         { id: 'num', type: 'sticker', text: '#2', slot: 'top-left', size: 86, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -3, trigger: { atSeconds: 0.1 } },
                         ...roadDown([
-                            { id: 'cal', src: icon.calendar, caption: 'MORE PLANNING TOOLS', triggerWord: 'calendar', occurrence: 1 },
-                            { id: 'sp', src: icon.smartphone, caption: 'MORE APPS', triggerWord: 'apps', occurrence: 1 },
+                            { id: 'pl', src: img.planner, caption: 'MORE PLANNING TOOLS', triggerWord: 'calendar', occurrence: 1, width: 500, height: 340 },
+                            { id: 'ap', src: img.apps, caption: 'MORE APPS', triggerWord: 'apps', occurrence: 1, width: 460, height: 560 },
                         ]),
                         { id: 's_tag', type: 'sticker', text: 'NEVER A TIME\nPROBLEM', slot: 'banner-low', size: 46, color: '#ffffff', stroke: '#b5402c', bg: '#b5402c', rotate: -1, trigger: { wordText: 'place', occurrence: 1 } },
                         { id: 'sc_t', type: 'circle', target: 's_tag', color: '#b5402c', trigger: { afterId: 's_tag', offset: 0.3 } },
@@ -340,11 +392,11 @@ module.exports = (async () => {
                 captions: false,
                 layers: [
                     { type: 'background', color: '#efe6d3' },
-                    casingLayer('proci-s5', 'REASON #3 — THE HEALTH COST', [
+                    casingLayer('proc-s5', 'REASON #3 — THE HEALTH COST', [
                         { id: 'num', type: 'sticker', text: '#3', slot: 'top-left', size: 86, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -3, trigger: { atSeconds: 0.1 } },
                         ...roadDown([
-                            { id: 'hc', src: icon['heart-crack'], caption: 'MORE STRESS. MORE ANXIETY.', triggerWord: 'anxiety', occurrence: 1 },
-                            { id: 'mn', src: icon.moon, caption: 'COSTS YOUR BODY', triggerWord: 'body', occurrence: 1 },
+                            { id: 'sp', src: img.stressed, caption: 'MORE STRESS. MORE ANXIETY.', triggerWord: 'anxiety', occurrence: 1, width: 440, height: 560 },
+                            { id: 'sl', src: img.sleepless, caption: 'COSTS YOUR BODY', triggerWord: 'body', occurrence: 1, width: 500, height: 340 },
                         ]),
                     ]),
                 ],
@@ -357,11 +409,11 @@ module.exports = (async () => {
                 captions: false,
                 layers: [
                     { type: 'background', color: '#efe6d3' },
-                    casingLayer('proci-s6', 'THE REAL REASON', [
+                    casingLayer('proc-s6', 'THE REAL REASON', [
                         { id: 'num', type: 'sticker', text: '#1', slot: 'top-left', size: 90, color: '#ffffff', stroke: '#b5402c', bg: '#b5402c', rotate: -3, trigger: { atSeconds: 0.1 } },
                         ...roadDown([
-                            { id: 'br', src: icon.brain, caption: 'AN EMOTION REGULATION PROBLEM', triggerWord: 'emotion', occurrence: 1, width: 400, height: 400, scale: 1.3 },
-                            { id: 'sh', src: icon['shield-alert'], caption: 'YOUR BRAIN SEES A THREAT', triggerWord: 'threat', occurrence: 1 },
+                            { id: 'br', src: img.brain, caption: 'AN EMOTION REGULATION PROBLEM', triggerWord: 'emotion', occurrence: 1, width: 500, height: 360 },
+                            { id: 'sc', src: img.scrolling, caption: 'A FEW MINUTES OF RELIEF', triggerWord: 'relief', occurrence: 1, width: 460, height: 560 },
                         ]),
                         { id: 's_tag', type: 'sticker', text: 'MANAGING A FEELING,\nNOT A SCHEDULE', slot: 'banner-low', size: 40, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: -1, trigger: { wordText: 'badly', occurrence: 2 } },
                         { id: 'sc_t', type: 'circle', target: 's_tag', color: '#2c6b5a', trigger: { afterId: 's_tag', offset: 0.3 } },
@@ -369,14 +421,20 @@ module.exports = (async () => {
                 ],
             },
 
-            // ── Scene 7 — CLOSE + CTA (Lottie checkmark) ──────────────────
+            // ── Scene 7 — CLOSE + CTA ─────────────────────────────────────
             {
                 transition: 'fade',
                 tts: { text: "So next time you're pushing something to the last minute, it's not that you're lazy. It's that your brain just really, really wanted to feel better for five minutes. Subscribe for more of what's really happening, when nobody explains it.", pauseAfter: 0.2 },
                 captions: false,
                 layers: [
                     { type: 'background', color: '#efe6d3' },
-                    lottieBeat({ badge: '🔔 SUBSCRIBE', label: 'FINALLY DONE.', json: lottieCheck, size: 420 }),
+                    casingLayer('proc-close', 'FIVE MINUTES OF RELIEF', [
+                        { id: 'img_close', type: 'photo', src: img.clock, slot: 'mid-center', width: 760, height: 540, caption: 'THE LAST MINUTE', pinStyle: 'tape', trigger: { wordText: 'minute', occurrence: 1 } },
+                        { id: 'pz_close', type: 'panZoom', ...zoomTo('mid-center', 1.2), duration: 1.0, trigger: { afterId: 'img_close', offset: 0.2 } },
+                        { id: 'pz_out', type: 'panZoom', ...ZOOM_OUT, duration: 1.0, trigger: { afterId: 'pz_close', offset: 0.6 } },
+                        { id: 'cta', type: 'sticker', text: '🔔 SUBSCRIBE', slot: 'banner-bot', size: 68, color: '#ffffff', stroke: '#2c6b5a', bg: '#2c6b5a', rotate: 0, trigger: { wordText: 'subscribe', occurrence: 1 } },
+                        { id: 'sc_cta', type: 'circle', target: 'cta', color: '#2c6b5a', trigger: { afterId: 'cta', offset: 0.3 } },
+                    ]),
                 ],
             },
         ],
