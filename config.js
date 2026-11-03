@@ -1,55 +1,32 @@
-// config.rocket-story.js
-// "From Dirt to Landing: How a Rocket Is Made" — APEX Video Engine config
-// 16 scenes: raw materials -> refining -> propellant -> blueprints -> tanks -> engines -> test -> stacking
-//            -> rollout -> launch -> staging -> orbit -> booster return -> reuse loop.
-// Every scene has continuous motion (CSS keyframes) + word-synced reveals (apexframe).
+// config.photon-chip-story.js
+// "Could Computers Run on Light?" — APEX Video Engine config (same architecture as the rocket/solar configs)
+// 13 scenes, analogy-driven: tap -> logic gates -> stadium of bits -> heat -> thin wires -> leaks
+//                            -> photons -> cool + many colors -> sunglasses math -> ripple math -> why not all light -> team-up
+//            -> p-n junction -> light makes current -> panel to home -> advantages -> disadvantages -> recap
 
 const THEME = {
     paper: '#efe6d3', ink: '#231b12', accent: '#b5402c', accent2: '#2c6b5a',
     shadow: 'rgba(20,16,10,0.4)', highlight: '#ffe08a',
-    bpLine: '#dff0ff', bpSoft: '#8fbcff', bpHi: '#ffd23f',
-    fire: '#ff7a1a', fireHi: '#ffd23f', cold: '#4dd0ff', metal: '#c9ced6'
+    bpLine: '#dff0ff', bpSoft: '#8fbcff', bpHi: '#ffd23f', cold: '#4dd0ff', sun: '#ffd23f'
 };
 const FI = "Impact,'Arial Black',sans-serif";
 const FM = "'Courier New',Courier,monospace";
 
-// ── tiny helpers ────────────────────────────────────────────────
+// ── helpers ─────────────────────────────────────────────────────
 function T(x, y, str, size = 30, fill = THEME.ink, anchor = 'middle', font = FI, extra = '') {
     return `<text x="${x}" y="${y}" font-size="${size}" text-anchor="${anchor}" fill="${fill}" font-family="${font}" ${extra}>${str}</text>`;
 }
 const M = (x, y, str, size = 26, fill = THEME.bpLine, anchor = 'middle') =>
     T(x, y, str, size, fill, anchor, FM, 'font-weight="bold"');
 const ORG = { top: '50% 0%', bottom: '50% 100%', left: '0% 50%', right: '100% 50%', center: '50% 50%' };
-// animation attribute: class + timing vars. o = 'top'|'bottom'|... or [x,y] pivot in local coords
 function an(cls, d = 2, dl = 0, o = 'center', extra = '') {
     const org = Array.isArray(o)
         ? `transform-box:view-box;transform-origin:${o[0]}px ${o[1]}px;`
         : `transform-box:fill-box;transform-origin:${ORG[o] || o};`;
     return `class="a ${cls}" style="--d:${d}s;--dl:${dl}s;${org}${extra}"`;
 }
-// blueprint line that "draws itself"
 function dr(d, dl = 0, dur = 1.6, sw = 5, col = THEME.bpLine) {
     return `<path d="${d}" pathLength="1000" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" ${an('draw', dur, dl, 'center', '--n:1;')}/>`;
-}
-
-function stickman(x, groundY, leftArm, rightArm, opts = {}) {
-    const color = opts.color || THEME.ink, hy = groundY - 128, sy = groundY - 98;
-    let s = `<g stroke="${color}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
-        <line x1="${x}" y1="${groundY - 110}" x2="${x}" y2="${groundY - 60}"/>
-        <line x1="${x}" y1="${groundY - 60}" x2="${x - 18}" y2="${groundY}"/>
-        <line x1="${x}" y1="${groundY - 60}" x2="${x + 18}" y2="${groundY}"/>
-        <line x1="${x}" y1="${sy}" x2="${x + leftArm[0]}" y2="${sy + leftArm[1]}"/>
-        ${opts.wave ? '' : `<line x1="${x}" y1="${sy}" x2="${x + rightArm[0]}" y2="${sy + rightArm[1]}"/>`}
-    </g>`;
-    if (opts.wave) s += `<g ${an('wave', .7, 0, [x, sy])}><line x1="${x}" y1="${sy}" x2="${x + rightArm[0]}" y2="${sy + rightArm[1]}" stroke="${color}" stroke-width="6" stroke-linecap="round"/></g>`;
-    s += `<circle cx="${x}" cy="${hy}" r="18" fill="#fff" stroke="${color}" stroke-width="6"/>`;
-    s += `<circle cx="${x - 6}" cy="${hy - 1}" r="2.5" fill="#231b12"/><circle cx="${x + 6}" cy="${hy - 1}" r="2.5" fill="#231b12"/>`;
-    s += opts.sad ? `<path transform="translate(${x} ${hy})" d="M-7 8 Q0 3 7 8" stroke="#231b12" stroke-width="3" fill="none"/>`
-        : `<path transform="translate(${x} ${hy})" d="${opts.wide ? 'M-8 4 Q0 14 8 4' : 'M-7 5 Q0 11 7 5'}" stroke="#231b12" stroke-width="3" fill="none"/>`;
-    if (opts.hat) s += `<path d="M${x - 19} ${hy - 6} A19 17 0 0 1 ${x + 19} ${hy - 6} Z" fill="#ffcc00" stroke="#231b12" stroke-width="3"/><line x1="${x - 24}" y1="${hy - 6}" x2="${x + 24}" y2="${hy - 6}" stroke="#231b12" stroke-width="4"/>`;
-    if (opts.ears) s += `<circle cx="${x - 19}" cy="${hy}" r="7" fill="#e63946" stroke="#231b12" stroke-width="2"/><circle cx="${x + 19}" cy="${hy}" r="7" fill="#e63946" stroke="#231b12" stroke-width="2"/>`;
-    if (opts.sweat) s += `<path d="M${x + 22} ${hy - 14} q5 8 0 14 q-5 -6 0 -14" fill="#4dd0ff" opacity=".85"/>`;
-    return `<g>${s}</g>`;
 }
 function sfx(x, y, text, rot, fill, fs = 40, stroke = THEME.ink) {
     return `<text x="${x}" y="${y}" transform="rotate(${rot} ${x} ${y})" font-size="${fs}" font-family="${FI}" fill="${fill}" stroke="${stroke}" stroke-width="2.5" paint-order="stroke" font-style="italic" text-anchor="middle">${text}</text>`;
@@ -60,36 +37,22 @@ function arrow(x1, y1, x2, y2, color = THEME.ink, w = 8) {
       <line x1="${x2}" y1="${y2}" x2="${x2 - h * Math.cos(ang - .5)}" y2="${y2 - h * Math.sin(ang - .5)}" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>
       <line x1="${x2}" y1="${y2}" x2="${x2 - h * Math.cos(ang + .5)}" y2="${y2 - h * Math.sin(ang + .5)}" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`;
 }
-function flameSvg(len = 100, w = 26, d = .16) {
-    return `<g ${an('flicker', d, 0, 'top')}><path d="M${-w} 0 Q${-w * .8} ${len * .6} 0 ${len} Q${w * .8} ${len * .6} ${w} 0Z" fill="${THEME.fire}"/><path d="M${-w * .55} 0 Q${-w * .4} ${len * .4} 0 ${len * .62} Q${w * .4} ${len * .4} ${w * .55} 0Z" fill="${THEME.fireHi}"/></g>`;
-}
-// rocket drawn with base at y=0, centred on x=0, pointing up
-function rocket(h = 320, w = 44, o = {}) {
-    const c = o.color || '#f6f3ec', ink = o.ink || THEME.ink, sw = o.sw || 5; let s = '';
-    if (o.fins !== false) s += `<path d="M${-w} ${-h * .18} L${-w * 1.9} 0 L${-w} 0Z M${w} ${-h * .18} L${w * 1.9} 0 L${w} 0Z" fill="${THEME.accent}" stroke="${ink}" stroke-width="${sw}" stroke-linejoin="round"/>`;
-    if (o.legs) s += `<path d="M${-w} ${-h * .12} L${-w * 2.1} 26 M${w} ${-h * .12} L${w * 2.1} 26" stroke="${ink}" stroke-width="${sw + 1}" stroke-linecap="round" fill="none"/>`;
-    s += `<path d="M${-w} 0 V${-h * .8} Q${-w} ${-h * .95} 0 ${-h} Q${w} ${-h * .95} ${w} ${-h * .8} V0Z" fill="${c}" stroke="${ink}" stroke-width="${sw}" stroke-linejoin="round"/>`;
-    s += `<line x1="${-w}" y1="${-h * .42}" x2="${w}" y2="${-h * .42}" stroke="${ink}" stroke-width="${sw * .6}"/><line x1="${-w}" y1="${-h * .8}" x2="${w}" y2="${-h * .8}" stroke="${ink}" stroke-width="${sw * .6}"/>`;
-    s += `<circle cx="0" cy="${-h * .62}" r="${w * .32}" fill="${THEME.cold}" stroke="${ink}" stroke-width="${sw * .7}"/>`;
-    s += `<path d="M${-w * .55} 0 L${-w * .75} 22 H${w * .75} L${w * .55} 0Z" fill="#555" stroke="${ink}" stroke-width="${sw * .7}"/>`;
-    if (o.flame) s += `<g transform="translate(0 22)">${flameSvg(o.flame, w * .6)}</g>`;
-    return s;
-}
 function cloud(x, y, s = 1, col = '#fff', op = 1) {
     return `<g transform="translate(${x} ${y}) scale(${s})" fill="${col}" opacity="${op}"><circle r="30"/><circle cx="34" cy="-12" r="36"/><circle cx="72" cy="0" r="28"/><rect x="-30" y="0" width="130" height="28" rx="14"/></g>`;
 }
 function puff(x, y, r, dl = 0, dy = -260, d = 2.6, col = 'rgba(255,255,255,.6)') {
     return `<circle ${an('rise', d, dl, 'center', `--dy:${dy}px;--sc:2.2;`)} cx="${x}" cy="${y}" r="${r}" fill="${col}"/>`;
 }
+const rng = (seed) => { let r = seed; return () => { r = (r * 9301 + 49297) % 233280; return r / 233280; }; };
 function stars(n = 40, seed = 3) {
-    let r = seed, o = ''; const rnd = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; };
+    const rnd = rng(seed); let o = '';
     for (let i = 0; i < n; i++) {
         const x = Math.round(rnd() * 1080 - 40), y = Math.round(rnd() * 1900 - 260), s = 1.5 + rnd() * 2.5;
         o += `<circle ${an('twinkle', (1.2 + rnd() * 2.5).toFixed(1), (rnd() * 2).toFixed(1))} cx="${x}" cy="${y}" r="${s.toFixed(1)}" fill="#fff"/>`;
     }
     return o;
 }
-function sparks(x, y, n = 8, col = THEME.fireHi, len = 22, d = .5) {
+function sparks(x, y, n = 8, col = '#ffd23f', len = 22, d = .5) {
     let o = '';
     for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2 + .3;
@@ -97,8 +60,31 @@ function sparks(x, y, n = 8, col = THEME.fireHi, len = 22, d = .5) {
     }
     return o;
 }
+// a wiggly line = a light wave / photon
+function wavy(x1, y1, x2, y2, amp = 14, n = 8) {
+    const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), nx = -dy / L, ny = dx / L;
+    let d = `M${x1} ${y1}`;
+    for (let i = 0; i < n; i++) {
+        const t1 = (i + .5) / n, t2 = (i + 1) / n, s = i % 2 ? -1 : 1;
+        d += ` Q${(x1 + dx * t1 + nx * amp * s).toFixed(1)} ${(y1 + dy * t1 + ny * amp * s).toFixed(1)} ${(x1 + dx * t2).toFixed(1)} ${(y1 + dy * t2).toFixed(1)}`;
+    }
+    return d;
+}
+// sun with spinning rays, centred on 0,0
+function sunSvg(r = 70, fill = THEME.sun, stroke = THEME.ink) {
+    return `<g ${an('pulse', 2.4)}><circle r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="6"/></g>
+    <g ${an('spin', 24, 0, [0, 0])}>${Array.from({ length: 12 }, (_, i) => `<line x1="${r + 14}" y1="0" x2="${r + (i % 2 ? 34 : 54)}" y2="0" stroke="#ffb300" stroke-width="9" stroke-linecap="round" transform="rotate(${i * 30})"/>`).join('')}</g>`;
+}
+// solar panel, centred on 0,0
+function panel(w, h, cols, rows) {
+    let s = `<rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="8" fill="#1b3a8a" stroke="#c9ced6" stroke-width="9"/>`;
+    for (let i = 1; i < cols; i++) s += `<line x1="${-w / 2 + w * i / cols}" y1="${-h / 2}" x2="${-w / 2 + w * i / cols}" y2="${h / 2}" stroke="#8fbcff" stroke-width="2.5" opacity=".7"/>`;
+    for (let j = 1; j < rows; j++) s += `<line x1="${-w / 2}" y1="${-h / 2 + h * j / rows}" x2="${w / 2}" y2="${-h / 2 + h * j / rows}" stroke="#8fbcff" stroke-width="2.5" opacity=".7"/>`;
+    s += `<polygon points="${-w / 2 + 8},${-h / 2 + 8} ${-w / 2 + w * .35},${-h / 2 + 8} ${-w / 2 + 8},${-h / 2 + h * .35}" fill="#fff" opacity=".16"/>`;
+    return s;
+}
 
-// ── scene wrapper ───────────────────────────────────────────────
+// ── scene engine (identical to the rocket config, plus growx) ───
 const REVEAL_JS = `
   var seen = {};
   function show(id){ if (seen[id]) return; seen[id] = 1; var el = document.getElementById(id); if (el) el.classList.add('on'); }
@@ -118,41 +104,33 @@ const CSS_ANIM = `
   .a{animation-duration:var(--d,2s);animation-delay:var(--dl,0s);animation-iteration-count:var(--n,infinite);
      animation-direction:var(--dir,alternate);animation-timing-function:var(--e,ease-in-out);animation-fill-mode:var(--fm,both);animation-play-state:paused}
   .revealgrp.on .a,.always .a{animation-play-state:running}
-  .float{animation-name:float}.bob{animation-name:bob}.pulse{animation-name:pulse}.shake{animation-name:shake;--e:linear}
-  .spin{animation-name:spin;--dir:normal;--e:linear}.flicker{animation-name:flicker}
+  .float{animation-name:float}.bob{animation-name:bob}.pulse{animation-name:pulse}
+  .spin{animation-name:spin;--dir:normal;--e:linear}
   .flow{animation-name:flow;--dir:normal;--e:linear}.dash{stroke-dasharray:16 12}
   .rise{animation-name:rise;--dir:normal;--e:ease-out}.drift{animation-name:drift;--dir:normal;--e:linear}
   .move{animation-name:move}.moveonce{animation-name:move;--n:1;--dir:normal}
-  .grow{animation-name:grow;--n:1;--dir:normal;--e:cubic-bezier(.2,1.4,.4,1)}
   .growx{animation-name:growx;--n:1;--dir:normal}.growy{animation-name:growy;--n:1;--dir:normal}
   .draw{animation-name:draw;--n:1;--dir:normal;--e:ease-out;stroke-dasharray:1000;stroke-dashoffset:1000}
-  .rot{animation-name:rot}.rotonce{animation-name:rot;--n:1;--dir:normal}
-  .twinkle{animation-name:twinkle}.wobble{animation-name:wobble}.wave{animation-name:wave}
+  .rot{animation-name:rot}.twinkle{animation-name:twinkle}.wobble{animation-name:wobble}
   .blink{animation-name:blink;--e:steps(1,end)}.ring{animation-name:ring;--dir:normal;--e:ease-out}
-  .vanish{animation-name:vanish;--n:1;--dir:normal}.cnt{animation-name:cnt;--dir:normal;--e:linear;--fm:forwards}.fadein{animation-name:fadein;--n:1;--dir:normal}
+  .fadein{animation-name:fadein;--n:1;--dir:normal}
   @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
   @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
   @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.12);opacity:.85}}
-  @keyframes shake{0%{transform:translate(0,0)}25%{transform:translate(-3px,2px)}50%{transform:translate(3px,-2px)}75%{transform:translate(-2px,-3px)}100%{transform:translate(2px,3px)}}
   @keyframes spin{to{transform:rotate(360deg)}}
-  @keyframes flicker{0%{transform:scale(1,.85)}50%{transform:scale(1.07,1.15)}100%{transform:scale(.95,.92)}}
   @keyframes flow{to{stroke-dashoffset:-56}}
   @keyframes rise{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:.9}100%{transform:translateY(var(--dy,-260px)) scale(var(--sc,1.8));opacity:0}}
   @keyframes drift{from{transform:translateX(0)}to{transform:translateX(var(--dx,200px))}}
   @keyframes move{from{transform:translate(0,0)}to{transform:translate(var(--dx,0px),var(--dy,0px))}}
-  @keyframes grow{from{transform:scale(0)}to{transform:scale(1)}}
   @keyframes growx{from{transform:scaleX(0)}to{transform:scaleX(1)}}
   @keyframes growy{from{transform:scaleY(0)}to{transform:scaleY(1)}}
   @keyframes draw{to{stroke-dashoffset:0}}
   @keyframes rot{from{transform:rotate(var(--r0,0deg))}to{transform:rotate(var(--r1,90deg))}}
   @keyframes twinkle{0%,100%{opacity:.2}50%{opacity:1}}
   @keyframes wobble{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
-  @keyframes wave{0%,100%{transform:rotate(-20deg)}50%{transform:rotate(25deg)}}
   @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.12}}
   @keyframes ring{0%{transform:scale(.2);opacity:.9}100%{transform:scale(2.8);opacity:0}}
-  @keyframes cnt{0%{opacity:1}18%{opacity:1}20%,100%{opacity:0}}
   @keyframes fadein{from{opacity:0}to{opacity:1}}
-  @keyframes vanish{from{opacity:1}to{opacity:0}}
 `;
 const THEMES = {
     paper: `background:${THEME.paper}`,
@@ -202,274 +180,234 @@ const scene = (bg, tts, layer, transition = 'fade') => ({
     layers: [{ type: 'background', color: bg }, layer]
 });
 
-// ════════════════════════════════════════════════════════════════
-//  EDU SERIES — "RM Footwear" A-Level Business Studies, Paper 2 Section A
-// ════════════════════════════════════════════════════════════════
-THEMES.board = 'background:#1f3d33';
-const CH = '#f5f1e6', CHY = '#ffe08a', GEO = 'Georgia,serif';
-const SHOE_SIZES = [8, 5, 6, 5, 6, 7, 7, 7, 8, 9];
+const S = [];
+const INK = THEME.ink;
 
-function qcard(lines, marks, o = {}) {
-    const fill = o.fill || '#fff', ink = o.ink || THEME.ink, h = 36 + lines.length * 48;
-    return `<rect x="10" y="0" width="980" height="${h}" rx="18" fill="${fill}" stroke="${ink}" stroke-width="6"/>` +
-        lines.map((l, i) => T(500, 52 + i * 48, l, 36, ink, 'middle', GEO, 'font-weight="bold"')).join('') +
-        `<rect x="850" y="-24" width="140" height="48" rx="24" fill="${THEME.accent}" stroke="${ink}" stroke-width="5"/>${T(920, 10, marks + (marks === 1 ? ' MARK' : ' MARKS'), 24, '#fff')}`;
-}
-function ansBox(y, title, items, o = {}) {
-    const ink = o.ink || THEME.ink, fill = o.fill || '#fff', rowH = o.rowH || 88, h = 74 + items.length * rowH, col = o.col || THEME.accent2;
-    let s = `<rect x="10" y="${y}" width="980" height="${h}" rx="18" fill="${fill}" stroke="${ink}" stroke-width="6"/><rect x="10" y="${y}" width="980" height="54" rx="18" fill="${col}" stroke="${ink}" stroke-width="6"/><rect x="16" y="${y + 30}" width="968" height="26" fill="${col}"/>` + T(40, y + 40, title, 32, '#fff', 'start');
-    items.forEach(([txt, d], i) => {
-        const yy = y + 78 + i * rowH, lines = Array.isArray(txt) ? txt : [txt];
-        s += `<g ${an('fadein', .6, d, 'center', '--n:1;')}><circle cx="52" cy="${yy + 26}" r="19" fill="${THEME.accent}" stroke="${ink}" stroke-width="3"/>${T(52, yy + 36, String(i + 1), 26, '#fff')}` +
-            lines.map((l, k) => T(88, yy + 30 + k * 36, l, 31, ink, 'start', GEO, 'font-weight="bold"')).join('') + '</g>';
-    });
-    return s;
-}
-const person = (x, y, c = THEME.ink, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})"><g stroke="${c}" stroke-width="5" stroke-linecap="round" fill="none"><line x1="0" y1="12" x2="0" y2="46"/><line x1="0" y1="46" x2="-13" y2="74"/><line x1="0" y1="46" x2="13" y2="74"/><line x1="-18" y1="26" x2="18" y2="26"/></g><circle cx="0" cy="0" r="12" fill="#fff" stroke="${c}" stroke-width="5"/></g>`;
-const shoe = (x, y, s = 1, col = THEME.accent) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-50 0 V-48 H-24 Q-14 -50 -8 -34 L10 -26 Q58 -22 60 -4 V0Z" fill="${col}" stroke="${THEME.ink}" stroke-width="5" stroke-linejoin="round"/><rect x="-52" y="0" width="114" height="14" rx="7" fill="#333" stroke="${THEME.ink}" stroke-width="4"/><line x1="-6" y1="-30" x2="14" y2="-20" stroke="#fff" stroke-width="3"/></g>`;
-const shop = (x, y, s = 1, sign = 'SHOP', col = THEME.accent) => `<g transform="translate(${x} ${y}) scale(${s})"><rect x="-90" y="-110" width="180" height="110" fill="#f6efe0" stroke="${THEME.ink}" stroke-width="6"/><path d="M-102 -110 H102 L86 -152 H-86Z" fill="${col}" stroke="${THEME.ink}" stroke-width="6" stroke-linejoin="round"/>${[-60, -20, 20, 60].map(k => `<line x1="${k}" y1="-152" x2="${k * 1.18}" y2="-110" stroke="#fff" stroke-width="7"/>`).join('')}<rect x="-26" y="-70" width="52" height="70" fill="#7a4a2a" stroke="${THEME.ink}" stroke-width="5"/><rect x="-80" y="-92" width="40" height="34" fill="#bfe6ff" stroke="${THEME.ink}" stroke-width="4"/><rect x="40" y="-92" width="40" height="34" fill="#bfe6ff" stroke="${THEME.ink}" stroke-width="4"/>${T(0, -166, sign, 26)}</g>`;
-function teacher(x, y, l1, l2, d = 0) {
-    return `<g transform="translate(${x} ${y})">${stickman(0, 0, [-34, -8], [58, -62], { wave: true, wide: true })}` +
-        `<g ${an('pulse', 2.2, d)}><ellipse cx="260" cy="-170" rx="230" ry="${l2 ? 62 : 48}" fill="#fff" stroke="${THEME.ink}" stroke-width="5"/><polygon points="90,-120 40,-140 120,-150" fill="#fff" stroke="${THEME.ink}" stroke-width="5"/><polygon points="94,-126 60,-138 118,-146" fill="#fff"/>` +
-        T(260, l2 ? -178 : -160, l1, 30, THEME.ink, 'middle', GEO, 'font-weight="bold"') + (l2 ? T(260, -142, l2, 30, THEME.accent, 'middle', GEO, 'font-weight="bold"') : '') + '</g></g>';
-}
-const panelBg = (n, title, col) => `<rect width="470" height="420" rx="18" fill="#fff" stroke="${THEME.ink}" stroke-width="6"/><circle cx="42" cy="42" r="24" fill="${col}" stroke="${THEME.ink}" stroke-width="4"/>${T(42, 52, String(n), 30, '#fff')}${T(82, 52, title, 32, THEME.ink, 'start')}`;
-const cap = (t) => T(235, 398, t, 25, THEME.accent, 'middle', GEO, 'font-weight="bold"');
-const ES = [];
+// ── extra helpers for this video ────────────────────────────────
+const pipe = (d, w = 50, fill = '#fff') => `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${w}" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${fill}" stroke-width="${w - 12}" stroke-linejoin="round"/>`;
+const water = (d, w = 50, dl = 0) => `<path d="${d}" fill="none" stroke="#4dd0ff" stroke-width="${w - 12}" stroke-linejoin="round" opacity=".9"/><path d="${d}" fill="none" stroke="#fff" stroke-width="5" stroke-dasharray="14 12" ${an('flow', .5, dl)}/>`;
+const valve = (x, y, open) => `<g transform="translate(${x} ${y})"><line x1="0" y1="-34" x2="0" y2="-80" stroke="${INK}" stroke-width="8"/><rect x="-34" y="-34" width="68" height="68" rx="10" fill="#8a929b" stroke="${INK}" stroke-width="5"/><rect x="-32" y="-102" width="64" height="22" rx="11" fill="${open ? '#2e8b57' : '#c0392b'}" stroke="${INK}" stroke-width="4"/></g>`;
+const sinePts = (x0, x1, cy, amp, ph, per = 3) => { const o = [], n = Math.round((x1 - x0) / 6); for (let i = 0; i <= n; i++) { const x = x0 + i * 6; o.push(`${x},${(cy + amp * Math.sin((x - x0) / (x1 - x0) * per * 2 * Math.PI + ph)).toFixed(1)}`); } return o.join(' '); };
+const wave = (cy, amp, ph, col, w = 6) => `<polyline points="${sinePts(-330, 330, cy, amp, ph)}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+const LANES = ['#ff4d4d', '#ff9d3d', '#ffe14d', '#4dff88', '#4dd0ff', '#c77dff'];
+const chip = (w, label) => `<rect x="${-w / 2}" y="${-w / 2}" width="${w}" height="${w}" rx="16" fill="#2b3a55" stroke="#c9ced6" stroke-width="8"/>
+  ${[-.3, -.1, .1, .3].map(k => `<line x1="${-w / 2 - 28}" y1="${k * w}" x2="${-w / 2}" y2="${k * w}" stroke="#c9ced6" stroke-width="8"/><line x1="${w / 2}" y1="${k * w}" x2="${w / 2 + 28}" y2="${k * w}" stroke="#c9ced6" stroke-width="8"/><line x1="${k * w}" y1="${-w / 2 - 28}" x2="${k * w}" y2="${-w / 2}" stroke="#c9ced6" stroke-width="8"/><line x1="${k * w}" y1="${w / 2}" x2="${k * w}" y2="${w / 2 + 28}" stroke="#c9ced6" stroke-width="8"/>`).join('')}
+  <rect x="${-w * .32}" y="${-w * .32}" width="${w * .64}" height="${w * .64}" rx="8" fill="#1c2630" stroke="#8fbcff" stroke-width="3"/>
+  ${[-.15, 0, .15].map((k, i) => `<polyline points="${-w * .28},${k * w} ${-w * .1},${k * w} ${-w * .05},${k * w + 16} ${w * .1},${k * w + 16} ${w * .28},${k * w}" fill="none" stroke="#4dd0ff" stroke-width="5" ${an('flow dash', .8, i * .2)}/>`).join('')}
+  ${T(0, w * .45 - 6, label, 30, '#fff')}`;
+const wideCard = (icon, title, a1, a2, col) => `<rect x="-440" y="-150" width="880" height="300" rx="18" fill="#fff" stroke="${INK}" stroke-width="6"/><g transform="translate(-300 0)">${icon}</g>${T(-170, -30, title, 42, col, 'start')}${T(-170, 28, a1, 28, INK, 'start', FM, 'font-weight="bold"')}${T(-170, 68, a2, 28, INK, 'start', FM, 'font-weight="bold"')}`;
 
-// ── E0 INTRO ─────────────────────────────────────────────────────
-ES.push(scene(THEME.paper,
- "Let's answer a real A-Level Business Studies paper, step by step. This is Paper 2, Section A, twenty-five marks, all about a shoe company called R M Footwear. We'll define, calculate, explain, and evaluate. Let's go.",
- comicScene({ badge: 'A-LEVEL BUSINESS STUDIES', badgeColor: THEME.accent2, groups: [
-  { id: 'sheet', x: 500, y: 390, w: 'paper', t: .6, svg: `<g ${an('float', 3)}><g transform="rotate(-3)">
-    <rect x="-330" y="-250" width="660" height="500" rx="14" fill="#fff" stroke="${THEME.ink}" stroke-width="8"/>
-    ${T(0, -140, 'PAPER 2', 96)}${T(0, -70, 'SECTION A', 62, THEME.accent)}${T(0, -10, 'DATA RESPONSE  ·  25 MARKS', 36)}
-    ${[40, 80, 120, 160, 200].map((y, i) => `<line x1="-270" y1="${y}" x2="${i === 4 ? 40 : 270}" y2="${y}" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>`).join('')}
-    <g ${an('move', 2.2, 0, 'center', '--dx:260px;')}><g transform="translate(-270 160) rotate(40)"><rect x="-6" y="-60" width="12" height="60" fill="#ffd23f" stroke="${THEME.ink}" stroke-width="4"/><polygon points="-6,0 6,0 0,16" fill="#f3d2a0" stroke="${THEME.ink}" stroke-width="3"/></g></g></g></g>` },
-  { id: 'fac', x: 500, y: 1070, w: 'footwear', t: 6.5, svg: `
-    <rect x="-300" y="-230" width="600" height="230" fill="#9a4a2e" stroke="${THEME.ink}" stroke-width="7"/>
-    ${[-200, 0, 200].map(x => `<path d="M${x - 100} -230 L${x - 100} -300 L${x} -230 Z" fill="#7a3a22" stroke="${THEME.ink}" stroke-width="6" stroke-linejoin="round"/>`).join('')}
-    <rect x="200" y="-380" width="60" height="150" fill="#7a3a22" stroke="${THEME.ink}" stroke-width="6"/>${puff(230, -385, 28, 0, -200)}${puff(230, -385, 34, 1.2, -230)}
-    ${[-230, -120, 120, 230].map(x => `<rect x="${x - 34}" y="-190" width="68" height="60" fill="#ffd9a0" stroke="${THEME.ink}" stroke-width="5"/>`).join('')}
-    <rect x="-110" y="-120" width="220" height="120" fill="#f6efe0" stroke="${THEME.ink}" stroke-width="6"/>${T(0, -62, 'RM FOOTWEAR', 38)}${T(0, -24, '(PVT) LTD', 28, THEME.accent)}
-    <rect x="-340" y="22" width="680" height="30" rx="15" fill="#3a3a3a" stroke="${THEME.ink}" stroke-width="5"/><line x1="-320" y1="37" x2="320" y2="37" stroke="#aaa" stroke-width="5" ${an('flow dash', .6)}/>
-    ${[0, 1, 2].map(i => `<g transform="translate(-300 18)"><g ${an('drift', 6, -i * 2, 'center', '--dx:560px;')}>${shoe(0, 0, .45, ['#b5402c', '#2c6b5a', '#2d5fb5'][i])}</g></g>`).join('')}` },
-  ...['DEFINE', 'CALCULATE', 'EXPLAIN', 'EVALUATE'].map((c, i) => ({ id: 'c' + i, x: 125 + i * 250, y: 1340, w: c.toLowerCase(), t: 8.6 + i * .9,
-     svg: `<g ${an('grow', .5, 0, 'center')}><rect x="-112" y="-40" width="224" height="80" rx="40" fill="${[THEME.accent, THEME.accent2, '#2d5fb5', '#b8860b'][i]}" stroke="${THEME.ink}" stroke-width="6"/>${T(0, 12, c, 32, '#fff')}</g>` })),
-  { id: 'tch', x: 120, y: 1250, w: 'go', t: 14, svg: teacher(0, 0, 'Ready?', '', 0).replace(/<g transform="translate\(0 0\)">/, '<g>') }
+// ── 0 HOOK ──────────────────────────────────────────────────────
+S.push(scene('#050818',
+ "Your phone chip does billions of calculations every second, and it runs hot. Light is the fastest thing in the universe. So could we compute with photons instead of electrons? The answer is yes, no, and a surprising maybe.",
+ comicScene({ badge: 'LIGHT VS ELECTRONS', theme: 'night', groups: [
+  { id: 'stars', always: true, svg: stars(50, 31) },
+  { id: 'chip', x: 500, y: 430, w: 'chip', t: .7, svg: chip(300, 'CPU') },
+  { id: 'hot', x: 500, y: 430, w: 'hot', t: 4.1, svg: `<g ${an('pulse', .9)}><ellipse rx="230" ry="200" fill="rgba(255,70,40,.25)"/></g>${[-90, 0, 90].map((x, i) => `<path d="M${x} -190 q18 -30 0 -60 q-18 -30 0 -60" fill="none" stroke="#ff7a1a" stroke-width="8" stroke-linecap="round" ${an('bob', 1, i * .3)}/>`).join('')}${sfx(0, 270, 'RUNS HOT', -3, '#ff7a1a', 70, '#050818')}` },
+  { id: 'light', w: 'light', t: 4.5, svg: `<path d="${wavy(40, 850, 960, 850, 22, 18)}" fill="none" stroke="#ffd23f" stroke-width="9" stroke-linecap="round" ${an('flow dash', .5)}/>${T(500, 810, 'LIGHT: THE FASTEST THING THERE IS', 34, '#ffd23f')}` },
+  { id: 'ph', x: 300, y: 1030, w: 'photons', t: 9, svg: `<g ${an('pulse', 1)}><circle r="46" fill="#ffd23f" stroke="#fff" stroke-width="6"/></g>${T(0, 100, 'PHOTONS', 40, '#ffd23f')}` },
+  { id: 'vs', x: 500, y: 1050, w: 'photons', t: 9.5, svg: `${T(0, 0, 'VS', 56, '#fff')}` },
+  { id: 'el', x: 700, y: 1030, w: 'electrons', t: 10, svg: `<g ${an('pulse', 1.2)}><circle r="46" fill="#4dd0ff" stroke="#fff" stroke-width="6"/>${T(0, 14, 'e-', 40, '#050818')}</g>${T(0, 100, 'ELECTRONS', 40, '#4dd0ff')}` },
+  { id: 'yes', x: 190, y: 1300, w: 'yes', t: 11.4, svg: sfx(0, 0, 'YES', -4, '#6dff9c', 90, '#050818') },
+  { id: 'no', x: 440, y: 1300, w: 'no', t: 11.7, svg: sfx(0, 0, 'NO', 3, '#ff6b6b', 90, '#050818') },
+  { id: 'maybe', x: 780, y: 1300, w: 'maybe', t: 13.1, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'MAYBE', -3, '#ffd23f', 96, '#050818')}</g>` }
  ]})));
 
-// ── E1 THE CASE ──────────────────────────────────────────────────
-ES.push(scene(THEME.paper,
- "Here's the story. R M Footwear makes school shoes and supplies retailers and wholesalers. It wants to grow by opening its own shop. But it has a stock problem: some sizes pile up, while others run out. So the directors order a survey of ten students, and plan a computer system to manage stock.",
- comicScene({ badge: 'THE CASE STUDY', badgeColor: THEME.accent2, groups: [
-  { id: 'ops', w: 'school', t: 1.6, svg: `
-    <g transform="translate(190 380)">
-      <rect x="-110" y="-150" width="220" height="150" fill="#9a4a2e" stroke="${THEME.ink}" stroke-width="6"/><rect x="50" y="-220" width="40" height="80" fill="#7a3a22" stroke="${THEME.ink}" stroke-width="5"/>${puff(70, -225, 18, 0, -120)}${puff(70, -225, 22, 1.2, -140)}
-      ${T(0, -70, 'RM', 54)}${T(0, 52, 'RM FOOTWEAR', 28)}</g>
-    <g transform="translate(300 330)"><g ${an('drift', 3.2, 0, 'center', '--dx:260px;--dir:normal;')}><rect x="0" y="-26" width="76" height="40" fill="#2d5fb5" stroke="${THEME.ink}" stroke-width="5"/><rect x="76" y="-12" width="30" height="26" fill="#2d5fb5" stroke="${THEME.ink}" stroke-width="5"/><circle cx="20" cy="18" r="10" fill="#333" ${an('spin', .5)}/><circle cx="88" cy="18" r="10" fill="#333" ${an('spin', .5)}/></g></g>
-    ${shop(780, 300, .7, 'RETAILERS')}${shop(780, 470, .7, 'WHOLESALERS', '#2d5fb5')}` },
-  { id: 'newshop', w: 'shop', t: 7.5, svg: `
-    <g transform="translate(190 780)"><g ${an('grow', .7, 0, 'bottom')}>${shop(0, 0, 1, 'NEW OUTLET', THEME.accent2)}</g></g>
-    <g ${an('pulse', 1.2)}>${T(620, 700, 'GOAL: GROW INTERNALLY', 38, THEME.accent2)}</g>
-    ${T(620, 756, 'open its own retail outlet', 32, THEME.ink, 'middle', GEO, 'font-weight="bold"')}${T(620, 806, 'to maximise returns on investment', 30, THEME.ink, 'middle', GEO)}` },
-  { id: 'stock', w: 'pile', t: 12, svg: `
-    <g transform="translate(260 1010)"><rect x="-170" y="0" width="340" height="12" fill="#6b4423" stroke="${THEME.ink}" stroke-width="4"/>${[0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => `<rect x="${-150 + c * 76}" y="${-44 - r * 46}" width="68" height="40" fill="#f3e2b3" stroke="${THEME.ink}" stroke-width="3"/>`).join('')).join('')}${T(0, 52, 'OVERSTOCKED', 30, THEME.accent)}</g>
-    <g transform="translate(740 1010)"><rect x="-170" y="0" width="340" height="12" fill="#6b4423" stroke="${THEME.ink}" stroke-width="4"/><g ${an('blink', .9)}><rect x="-110" y="-130" width="220" height="60" rx="10" fill="${THEME.accent}" stroke="${THEME.ink}" stroke-width="5"/>${T(0, -88, 'STOCK-OUT', 36, '#fff')}</g>${T(0, 52, 'RAN OUT', 30, THEME.accent)}</g>` },
-  { id: 'surv', w: 'survey', t: 17.5, svg: `
-    ${T(500, 1140, 'SURVEY: 10 RANDOM STUDENTS', 34)}
-    ${SHOE_SIZES.map((n, i) => `<g ${an('fadein', .5, i * .55 + .3, 'center', '--n:1;')}>${person(100 + i * 88, 1180, THEME.ink, .85)}${T(100 + i * 88, 1170, String(n), 30, THEME.accent)}</g>`).join('')}` },
-  { id: 'comp', w: 'computer', t: 25, svg: `
-    <g transform="translate(150 1360)"><rect x="-70" y="-52" width="140" height="92" rx="8" fill="#1c2630" stroke="${THEME.ink}" stroke-width="6"/><rect x="-14" y="40" width="28" height="22" fill="#555"/><polyline points="-52,18 -26,-6 -4,6 22,-30 52,-12" fill="none" stroke="#6dff9c" stroke-width="5" stroke-linejoin="round" ${an('flow dash', .8)}/></g>
-    <g ${an('pulse', 1.2)}>${T(620, 1352, 'COMPUTERISED STOCK SYSTEM', 36, THEME.accent2)}</g>${T(620, 1398, 'tills record sales + stock left', 30, THEME.ink, 'middle', GEO, 'font-weight="bold"')}` }
+// ── 1 THE TRANSISTOR IS A TAP ───────────────────────────────────
+S.push(scene(THEME.paper,
+ "Inside every chip are tens of billions of tiny switches called transistors. Think of each one as a water tap. Turn the handle on, and water flows. That's a one. Turn it off, and nothing flows. That's a zero. The handle is a small voltage, and the water is electrons.",
+ comicScene({ badge: '1 - THE CHIP IS A TAP', badgeColor: THEME.accent2, groups: [
+  { id: 'bill', x: 500, y: 110, w: 'billions', t: 2.1, svg: `${sfx(0, 0, 'TENS OF BILLIONS', -2, THEME.accent, 72, '#fff')}${T(0, 56, 'of switches on one chip', 30, INK, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'tr', x: 500, y: 290, w: 'transistors', t: 3.8, svg: T(0, 0, 'TRANSISTOR = A TINY SWITCH', 42) },
+  { id: 'tap', w: 'tap', t: 6.6, svg: `${pipe('M80 760 H920', 56)}<rect x="450" y="690" width="100" height="140" rx="14" fill="#8a929b" stroke="${INK}" stroke-width="6"/><line x1="500" y1="690" x2="500" y2="640" stroke="${INK}" stroke-width="12"/>${T(130, 700, 'IN', 30)}${T(870, 700, 'OUT', 30)}` },
+  { id: 'on', w: 'on', t: 7.9, hw: 'off', ht: 11, svg: `${water('M90 760 H446', 56)}${water('M554 760 H910', 56, .2)}<line x1="500" y1="650" x2="590" y2="590" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><circle cx="596" cy="586" r="24" fill="#2e8b57" stroke="${INK}" stroke-width="6"/>${T(640, 570, 'OPEN', 36, THEME.accent2, 'start')}` },
+  { id: 'off', w: 'off', t: 11, svg: `${water('M90 760 H446', 56)}<line x1="500" y1="650" x2="500" y2="580" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><circle cx="500" cy="566" r="24" fill="#c0392b" stroke="${INK}" stroke-width="6"/>${T(560, 570, 'CLOSED', 36, THEME.accent, 'start')}` },
+  { id: 'b1', x: 500, y: 1070, w: 'flows', t: 9, hw: 'off', ht: 11, svg: `<circle r="90" fill="#fff" stroke="${INK}" stroke-width="7"/>${T(0, 38, '1', 120, THEME.accent2)}${T(0, 150, 'ON = ONE', 40)}` },
+  { id: 'b0', x: 500, y: 1070, w: 'zero', t: 13.1, svg: `<circle r="90" fill="#fff" stroke="${INK}" stroke-width="7"/>${T(0, 38, '0', 120, THEME.accent)}${T(0, 150, 'OFF = ZERO', 40)}` },
+  { id: 'vo', x: 230, y: 520, w: 'voltage', t: 15.2, svg: `${T(0, 0, 'HANDLE = VOLTAGE', 34, THEME.accent)}${arrow(110, 20, 230, 100, THEME.accent, 6)}` },
+  { id: 'el', x: 500, y: 900, w: 'electrons', t: 16.9, svg: `${T(0, 0, 'WATER = ELECTRONS', 34, '#1565c0')}${arrow(-120, -30, -170, -90, '#1565c0', 6)}` }
  ]})));
 
-// ── E2 (a)(i) SAMPLE ─────────────────────────────────────────────
-const CHOSEN = [3, 8, 12, 17, 21, 24, 29, 33, 36, 39];
-ES.push(scene(THEME.paper,
- "Question a-i. Define sample. A sample is a small group chosen from the whole population to represent it, so a business can learn about everyone without asking everybody. In this passage, it's the ten students picked at random from one school.",
- comicScene({ badge: '(a)(i)  SAMPLE', badgeColor: THEME.accent, groups: [
-  { id: 'q', y: 10, t: .1, svg: qcard(['Define “sample” as used in the passage.'], 3) },
-  { id: 'pop', w: 'sample', t: 1.8, svg: `${T(500, 210, 'POPULATION: ALL STUDENTS', 34, THEME.accent2)}<rect x="30" y="228" width="940" height="420" rx="16" fill="none" stroke="${THEME.ink}" stroke-width="5" stroke-dasharray="14 10"/>` +
-     Array.from({ length: 40 }, (_, i) => person(90 + (i % 10) * 90, 258 + Math.floor(i / 10) * 100, '#8a8f96', .9)).join('') },
-  { id: 'pick', w: 'ten', t: 14.5, svg: CHOSEN.map((k, i) => `<g ${an('bob', .9, i * .1)}>${person(90 + (k % 10) * 90, 258 + Math.floor(k / 10) * 100, THEME.accent, .9)}</g>`).join('') },
-  { id: 'samp', w: 'ten', t: 14.5, svg: arrow(500, 660, 500, 718, THEME.accent) + `<rect x="150" y="730" width="700" height="130" rx="16" fill="#fff" stroke="${THEME.accent}" stroke-width="6"/>${T(500, 774, 'SAMPLE: 10 STUDENTS (RANDOM)', 30, THEME.accent)}` + CHOSEN.map((k, i) => person(215 + i * 63, 790, THEME.accent, .5)).join('') },
-  { id: 'ans', w: 'small', t: 4.4, svg: ansBox(900, 'MODEL ANSWER', [['A small group selected from a larger population', 0], [['Used to represent the whole population', '(so everyone need not be asked)'], 5], [['In the passage: 10 students chosen at random', 'from one school'], 12]]) },
-  { id: 'tch', x: 110, y: 1400, t: 22, svg: teacher(0, 0, 'Definition + context', '= full marks', 0) }
+// ── 2 TAPS BECOME LOGIC ─────────────────────────────────────────
+const tileG = (id, w, t, x, label, fs = 40) => ({ id, x, y: 1260, w, t, svg: `<rect x="-110" y="-55" width="220" height="110" rx="14" fill="#fff" stroke="${INK}" stroke-width="6"/>${T(0, fs / 3, label, fs, THEME.accent2)}` });
+S.push(scene(THEME.paper,
+ "Connect two taps in a row, and water only reaches the end if both are open. That's an AND gate. Put them side by side, and water arrives if either one is open. That's an OR gate. Stack enough of these gates and you can add numbers, multiply them, and run your whole phone.",
+ comicScene({ badge: '2 - TAPS BECOME LOGIC', badgeColor: THEME.accent2, groups: [
+  { id: 'row', x: 500, y: 350, w: 'row', t: 1.7, svg: `${pipe('M-400 0 H400')}${valve(-120, 0, false)}${valve(120, 0, false)}${T(-370, 50, 'IN', 28)}${T(370, 50, 'OUT', 28)}` },
+  { id: 'both', x: 500, y: 350, w: 'both', t: 4.5, svg: `${water('M-396 0 H-154')}${water('M-86 0 H86', 50, .2)}${water('M154 0 H396', 50, .4)}${valve(-120, 0, true)}${valve(120, 0, true)}${T(0, 110, 'OUT = 1', 48, THEME.accent2)}` },
+  { id: 'and', x: 500, y: 170, w: 'gate', t: 6.6, svg: T(0, 0, 'AND GATE: BOTH TAPS OPEN', 38, THEME.accent2) },
+  { id: 'side', x: 500, y: 830, w: 'side', t: 7.6, svg: `${pipe('M-400 0 H-250')}${pipe('M-250 0 V-90 H250 V0')}${pipe('M-250 0 V90 H250 V0')}${pipe('M250 0 H400')}${valve(0, -90, false)}${valve(0, 90, false)}${T(-370, 50, 'IN', 28)}${T(370, 50, 'OUT', 28)}` },
+  { id: 'either', x: 500, y: 830, w: 'either', t: 10, svg: `${water('M-396 0 H-250 V-90 H-40')}${water('M40 -90 H250 V0 H396', 50, .2)}${valve(0, -90, true)}${T(0, 190, 'OUT = 1', 48, THEME.accent2)}` },
+  { id: 'or', x: 500, y: 700, w: 'or', t: 12.1, svg: T(0, 0, 'OR GATE: EITHER TAP OPEN', 38, THEME.accent2) },
+  { id: 'stk', x: 500, y: 1110, w: 'stack', t: 12.8, svg: sfx(0, 0, 'STACK BILLIONS OF GATES', -2, THEME.accent, 56, '#fff') },
+  tileG('t1', 'add', 15.5, 160, 'ADD'),
+  tileG('t2', 'multiply', 16.2, 500, 'MULTIPLY', 36),
+  tileG('t3', 'phone', 18.3, 840, 'RUN A PHONE', 28)
  ]})));
 
-// ── E3 (a)(ii) INTERNAL GROWTH ───────────────────────────────────
-ES.push(scene(THEME.paper,
- "Question a-ii. Define internal growth. Internal growth is when a business expands using its own resources and efforts, for example opening new branches, launching new products or entering new markets, rather than merging with, or taking over, another firm. In the passage, it's RM Footwear opening its own retail outlet.",
- comicScene({ badge: '(a)(ii)  INTERNAL GROWTH', badgeColor: THEME.accent, groups: [
-  { id: 'q', y: 10, t: .1, svg: qcard(['Define “internal growth” as used in the passage.'], 3) },
-  { id: 'shops', w: 'internal', t: 2.4, svg: [200, 500, 800].map((x, i) => `<g transform="translate(${x} 470)"><g ${an('grow', .7, i * 1.3, 'bottom')}>${shop(0, 0, .8 + i * .18, i === 2 ? 'OUTLET' : 'SHOP', [THEME.accent2, THEME.accent2, THEME.accent][i])}</g></g>`).join('') + arrow(300, 420, 400, 420, THEME.ink) + arrow(600, 420, 700, 420, THEME.ink) + T(500, 205, 'OWN RESOURCES', 36, THEME.accent2) },
-  { id: 'ex', w: 'example', t: 11, svg: ['NEW BRANCHES', 'NEW PRODUCTS', 'NEW MARKETS'].map((t, i) => `<g transform="translate(${170 + i * 330} 590)"><g ${an('grow', .5, i * 1.6)}><rect x="-150" y="-28" width="300" height="56" rx="28" fill="#fff" stroke="${THEME.accent2}" stroke-width="5"/>${T(0, 9, t, 26, THEME.accent2)}</g></g>`).join('') },
-  { id: 'ext', w: 'merging', t: 18.5, svg: `<g transform="translate(500 740)"><rect x="-290" y="-36" width="110" height="72" rx="10" fill="#eee" stroke="#999" stroke-width="5"/>${T(-235, 10, 'FIRM A', 24, '#999')}<rect x="180" y="-36" width="110" height="72" rx="10" fill="#eee" stroke="#999" stroke-width="5"/>${T(235, 10, 'FIRM B', 24, '#999')}<path d="M-160 0 H160" stroke="#999" stroke-width="7" stroke-dasharray="14 10" ${an('flow', 1)}/>${T(0, -14, 'MERGER / TAKEOVER', 28, '#777')}<g ${an('blink', .9)}><path d="M-80 -44 L80 44 M80 -44 L-80 44" stroke="${THEME.accent}" stroke-width="10" stroke-linecap="round"/></g></g>${T(500, 810, 'that is EXTERNAL growth, not this', 28, '#777', 'middle', GEO, 'font-style="italic"')}` },
-  { id: 'rm', w: 'outlet', t: 27, svg: `<g ${an('pulse', .9)}>${sfx(800, 250, "RM'S OWN OUTLET", -4, THEME.accent, 40, '#fff')}</g>` },
-  { id: 'ans', w: 'expands', t: 6.6, svg: ansBox(860, 'MODEL ANSWER', [['Expansion using the firm’s own resources', 0], [['e.g. new branches, products or markets', '(not a merger or takeover)'], 5.5], [['In the passage: RM Footwear opening', 'its own retail outlet'], 20]]) },
+// ── 3 THE STADIUM OF BITS ───────────────────────────────────────
+const SMILE = ['....######....', '..##########..', '.############.', '####..##..####', '####..##..####', '##############', '##############', '##.########.##', '###.######.###', '.####....####.', '..##########..', '....######....', '..............', '..............'];
+const gridBase = (() => { const r = rng(7); let o = ''; for (let j = 0; j < 14; j++) for (let i = 0; i < 14; i++) { const b = r() > .5; o += `<rect x="${-403 + i * 58}" y="${-403 + j * 58}" width="52" height="52" rx="6" fill="${b ? INK : '#fff'}" stroke="${INK}" stroke-width="3"/>`; } return o; })();
+const gridFlip = (() => { const r = rng(7), q = rng(77); let o = ''; for (let j = 0; j < 14; j++) for (let i = 0; i < 14; i++) { const b = r() > .5; if (q() < .6) o += `<rect x="${-403 + i * 58}" y="${-403 + j * 58}" width="52" height="52" rx="6" fill="${b ? '#fff' : INK}" stroke="${INK}" stroke-width="3" ${an('blink', (.3 + q() * .6).toFixed(2), (q() * .5).toFixed(2), 'center', '--dir:normal;')}/>`; } return o; })();
+const gridPic = SMILE.map((row, j) => row.split('').map((c, i) => `<rect x="${-403 + i * 58}" y="${-403 + j * 58}" width="52" height="52" rx="6" fill="${c === '#' ? '#ffd23f' : '#fff'}" stroke="${INK}" stroke-width="3"/>`).join('')).join('');
+S.push(scene(THEME.paper,
+ "A modern chip flips these taps billions of times every second. Picture a giant stadium where every person holds up a black or white card, and everyone flips at once, billions of times a second. The patterns they form are your video, your game, your message.",
+ comicScene({ badge: '3 - THE STADIUM OF BITS', badgeColor: THEME.accent2, groups: [
+  { id: 'clk', x: 500, y: 120, w: 'billions', t: 2.1, svg: `${sfx(0, 0, '~5 BILLION FLIPS', -2, THEME.accent, 72, '#fff')}${T(0, 58, 'EVERY SECOND', 36)}` },
+  { id: 'grid', x: 500, y: 760, w: 'stadium', t: 4.8, svg: gridBase },
+  { id: 'bw', x: 500, y: 1210, w: 'black', t: 7.2, svg: T(0, 0, 'BLACK CARD = 1    WHITE CARD = 0', 32, INK, 'middle', FM, 'font-weight="bold"') },
+  { id: 'flip', x: 500, y: 760, w: 'once', t: 10, svg: gridFlip },
+  { id: 'pic', x: 500, y: 760, w: 'patterns', t: 12.4, svg: gridPic },
+  { id: 'p1', x: 190, y: 1330, w: 'video', t: 14.1, svg: `<rect x="-130" y="-40" width="260" height="80" rx="40" fill="${THEME.accent}" stroke="${INK}" stroke-width="5"/>${T(0, 14, 'VIDEO', 44, '#fff')}` },
+  { id: 'p2', x: 500, y: 1330, w: 'game', t: 14.8, svg: `<rect x="-130" y="-40" width="260" height="80" rx="40" fill="${THEME.accent2}" stroke="${INK}" stroke-width="5"/>${T(0, 14, 'GAME', 44, '#fff')}` },
+  { id: 'p3', x: 810, y: 1330, w: 'message', t: 15.5, svg: `<rect x="-130" y="-40" width="260" height="80" rx="40" fill="#2d5fb5" stroke="${INK}" stroke-width="5"/>${T(0, 14, 'MESSAGE', 44, '#fff')}` }
  ]})));
 
-// ── E4 (b)(i) MEAN ───────────────────────────────────────────────
-let run = 0; const RUN = SHOE_SIZES.map(n => (run += n));
-ES.push(scene('#1f3d33',
- "Question b-i. Calculate the mean shoe size. Add all ten sizes: eight plus five plus six plus five plus six plus seven plus seven plus seven plus eight plus nine, which equals sixty-eight. Now divide by the number of students, ten. Sixty-eight divided by ten gives a mean of six point eight.",
- comicScene({ badge: '(b)(i)  THE MEAN', badgeColor: '#b8860b', theme: 'board', groups: [
-  { id: 'q', y: 10, t: .1, svg: qcard(['Calculate the mean shoe size.'], 2, { fill: '#2a5446', ink: CH }).replace(/fill="#231b12"/g, '') .replace(/<text([^>]*)fill="#231b12"/g, '<text$1fill="' + CH + '"') },
-  { id: 'chips', w: 'add', t: 4, svg: SHOE_SIZES.map((n, i) => {
-      const x = 82 + i * 92;
-      return `<g ${an('grow', .45, i * .78 + .3, 'center')}><circle cx="${x}" cy="400" r="36" fill="none" stroke="${CH}" stroke-width="5"/>${T(x, 414, String(n), 44, CH)}</g>` +
-        (i < 9 ? `<g ${an('fadein', .3, i * .78 + .7, 'center', '--n:1;')}>${T(x + 46, 410, '+', 34, CHY)}</g>` : '') +
-        `<g ${an('fadein', .4, i * .78 + .9, 'center', '--n:1;')}>${T(x, 500, String(RUN[i]), 34, CHY)}</g>`;
-    }).join('') + T(500, 330, 'SHOE SIZES  (10 STUDENTS)', 34, CH) + T(500, 560, 'running total', 28, CHY, 'middle', GEO, 'font-style="italic"') },
-  { id: 'tot', w: 'equals', t: 13, svg: `<g ${an('grow', .6, 0, 'center')}><rect x="250" y="620" width="500" height="110" rx="18" fill="none" stroke="${CHY}" stroke-width="6"/>${T(500, 696, 'TOTAL = 68', 70, CHY)}</g>` },
-  { id: 'div', w: 'divide', t: 16.5, svg: `${T(500, 830, 'MEAN = TOTAL ÷ NUMBER OF VALUES', 40, CH)}<g ${an('fadein', .6, 1.6, 'center', '--n:1;')}>${T(500, 920, '= 68 ÷ 10', 72, CH)}</g>` },
-  { id: 'ansm', w: 'point', t: 23.5, svg: `<g ${an('grow', .6, 0, 'center')}><rect x="250" y="990" width="500" height="150" rx="24" fill="${CHY}" stroke="${CH}" stroke-width="6"/>${T(500, 1096, '= 6.8', 110, '#1f3d33')}</g>${[0, .5].map(d => `<circle cx="500" cy="1065" r="190" fill="none" stroke="${CHY}" stroke-width="6" ${an('ring', 1.4, d, 'center', '--dir:normal;--n:2;')}/>`).join('')}${T(500, 1210, 'MEAN SHOE SIZE = 6.8', 40, CH)}` },
-  { id: 'chalk', always: true, svg: stars(24, 4).replace(/#fff/g, CH) }
+// ── 4 PROBLEM 1: HEAT ───────────────────────────────────────────
+S.push(scene(THEME.paper,
+ "But electrons have a problem. They carry charge and they crash into the atoms of the metal. Picture a crowd sprinting down a hallway full of furniture. Every bump wastes energy as heat. That is why your phone gets warm, and why data centers need giant cooling systems.",
+ comicScene({ badge: '4 - PROBLEM: HEAT', badgeColor: THEME.accent, groups: [
+  { id: 'prob', x: 500, y: 100, w: 'problem', t: 1.4, svg: sfx(0, 0, 'PROBLEM 1: HEAT', -2, THEME.accent, 72, '#fff') },
+  { id: 'hall', w: 'atoms', t: 4.5, svg: `<rect x="60" y="190" width="880" height="16" fill="#8a7f6f" stroke="${INK}" stroke-width="4"/><rect x="60" y="590" width="880" height="16" fill="#8a7f6f" stroke="${INK}" stroke-width="4"/>
+    ${[[200, 330], [340, 480], [480, 340], [620, 490], [760, 330], [260, 500], [560, 260], [860, 480]].map(([x, y], i) => `<g transform="translate(${x} ${y})"><g ${an('wobble', .4 + i * .05)}><circle r="32" fill="#c8702a" stroke="${INK}" stroke-width="5"/><circle cx="-8" cy="-8" r="8" fill="#fff" opacity=".4"/></g></g>`).join('')}${T(500, 650, 'A WIRE, UP CLOSE', 30, INK, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'crowd', w: 'crowd', t: 6.6, svg: [240, 300, 380, 440, 520, 560].map((y, i) => `<g transform="translate(70 ${y})"><g ${an('move', 2.2 + i * .25, i * .3, 'center', '--dx:820px;')}><g ${an('bob', .18, i * .05)}><circle r="14" fill="#4dd0ff" stroke="${INK}" stroke-width="3"/><text y="5" font-size="15" text-anchor="middle" font-family="${FI}" fill="${INK}">e</text></g></g></g>`).join('') },
+  { id: 'furn', x: 500, y: 720, w: 'furniture', t: 9, svg: `${T(0, 0, 'ATOMS = FURNITURE', 36, '#8a5a1a')}${T(0, 48, 'ELECTRONS = THE CROWD', 36, '#1565c0')}` },
+  { id: 'bump', w: 'bump', t: 9.7, svg: [[340, 480], [480, 340], [620, 490], [760, 330]].map(([x, y], i) => sparks(x, y, 6, '#ff7a1a', 46, .35 + i * .05)).join('') },
+  { id: 'heat', w: 'heat', t: 11, svg: `<g ${an('pulse', .9)}><ellipse cx="500" cy="400" rx="470" ry="260" fill="rgba(230,60,40,.16)"/></g>${[200, 500, 800].map((x, i) => `<path d="M${x} 170 q20 -30 0 -60 q-20 -30 0 -60" fill="none" stroke="#e63946" stroke-width="8" stroke-linecap="round" ${an('bob', 1, i * .3)}/>`).join('')}${sfx(500, 800, 'WASTED AS HEAT', -2, '#e63946', 60, '#fff')}` },
+  { id: 'ph', x: 250, y: 1100, w: 'phone', t: 12.8, svg: `<g ${an('pulse', 1)}><ellipse rx="130" ry="150" fill="rgba(230,60,40,.22)"/></g><rect x="-60" y="-110" width="120" height="220" rx="20" fill="#222" stroke="${INK}" stroke-width="6"/><rect x="-50" y="-90" width="100" height="170" rx="8" fill="#ff9d7a"/>${[-30, 10].map((x, i) => `<path d="M${x} -120 q10 -20 0 -36" fill="none" stroke="#e63946" stroke-width="6" stroke-linecap="round" ${an('bob', .8, i * .3)}/>`).join('')}${T(0, 170, 'WARM PHONE', 34)}` },
+  { id: 'dc', x: 730, y: 1100, w: 'cooling', t: 15.9, svg: `${[-110, 0, 110].map((x, i) => `<rect x="${x - 45}" y="-110" width="90" height="230" rx="8" fill="#3a4654" stroke="${INK}" stroke-width="5"/>${[0, 1, 2, 3].map(k => `<circle cx="${x - 20}" cy="${-80 + k * 40}" r="6" fill="${['#6dff9c', '#ffd23f', '#ff4d4d', '#6dff9c'][k]}" ${an('blink', .8 + k * .2, i * .2)}/>`).join('')}`).join('')}
+    <g transform="translate(0 -170)"><circle r="42" fill="#fff" stroke="${INK}" stroke-width="5"/><g ${an('spin', .8, 0, [0, 0])}>${[0, 90, 180, 270].map(a => `<ellipse cx="0" cy="-22" rx="9" ry="20" fill="#4dd0ff" stroke="${INK}" stroke-width="3" transform="rotate(${a})"/>`).join('')}</g></g>${T(0, 190, 'GIANT COOLING', 34)}` }
  ]})));
 
-// ── E5 (b)(ii) MODE ──────────────────────────────────────────────
-const FREQ = [[5, 2], [6, 2], [7, 3], [8, 2], [9, 1]];
-ES.push(scene('#1f3d33',
- "Question b-ii. Determine the modal shoe size. The mode is the value that appears most often. Count each size: five appears twice, six twice, seven three times, eight twice, and nine once. Seven wins, so the modal shoe size is seven.",
- comicScene({ badge: '(b)(ii)  THE MODE', badgeColor: '#b8860b', theme: 'board', groups: [
-  { id: 'q', y: 10, t: .1, svg: qcard(['Determine the modal shoe size.'], 1, { fill: '#2a5446', ink: CH }).replace(/<text([^>]*)fill="#231b12"/g, '<text$1fill="' + CH + '"') },
-  { id: 'def', w: 'mode', t: 6.2, svg: `<g ${an('grow', .5, 0, 'center')}><rect x="120" y="190" width="760" height="86" rx="16" fill="none" stroke="${CHY}" stroke-width="5"/>${T(500, 248, 'MODE = THE MOST FREQUENT VALUE', 40, CHY)}</g>` },
-  { id: 'bars', w: 'count', t: 8.8, svg: `<line x1="60" y1="1100" x2="940" y2="1100" stroke="${CH}" stroke-width="6"/><line x1="60" y1="1100" x2="60" y2="440" stroke="${CH}" stroke-width="6"/>${T(500, 1180, 'SHOE SIZE', 34, CH)}${T(500, 410, 'FREQUENCY (how many students)', 30, CH)}` +
-     FREQ.map(([s, f], i) => { const x = 170 + i * 175, h = f * 200;
-       return `<g ${an('growy', .7, .4 + [0, 1.6, 3.3, 5.1, 6.9][i], 'bottom')}><rect x="${x - 60}" y="${1100 - h}" width="120" height="${h}" fill="${s === 7 ? CHY : '#7fb2e5'}" stroke="${CH}" stroke-width="5"/></g>` +
-        `<g ${an('fadein', .4, 1.1 + [0, 1.6, 3.3, 5.1, 6.9][i], 'center', '--n:1;')}>${T(x, 1100 - h - 16, String(f), 44, CH)}</g>${T(x, 1150, String(s), 44, CHY)}`; }).join('') },
-  { id: 'hi', w: 'wins', t: 22, svg: `<g transform="translate(520 600)"><g ${an('pulse', .8)}><polygon points="0,-120 30,-60 96,-52 48,-8 60,58 0,26 -60,58 -48,-8 -96,-52 -30,-60" fill="${CHY}" stroke="${CH}" stroke-width="5"/></g></g>${[0, .6].map(d => `<circle cx="520" cy="770" r="150" fill="none" stroke="${CHY}" stroke-width="6" ${an('ring', 1.5, d, 'center', '--dir:normal;--n:2;')}/>`).join('')}<g ${an('grow', .6, 0, 'center')}>${T(520, 360, 'MODE = 7', 80, CHY)}</g>` },
-  { id: 'chalk', always: true, svg: stars(24, 9).replace(/#fff/g, CH) }
+// ── 5 PROBLEM 2: WIRES ──────────────────────────────────────────
+S.push(scene(THEME.paper,
+ "The wires are an even bigger problem. As chips shrink, wires get thinner, like a garden hose squeezed down to a coffee straw. Pushing signals through gets slower and hotter. Today, moving data around a chip can cost more energy than the math itself.",
+ comicScene({ badge: '5 - PROBLEM: WIRES', badgeColor: THEME.accent, groups: [
+  { id: 'tt', x: 500, y: 100, w: 'wires', t: .3, svg: sfx(0, 0, 'PROBLEM 2: WIRES', -2, THEME.accent, 72, '#fff') },
+  { id: 'fun', w: 'thinner', t: 4.1, svg: `<polygon points="80,200 520,318 920,318 920,354 520,354 80,460" fill="#cfd6de" stroke="${INK}" stroke-width="7" stroke-linejoin="round"/>
+    ${[0, 1, 2, 3].map(i => `<g transform="translate(110 ${250 + i * 50})"><g ${an('drift', 3, -i * .7, 'center', '--dx:330px;')}><circle r="14" fill="#4dd0ff" stroke="${INK}" stroke-width="3"/></g></g>`).join('')}` },
+  { id: 'hose', x: 230, y: 160, w: 'hose', t: 5.5, svg: T(0, 0, 'GARDEN HOSE', 36, '#2e8b57') },
+  { id: 'straw', x: 740, y: 280, w: 'straw', t: 7.6, svg: T(0, 0, 'COFFEE STRAW', 36, THEME.accent) },
+  { id: 'jam', w: 'slower', t: 9.3, svg: `${[[430, 320], [450, 345], [425, 365], [470, 335], [455, 305], [400, 340]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="13" fill="#ff7a7a" stroke="${INK}" stroke-width="3" ${an('wobble', .3, i * .05)}/>`).join('')}${sfx(500, 520, 'TRAFFIC JAM', -3, THEME.accent, 56, '#fff')}` },
+  { id: 'hot', w: 'hotter', t: 10, svg: `<g ${an('pulse', .8)}><ellipse cx="560" cy="336" rx="240" ry="70" fill="rgba(230,60,40,.28)"/></g>${[500, 580, 660].map((x, i) => `<path d="M${x} 290 q14 -22 0 -44 q-14 -22 0 -44" fill="none" stroke="#e63946" stroke-width="7" stroke-linecap="round" ${an('bob', .9, i * .3)}/>`).join('')}` },
+  { id: 'bars', x: 500, y: 1330, w: 'energy', t: 13.4, svg: `${T(0, -440, 'ENERGY COST', 42, INK)}
+    <rect x="-250" y="-340" width="180" height="340" fill="#e63946" stroke="${INK}" stroke-width="6"/><g ${an('growy', 1.2, 0, 'bottom')}><rect x="-250" y="-340" width="180" height="340" fill="#e63946" stroke="${INK}" stroke-width="6"/></g>
+    <g ${an('growy', 1.2, .3, 'bottom')}><rect x="70" y="-90" width="180" height="90" fill="#2e8b57" stroke="${INK}" stroke-width="6"/></g>
+    ${T(-160, 50, 'MOVING DATA', 30)}${T(160, 50, 'THE MATH', 30)}` }
  ]})));
 
-// ── E6 (b)(iii) COMMENT ──────────────────────────────────────────
-const X = s => 100 + (s - 4) * 133.3;
-ES.push(scene(THEME.paper,
- "Question b-iii. Comment on the result. The mode of seven tells RM Footwear which size sells most, so it should stock more size sevens, then sixes and eights. The mean of six point eight is close to the mode, so sizes cluster around seven. But be careful: this is only ten students from one school, so the sample is small and may not represent the whole market. A larger, wider survey would be more reliable.",
- comicScene({ badge: '(b)(iii)  COMMENT', badgeColor: THEME.accent, groups: [
-  { id: 'q', y: 10, t: .1, svg: qcard(['Comment on your result in (b)(ii).'], 2) },
-  { id: 'dots', w: 'comment', t: 1.6, svg: `<line x1="70" y1="470" x2="930" y2="470" stroke="${THEME.ink}" stroke-width="6"/>` +
-     [4, 5, 6, 7, 8, 9, 10].map(s => `<line x1="${X(s)}" y1="460" x2="${X(s)}" y2="482" stroke="${THEME.ink}" stroke-width="5"/>${T(X(s), 520, String(s), 32)}`).join('') +
-     FREQ.map(([s, f]) => Array.from({ length: f }, (_, k) => `<g ${an('grow', .4, 1 + k * .15 + (s - 5) * .2, 'bottom')}><circle cx="${X(s)}" cy="${440 - k * 48}" r="21" fill="${s === 7 ? THEME.accent : '#8a8f96'}" stroke="${THEME.ink}" stroke-width="4"/></g>`).join('')).join('') },
-  { id: 'stk', w: 'stock', t: 7.2, svg: `${T(500, 600, 'WHAT TO STOCK', 34, THEME.accent2)}` + [[6, 3], [7, 5], [8, 3]].map(([s, n], i) => `<g transform="translate(${250 + i * 250} 760)">${Array.from({ length: n }, (_, k) => `<g ${an('grow', .4, k * .25 + i * .3, 'bottom')}><rect x="-60" y="${-(k + 1) * 28}" width="120" height="26" fill="${s === 7 ? THEME.accent : '#f3e2b3'}" stroke="${THEME.ink}" stroke-width="4"/></g>`).join('')}${T(0, 46, 'SIZE ' + s, 30)}</g>`).join('') + `<g ${an('bob', .8)}>${T(500, 640, '▲ MORE SIZE 7 ▲', 34, THEME.accent)}</g>` },
-  { id: 'mean', w: 'cluster', t: 17.8, svg: `<g transform="translate(${X(6.8)} 400)"><g ${an('bob', .8)}><polygon points="0,18 -18,-14 18,-14" fill="${THEME.accent2}" stroke="${THEME.ink}" stroke-width="4"/></g></g>${T(X(6.8) - 40, 620, 'MEAN 6.8', 28, THEME.accent2, 'end')}` },
-  { id: 'warn', w: 'careful', t: 21.6, svg: `<g transform="translate(150 935)"><g ${an('blink', .9)}><polygon points="0,-70 70,56 -70,56" fill="#ffd23f" stroke="${THEME.ink}" stroke-width="7" stroke-linejoin="round"/>${T(0, 40, '!', 80)}</g></g>${T(600, 920, 'ONLY 10 STUDENTS', 40, THEME.accent)}${T(600, 970, 'FROM ONE SCHOOL', 40, THEME.accent)}${T(600, 1016, 'small sample = may not represent the market', 26, THEME.ink, 'middle', GEO, 'font-style="italic"')}` },
-  { id: 'big', w: 'larger', t: 31, svg: Array.from({ length: 24 }, (_, i) => `<g ${an('fadein', .4, i * .08, 'center', '--n:1;')}>${person(100 + (i % 12) * 72, 1060 + Math.floor(i / 12) * 76, THEME.accent2, .7)}</g>`).join('') + T(500, 1236, 'BIGGER, WIDER SURVEY = MORE RELIABLE', 34, THEME.accent2) },
-  { id: 'ans', w: 'comment', t: 1.6, svg: '' }
- ].filter(g => g.svg !== '').concat([{ id: 'ans2', w: 'mean', t: 17, svg: ansBox(1270, 'MODEL ANSWER (2 MARKS)', [[['Size 7 is most common: stock more of it. But 10 students', 'from one school is too small to be reliable'], 0]], { rowH: 90 }) }]) })));
-
-// ── E7 (c) STOCK-OUTS ────────────────────────────────────────────
-ES.push(scene(THEME.paper,
- "Question c. Explain the problems of stock-outs. First, lost sales: customers who want a size that isn't there can't buy it, so revenue falls. Second, customers switch to a competitor, and the firm's reputation and loyalty suffer. Third, retailers and wholesalers lose confidence in a supplier who can't deliver, and may look elsewhere. Fourth, emergency orders and overtime to catch up raise costs and cut profit.",
- comicScene({ badge: '(c)  STOCK-OUTS', badgeColor: THEME.accent, groups: [
-  { id: 'q', y: 10, t: .1, svg: qcard(['Explain the problems to the business of', 'experiencing stock-outs.'], 4) },
-  { id: 'p1', x: 20, y: 190, w: 'sales', t: 4.6, svg: panelBg(1, 'LOST SALES', THEME.accent) +
-     [150, 225, 300].map(y => `<rect x="40" y="${y}" width="250" height="10" fill="#6b4423" stroke="${THEME.ink}" stroke-width="3"/>`).join('') + [[60, 270], [160, 120], [210, 270]].map(([x, y]) => `<rect x="${x}" y="${y - 34}" width="60" height="32" fill="#f3e2b3" stroke="${THEME.ink}" stroke-width="3"/>`).join('') +
-     `<g ${an('blink', .9)}><rect x="60" y="86" width="230" height="46" rx="8" fill="${THEME.accent}" stroke="${THEME.ink}" stroke-width="4"/>${T(175, 120, 'OUT OF STOCK', 28, '#fff')}</g>` +
-     `<g transform="translate(390 350) scale(.75)">${stickman(0, 0, [-24, 20], [28, 12], { sad: true })}</g><g ${an('bob', 1)}>${T(385, 210, '£ ↓', 60, THEME.accent)}</g>` + cap('Cannot buy → revenue falls') },
-  { id: 'p2', x: 510, y: 190, w: 'competitor', t: 12.4, svg: panelBg(2, 'LOST CUSTOMERS', THEME.accent) +
-     shop(110, 290, .62, 'RM') + shop(370, 290, .62, 'RIVAL', '#2d5fb5') +
-     `<g transform="translate(120 360)"><g ${an('move', 2.6, 0, 'center', '--dx:200px;')}><g transform="scale(.6)">${stickman(0, 0, [-20, 12], [24, 12], {})}</g></g></g><path d="M130 365 H350" stroke="${THEME.accent}" stroke-width="6" stroke-dasharray="14 10" ${an('flow', 1)}/>` +
-     `<g ${an('pulse', 1.1)}>${T(235, 118, 'LOYALTY + REPUTATION ↓', 25, THEME.accent)}</g>` + cap('Customers switch to rivals') },
-  { id: 'p3', x: 20, y: 640, w: 'retailers', t: 17.4, svg: panelBg(3, 'LOST TRUST', THEME.accent) +
-     `<g transform="translate(120 360) scale(.8)">${stickman(0, 0, [-26, 20], [26, 20], { hat: true })}</g><g transform="translate(350 360) scale(.8)">${stickman(0, 0, [-26, 20], [26, 20], { sad: true })}</g>` +
-     `<g ${an('pulse', 1.4)}><ellipse cx="125" cy="165" rx="95" ry="42" fill="#fff" stroke="${THEME.ink}" stroke-width="4"/>${T(125, 174, 'Late again!', 26)}</g><g ${an('pulse', 1.4, .5)}><ellipse cx="345" cy="165" rx="100" ry="42" fill="#fff" stroke="${THEME.ink}" stroke-width="4"/>${T(345, 174, 'New supplier?', 26)}</g>` + cap('Retailers lose confidence') },
-  { id: 'p4', x: 510, y: 640, w: 'emergency', t: 24, svg: panelBg(4, 'EXTRA COSTS', THEME.accent) +
-     `<g transform="translate(60 300)"><g ${an('drift', 2.4, 0, 'center', '--dx:150px;--dir:alternate;')}><rect x="0" y="-60" width="130" height="80" fill="#f6efe0" stroke="${THEME.ink}" stroke-width="5"/><rect x="130" y="-40" width="56" height="60" fill="#2d5fb5" stroke="${THEME.ink}" stroke-width="5"/><circle cx="34" cy="28" r="18" fill="#333" ${an('spin', .4)}/><circle cx="150" cy="28" r="18" fill="#333" ${an('spin', .4)}/>${T(65, -18, 'RUSH', 32, THEME.accent)}</g></g>` +
-     `<circle cx="390" cy="140" r="42" fill="#fff" stroke="${THEME.ink}" stroke-width="5"/><line x1="390" y1="140" x2="390" y2="106" stroke="${THEME.ink}" stroke-width="5" ${an('spin', 3, 0, [390, 140])}/>${T(390, 214, 'OVERTIME', 24, THEME.accent)}` +
-     `<g transform="translate(400 350)">${[0, 1, 2, 3].map(k => `<g ${an('grow', .4, k * .5, 'bottom')}><ellipse cx="0" cy="${-k * 18}" rx="40" ry="10" fill="#ffd23f" stroke="${THEME.ink}" stroke-width="3"/></g>`).join('')}</g>` + cap('Emergency orders cut profit') },
-  { id: 'tip', w: 'overtime', t: 30, svg: `<rect x="40" y="1110" width="920" height="150" rx="18" fill="#fff" stroke="${THEME.accent2}" stroke-width="6"/>${T(500, 1170, 'EXAM TIP: 4 MARKS = 4 POINTS', 38, THEME.accent2)}${T(500, 1222, 'each one: point + “which means...” (explain)', 30, THEME.ink, 'middle', GEO, 'font-weight="bold"')}` }
+// ── 6 PROBLEM 3: LEAKS (blueprint) ──────────────────────────────
+S.push(scene('#0f3d7a',
+ "And the switches themselves are nearly atom sized. The barrier inside a transistor is only a few atoms thick, so electrons sometimes slip straight through, like a ghost walking through a wall. Those leaks waste power, and clock speeds have been stuck around a few gigahertz for years.",
+ comicScene({ badge: '6 - PROBLEM: LEAKS', theme: 'blue', groups: [
+  { id: 'fr', x: 500, y: 380, w: 'switches', t: .7, svg: `${M(0, -280, 'PROBLEM 3: TINY SWITCHES', 32, THEME.bpHi)}
+    ${dr('M-340 70 H340 V220 H-340Z', 0, 1.6)}${dr('M-340 70 V10 H-180 V70', .4, 1.2)}${dr('M340 70 V10 H180 V70', .4, 1.2)}${dr('M-140 52 V-30 H140 V52', .8, 1.2)}
+    ${M(-260, -10, 'SOURCE', 24)}${M(260, -10, 'DRAIN', 24)}${M(0, -50, 'GATE (THE HANDLE)', 24, THEME.bpHi)}
+    <line x1="-300" y1="120" x2="300" y2="120" stroke="#4dd0ff" stroke-width="6" ${an('flow dash', .7)}/>${M(0, 160, 'ELECTRONS FLOW HERE', 22, '#7fe0ff')}` },
+  { id: 'bar', x: 500, y: 380, w: 'barrier', t: 3.1, svg: `<rect x="-130" y="52" width="260" height="16" fill="${THEME.bpHi}"/>${M(0, 270, 'BARRIER (INSULATOR)', 26, THEME.bpHi)}${dr('M0 258 V76', 0, .8, 4, THEME.bpHi)}` },
+  { id: 'at', x: 500, y: 640, w: 'atoms', t: 5.9, svg: `${[-90, -30, 30, 90].map(x => `<circle cx="${x}" cy="0" r="24" fill="#2b3a55" stroke="${THEME.bpLine}" stroke-width="5"/>`).join('')}${M(0, 70, 'ONLY A FEW ATOMS THICK', 26, '#fff')}` },
+  { id: 'gh', x: 500, y: 960, w: 'ghost', t: 9.3, svg: `<rect x="-40" y="-120" width="80" height="240" fill="#7d8791" stroke="${THEME.bpLine}" stroke-width="6"/>${M(0, 170, 'WALL', 28, '#fff')}
+    <g transform="translate(-260 0)"><g ${an('move', 3, 0, 'center', '--dx:520px;')}><path d="M-34 30 V-6 A34 34 0 0 1 34 -6 V30 L22 18 L11 30 L0 18 L-11 30 L-22 18Z" fill="#fff" fill-opacity=".85" stroke="${THEME.bpLine}" stroke-width="4"/><circle cx="-11" cy="-8" r="5" fill="#0f3d7a"/><circle cx="11" cy="-8" r="5" fill="#0f3d7a"/></g></g>${M(-250, 90, 'ELECTRON = GHOST', 22, THEME.bpHi)}` },
+  { id: 'lk', x: 500, y: 1130, w: 'leaks', t: 11.4, svg: `${sfx(0, 0, 'LEAKS WASTE POWER', -2, '#ff9d9d', 58, '#0f3d7a')}` },
+  { id: 'ck', x: 500, y: 1330, w: 'clock', t: 12.8, svg: `${dr('M-330 0 V-160 M-330 0 H330', 0, 1, 4)}${dr('M-310 -10 L-220 -20 L-130 -80 L-40 -130 L40 -146 L130 -148 L230 -150 L320 -150', .5, 2.2, 8, THEME.bpHi)}${M(-330, 40, '1995', 22, THEME.bpSoft)}${M(0, 40, '2005', 22, THEME.bpSoft)}${M(330, 40, 'TODAY', 22, THEME.bpSoft)}${M(-370, -90, 'GHz', 24, '#fff')}` },
+  { id: 'gz', x: 500, y: 1245, w: 'gigahertz', t: 15.5, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'STUCK AT A FEW GHz', -2, THEME.bpHi, 54, '#0f3d7a')}</g>` }
  ]})));
 
-// ── E8 (d) BENEFITS ──────────────────────────────────────────────
-ES.push(scene(THEME.paper,
- "Question d is worth ten marks, so we need both sides and a judgement. First, the benefits. Tills record every sale automatically and update stock instantly, so managers see exactly what is left. That prevents both overstocking and stock-outs, makes ordering and production planning more accurate, saves staff time and reduces human error, and gives data to forecast which sizes sell best in each outlet.",
- comicScene({ badge: '(d)  THE BENEFITS', badgeColor: THEME.accent2, groups: [
-  { id: 'q', y: 10, t: .1, svg: qcard(['Evaluate the significance of a computerised', 'stock system to RM Footwear (Pvt) Ltd.'], 10) },
-  { id: 'flow', w: 'benefits', t: 7, svg: `
-    <g transform="translate(150 400)"><rect x="-90" y="-70" width="180" height="110" rx="10" fill="#d8dde3" stroke="${THEME.ink}" stroke-width="6"/><rect x="-66" y="-52" width="132" height="42" fill="#1c2630"/>${T(0, -22, 'SOLD', 26, '#6dff9c', 'middle', FM)}<rect x="-60" y="10" width="120" height="14" fill="#9aa0a8"/>
-      <g ${an('move', 1.4, 0, 'center', '--dx:56px;')}><rect x="-112" y="-96" width="52" height="34" fill="#f3e2b3" stroke="${THEME.ink}" stroke-width="4"/></g><circle cx="0" cy="-70" r="14" fill="none" stroke="#ff4d4d" stroke-width="5" ${an('ring', 1.4, 0, 'center', '--dir:normal;')}/>${T(0, 92, 'TILL', 30)}</g>
-    ${arrow(270, 400, 410, 400, THEME.ink)}${[0, 1, 2].map(i => `<g transform="translate(290 392)"><g ${an('drift', 2, -i * .66, 'center', '--dx:110px;--dir:normal;--e:linear;')}><rect x="0" y="0" width="16" height="16" fill="${THEME.accent2}"/></g></g>`).join('')}
-    <g transform="translate(540 400)"><rect x="-120" y="-84" width="240" height="160" rx="12" fill="#1c2630" stroke="${THEME.ink}" stroke-width="7"/>${[-80, -40, 0, 40, 80].map((x, i) => `<g ${an('pulse', 1.1 + i * .2, i * .25, 'bottom')}><rect x="${x - 14}" y="${50 - [60, 90, 40, 100, 70][i]}" width="28" height="${[60, 90, 40, 100, 70][i]}" fill="${['#6dff9c', '#ffd23f', '#4dd0ff', '#6dff9c', '#ffd23f'][i]}"/></g>`).join('')}${T(0, 110, 'STOCK SYSTEM', 30)}</g>
-    ${arrow(680, 400, 790, 400, THEME.ink)}
-    <g transform="translate(880 400)"><rect x="-50" y="-90" width="100" height="170" rx="14" fill="#fff" stroke="${THEME.ink}" stroke-width="6"/><g ${an('blink', 1.2)}><path d="M-22 -10 L-6 8 L24 -34" fill="none" stroke="${THEME.accent2}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></g>${T(0, 110, 'MANAGER', 28)}</g>` },
-  { id: 'list', w: 'tills', t: 9.4, svg: ansBox(620, 'BENEFITS (FOR)', [
-     ['Real-time stock records from every sale', 1.2], ['Fewer overstocks and fewer stock-outs', 9], ['More accurate ordering and production planning', 13], ['Saves time, reduces human error', 17.5], ['Sales data to forecast popular sizes', 22]], { rowH: 96 }) },
-  { id: 'tip', w: 'forecast', t: 33, svg: `<rect x="40" y="1250" width="920" height="110" rx="18" fill="#fff" stroke="${THEME.accent}" stroke-width="6"/>${T(500, 1318, 'APPLY IT: tills in RM’s NEW retail outlet', 34, THEME.accent)}` }
+// ── 7 ENTER THE PHOTON ──────────────────────────────────────────
+S.push(scene('#cfeeff',
+ "Now meet the photon, a particle of light. It has no electric charge, and it travels at the top speed anything can go. Two electron streams crossing would collide, like cars at an intersection. But shine two flashlights across each other, and the beams pass straight through, no crash, no traffic jam.",
+ comicScene({ badge: '7 - ENTER THE PHOTON', badgeColor: THEME.accent, theme: 'sky', groups: [
+  { id: 'ph', x: 250, y: 220, w: 'photon', t: 1, svg: `<g ${an('pulse', 1)}><circle r="44" fill="#ffd23f" stroke="${INK}" stroke-width="6"/></g><path d="${wavy(-200, 0, -60, 0, 14, 6)}" fill="none" stroke="#ff9900" stroke-width="8" stroke-linecap="round" ${an('flow dash', .5)}/>${T(0, 110, 'A PHOTON', 40)}` },
+  { id: 'chg', x: 730, y: 190, w: 'charge', t: 4.1, svg: sfx(0, 0, '0 CHARGE', -3, THEME.accent2, 64, '#fff') },
+  { id: 'spd', x: 730, y: 300, w: 'speed', t: 6.6, svg: sfx(0, 0, 'TOP SPEED!', 3, THEME.accent, 64, '#fff') },
+  { id: 'cars', x: 500, y: 720, w: 'collide', t: 9.7, svg: `${T(0, -230, 'ELECTRONS: CARS AT AN INTERSECTION', 32, '#1565c0')}
+    <rect x="-380" y="-50" width="760" height="100" fill="#6b6b6b"/><rect x="-50" y="-170" width="100" height="340" fill="#6b6b6b"/>
+    <line x1="-370" y1="0" x2="-60" y2="0" stroke="#ffd23f" stroke-width="5" stroke-dasharray="18 14"/><line x1="60" y1="0" x2="370" y2="0" stroke="#ffd23f" stroke-width="5" stroke-dasharray="18 14"/>
+    <g transform="translate(-300 0)"><g ${an('move', 1.4, 0, 'center', '--dx:230px;')}><rect x="-40" y="-20" width="80" height="40" rx="8" fill="#2d5fb5" stroke="${INK}" stroke-width="4"/><rect x="-10" y="-14" width="30" height="28" fill="#bfe6ff"/></g></g>
+    <g transform="translate(0 -150)"><g ${an('move', 1.4, 0, 'center', '--dy:120px;')}><rect x="-20" y="-40" width="40" height="80" rx="8" fill="#e63946" stroke="${INK}" stroke-width="4"/><rect x="-14" y="-10" width="28" height="30" fill="#bfe6ff"/></g></g>
+    ${sparks(0, 0, 10, '#ff7a1a', 50, .35)}${sfx(120, -60, 'CRASH!', 8, THEME.accent, 64, '#fff')}` },
+  { id: 'fl', x: 500, y: 1130, w: 'flashlights', t: 12.8, svg: `${T(0, -210, 'PHOTONS: TWO FLASHLIGHTS', 32, '#b36b00')}
+    <polygon points="-330,-96 400,40 400,100" fill="rgba(255,210,60,.5)"/><polygon points="-330,96 400,-40 400,-100" fill="rgba(77,208,255,.45)"/>
+    <line x1="-330" y1="-96" x2="400" y2="70" stroke="#ff9900" stroke-width="6" ${an('flow dash', .5)}/><line x1="-330" y1="96" x2="400" y2="-70" stroke="#0a7ea4" stroke-width="6" ${an('flow dash', .5)}/>
+    <rect x="-430" y="-124" width="100" height="56" rx="10" fill="#555" stroke="${INK}" stroke-width="5"/><rect x="-430" y="68" width="100" height="56" rx="10" fill="#555" stroke="${INK}" stroke-width="5"/>` },
+  { id: 'pt', x: 500, y: 1370, w: 'through', t: 15.9, svg: sfx(0, 0, 'THEY PASS THROUGH', -2, THEME.accent2, 60, '#fff') },
+  { id: 'nj', x: 800, y: 1000, w: 'jam', t: 17.6, svg: `<g ${an('pulse', .8)}>${sfx(0, 0, 'NO JAM!', 4, THEME.accent2, 64, '#fff')}</g>` }
  ]})));
 
-// ── E9 (d) DRAWBACKS ─────────────────────────────────────────────
-ES.push(scene(THEME.paper,
- "Now the drawbacks. The system is expensive to buy and install, a big outlay for a growing firm. Staff need training, and some may resist the change. A power cut or system crash can stop sales and lose records. And the data must be protected from hackers and input errors.",
- comicScene({ badge: '(d)  THE DRAWBACKS', badgeColor: THEME.accent, groups: [
-  { id: 'q', y: 10, t: .1, svg: qcard(['Evaluate: weigh up the problems too.'], 10) },
-  { id: 'p1', x: 20, y: 190, w: 'expensive', t: 3.8, svg: panelBg(1, 'HIGH COST', THEME.accent) +
-     `<g transform="translate(235 230)"><g ${an('wobble', 1.6)}><polygon points="-110,0 -70,-60 110,-60 110,60 -70,60" fill="#ffd23f" stroke="${THEME.ink}" stroke-width="6" stroke-linejoin="round"/><circle cx="-70" cy="0" r="10" fill="#fff" stroke="${THEME.ink}" stroke-width="4"/>${T(20, 22, '$$$', 66)}</g></g>` +
-     [0, .8, 1.6].map((d, i) => puff(150 + i * 80, 330, 16, d, -70, 2, '#ffd23f')).join('') + cap('Expensive to buy and install') },
-  { id: 'p2', x: 510, y: 190, w: 'training', t: 10.5, svg: panelBg(2, 'TRAINING', THEME.accent) +
-     `<rect x="40" y="110" width="150" height="110" rx="8" fill="#2c6b5a" stroke="${THEME.ink}" stroke-width="5"/>${T(115, 175, 'A + B', 40, '#fff')}<g transform="translate(120 360) scale(.8)">${stickman(0, 0, [-24, 18], [40, -40], { hat: true, wave: true })}</g>` +
-     `<g transform="translate(330 360) scale(.8)">${stickman(0, 0, [-6, -40], [6, -40], { sad: true })}</g><g ${an('bob', .9)}>${T(330, 220, '?', 80, THEME.accent)}</g>${T(380, 140, 'NO!', 38, THEME.accent)}` + cap('Training needed, some resist') },
-  { id: 'p3', x: 20, y: 640, w: 'power', t: 15.8, svg: panelBg(3, 'POWER CUTS', THEME.accent) +
-     `<g transform="translate(150 240)"><rect x="-90" y="-60" width="180" height="120" rx="10" fill="#1c2630" stroke="${THEME.ink}" stroke-width="6"/><g ${an('blink', .8)}>${T(0, 12, 'ERROR', 44, '#ff4d4d', 'middle', FM)}</g></g>` +
-     `<g transform="translate(360 220)"><g ${an('blink', .6)}><polygon points="10,-70 -30,10 -2,10 -14,70 36,-18 6,-18" fill="#ffd23f" stroke="${THEME.ink}" stroke-width="5" stroke-linejoin="round"/></g></g>` + cap('Crash stops sales, loses records') },
-  { id: 'p4', x: 510, y: 640, w: 'protected', t: 21.6, svg: panelBg(4, 'DATA RISKS', THEME.accent) +
-     `<g transform="translate(150 250)"><g ${an('pulse', 1.2)}><path d="M-34 0 V-34 A34 34 0 0 1 34 -34 V0" fill="none" stroke="${THEME.ink}" stroke-width="12"/><rect x="-60" y="0" width="120" height="96" rx="12" fill="#ffd23f" stroke="${THEME.ink}" stroke-width="7"/><circle cx="0" cy="40" r="12" fill="${THEME.ink}"/></g></g>` +
-     `<g transform="translate(350 250)"><g ${an('wobble', .5)}><ellipse cx="0" cy="0" rx="36" ry="26" fill="#444" stroke="${THEME.ink}" stroke-width="5"/>${[-26, 0, 26].map(x => `<line x1="${x}" y1="22" x2="${x * 1.5}" y2="52" stroke="${THEME.ink}" stroke-width="5" stroke-linecap="round"/>`).join('')}</g></g>${T(350, 340, 'HACKERS + TYPOS', 24, THEME.accent)}` + cap('Data must be protected') },
-  { id: 'tip', w: 'errors', t: 29, svg: `<rect x="40" y="1110" width="920" height="150" rx="18" fill="#fff" stroke="${THEME.accent2}" stroke-width="6"/>${T(500, 1170, 'APPLY IT: RM is still growing', 38, THEME.accent2)}${T(500, 1222, 'so a big outlay hurts more now', 30, THEME.ink, 'middle', GEO, 'font-weight="bold"')}` }
+// ── 8 COOL AND MANY COLORS ──────────────────────────────────────
+const therm = (x, h, col, label) => `<g transform="translate(${x} 0)"><rect x="-18" y="-130" width="36" height="200" rx="18" fill="#fff" stroke="#fff" stroke-width="5"/><circle cy="80" r="34" fill="${col}" stroke="#fff" stroke-width="5"/><g ${an('growy', 1.4, 0, 'bottom')}><rect x="-9" y="${70 - h}" width="18" height="${h}" fill="${col}"/></g>${T(0, 170, label, 32, '#fff')}</g>`;
+S.push(scene('#050818',
+ "Light inside a glass channel does not bump into atoms the way electrons do, so far less energy is lost as heat. And light can carry many colors at once, like a highway where every lane is a different color. One channel, many conversations, all at the same time.",
+ comicScene({ badge: '8 - COOL AND PARALLEL', theme: 'night', groups: [
+  { id: 'stars', always: true, svg: stars(40, 41) },
+  { id: 'hw', x: 500, y: 150, w: 'highway', t: 11, svg: sfx(0, 0, 'LIKE A HIGHWAY', -2, '#ffd23f', 64, '#050818') },
+  { id: 'tube', x: 500, y: 400, w: 'glass', t: 1, svg: `<rect x="-440" y="-140" width="880" height="280" rx="40" fill="rgba(160,210,255,.12)" stroke="#8fd0ff" stroke-width="7"/>${T(0, -170, 'GLASS CHANNEL (WAVEGUIDE)', 34, '#fff')}` },
+  { id: 'beam', x: 500, y: 400, w: 'bump', t: 2.4, hw: 'colors', ht: 9.3, svg: `<line x1="-420" y1="0" x2="420" y2="0" stroke="#fff" stroke-width="16" stroke-dasharray="30 26" ${an('flow', .5)}/>${T(0, 200, 'ONE LIGHT PULSE, NO BUMPS', 30, '#8fd0ff')}` },
+  { id: 'lanes', x: 500, y: 400, w: 'colors', t: 9.3, svg: LANES.map((c, i) => `<line x1="-420" y1="${-100 + i * 40}" x2="420" y2="${-100 + i * 40}" stroke="${c}" stroke-width="14" stroke-dasharray="30 26" ${an('flow', .5 + i * .06, i * .1)}/>`).join('') },
+  { id: 'ln', x: 500, y: 610, w: 'lane', t: 12, svg: T(0, 0, 'EACH COLOR = ITS OWN LANE', 36, '#fff') },
+  { id: 'cv', x: 500, y: 740, w: 'conversations', t: 14.8, svg: LANES.map((c, i) => `<g transform="translate(${-350 + i * 140} 0)"><g ${an('bob', .9, i * .15)}><rect x="-48" y="-30" width="96" height="60" rx="18" fill="${c}"/><polygon points="-18,28 -30,52 2,28" fill="${c}"/>${[-20, 0, 20].map(x => `<circle cx="${x}" cy="0" r="6" fill="#fff"/>`).join('')}</g></g>`).join('') },
+  { id: 'cool', x: 500, y: 960, w: 'heat', t: 7.2, svg: `${therm(-220, 40, '#4dd0ff', 'PHOTONS: COOL')}${therm(220, 170, '#ff4d4d', 'ELECTRONS: HOT')}` },
+  { id: 'tm', x: 500, y: 1300, w: 'time', t: 16.5, svg: `<g ${an('pulse', .8)}>${sfx(0, 0, 'ALL AT ONCE!', -3, '#ffd23f', 84, '#050818')}</g>` }
  ]})));
 
-// ── E10 (d) JUDGEMENT ────────────────────────────────────────────
-ES.push(scene(THEME.paper,
- "Finally, the judgement, because evaluate means weigh it up. Overall, a computerised system is very significant for RM Footwear. Its main problem is poor stock control, and opening a retail outlet makes accurate, live data even more important. The costs are real, but they are mostly one-off and manageable, compared with ongoing losses from stock-outs and overstocking. So yes, worthwhile, as long as it's affordable, staff are trained, and there's a backup for power cuts.",
- comicScene({ badge: '(d)  THE JUDGEMENT', badgeColor: '#b8860b', groups: [
-  { id: 'q', y: 10, t: .1, svg: qcard(['Evaluate = weigh up both sides, then decide.'], 10) },
-  { id: 'scale', x: 500, y: 520, w: 'judgement', t: 3.5, svg: `
-    <polygon points="0,0 -60,380 60,380" fill="#cfd6de" stroke="${THEME.ink}" stroke-width="6" stroke-linejoin="round"/><rect x="-140" y="380" width="280" height="28" rx="8" fill="#6b4423" stroke="${THEME.ink}" stroke-width="6"/>
-    <g ${an('rotonce', 2, 6.4, [0, 0], '--r0:4deg;--r1:-9deg;--e:cubic-bezier(.3,1.5,.5,1);')}>
-      <line x1="-340" y1="0" x2="340" y2="0" stroke="${THEME.ink}" stroke-width="14" stroke-linecap="round"/><circle cx="0" cy="0" r="22" fill="#ffd23f" stroke="${THEME.ink}" stroke-width="6"/>
-      <g transform="translate(-300 0)"><line x1="0" y1="0" x2="-70" y2="170" stroke="${THEME.ink}" stroke-width="5"/><line x1="0" y1="0" x2="70" y2="170" stroke="${THEME.ink}" stroke-width="5"/><path d="M-100 170 H100 Q90 230 0 236 Q-90 230 -100 170Z" fill="${THEME.accent2}" stroke="${THEME.ink}" stroke-width="6"/>${[-50, 10].map(x => `<rect x="${x}" y="110" width="52" height="56" fill="#f3e2b3" stroke="${THEME.ink}" stroke-width="4"/>`).join('')}${T(0, 280, 'BENEFITS', 32, THEME.accent2)}</g>
-      <g transform="translate(300 0)"><line x1="0" y1="0" x2="-70" y2="170" stroke="${THEME.ink}" stroke-width="5"/><line x1="0" y1="0" x2="70" y2="170" stroke="${THEME.ink}" stroke-width="5"/><path d="M-100 170 H100 Q90 230 0 236 Q-90 230 -100 170Z" fill="${THEME.accent}" stroke="${THEME.ink}" stroke-width="6"/><ellipse cx="0" cy="164" rx="40" ry="10" fill="#ffd23f" stroke="${THEME.ink}" stroke-width="4"/>${T(0, 280, 'COSTS', 32, THEME.accent)}</g>
-    </g>` },
-  { id: 'w1', w: 'problem', t: 13.6, svg: `<g ${an('grow', .5, 0, 'center')}><rect x="40" y="1000" width="920" height="68" rx="34" fill="#fff" stroke="${THEME.accent}" stroke-width="5"/>${T(500, 1046, 'MAIN PROBLEM = POOR STOCK CONTROL', 34, THEME.accent)}</g>` },
-  { id: 'w2', w: 'important', t: 18.6, svg: `<g ${an('grow', .5, 0, 'center')}><rect x="40" y="1086" width="920" height="68" rx="34" fill="#fff" stroke="${THEME.accent2}" stroke-width="5"/>${T(500, 1132, 'NEW OUTLET NEEDS LIVE STOCK DATA', 34, THEME.accent2)}</g>` },
-  { id: 'w3', w: 'manageable', t: 25, svg: `<g ${an('grow', .5, 0, 'center')}><rect x="40" y="1172" width="920" height="68" rx="34" fill="#fff" stroke="#b8860b" stroke-width="5"/>${T(500, 1218, 'COSTS: MOSTLY ONE-OFF + MANAGEABLE', 34, '#b8860b')}</g>` },
-  { id: 'ver', w: 'worthwhile', t: 36, svg: `<g ${an('grow', .6, 0, 'center')}>${sfx(500, 1318, 'WORTHWHILE ✓', -3, THEME.accent2, 84, '#fff')}</g>` },
-  ...['AFFORDABLE', 'TRAINED STAFF', 'POWER BACKUP'].map((c, i) => ({ id: 'k' + i, x: 170 + i * 330, y: 1400, w: ['affordable', 'trained', 'backup'][i], t: 38 + i * 1.5,
-     svg: `<g ${an('grow', .5, 0, 'center')}><rect x="-150" y="-32" width="300" height="64" rx="32" fill="${THEME.accent2}" stroke="${THEME.ink}" stroke-width="5"/>${T(0, 10, c, 28, '#fff')}</g>` }))
+// ── 9 MATH WITH SUNGLASSES ──────────────────────────────────────
+const LENS = [[520, .5, .5], [680, .8, .2], [840, .2, .8]];
+S.push(scene(THEME.paper,
+ "Light can even do math while it travels. Think of sunglasses. Light passing through tinted glass gets dimmed by a set amount, and that is multiplication. Merge several beams onto one sensor, and their brightness adds up. Multiply and add, that is most of what AI needs, done at the speed of light.",
+ comicScene({ badge: '9 - MATH WITH SUNGLASSES', badgeColor: THEME.accent2, groups: [
+  { id: 'tt', x: 500, y: 100, w: 'math', t: 1.4, svg: sfx(0, 0, 'MATH WITH LIGHT', -2, THEME.accent, 72, '#fff') },
+  { id: 'sg', w: 'sunglasses', t: 3.4, svg: `<g transform="translate(500 270)"><ellipse cx="-70" rx="60" ry="42" fill="#222" stroke="${INK}" stroke-width="6"/><ellipse cx="70" rx="60" ry="42" fill="#222" stroke="${INK}" stroke-width="6"/><path d="M-12 -6 Q0 -18 12 -6" fill="none" stroke="${INK}" stroke-width="7"/><ellipse cx="-86" cy="-14" rx="16" ry="8" fill="#fff" opacity=".3"/></g>${T(500, 370, 'THINK: SUNGLASSES', 36)}
+    ${LENS.map(([y, k, o]) => `<line x1="40" y1="${y}" x2="300" y2="${y}" stroke="#ffb300" stroke-width="24" stroke-linecap="round"/><line x1="40" y1="${y}" x2="300" y2="${y}" stroke="#fff" stroke-width="5" stroke-dasharray="14 12" ${an('flow', .5)}/><rect x="300" y="${y - 62}" width="60" height="124" rx="16" fill="rgba(20,20,20,${o})" stroke="${INK}" stroke-width="6"/>`).join('')}${T(170, 460, 'FULL BRIGHT IN', 28, INK, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'dim', w: 'dimmed', t: 5.9, svg: LENS.map(([y, k]) => `<line x1="360" y1="${y}" x2="460" y2="${y}" stroke="#ffb300" stroke-width="${Math.max(4, 24 * k)}" stroke-linecap="round"/>${T(330, y - 76, `x${k}`, 38, THEME.accent)}`).join('') },
+  { id: 'mul', x: 500, y: 960, w: 'multiplication', t: 8.6, svg: T(0, 0, 'DIMMING = MULTIPLYING', 40, THEME.accent) },
+  { id: 'mg', w: 'merge', t: 9, svg: LENS.map(([y, k]) => `<path d="M460 ${y} Q640 ${y} 750 680" fill="none" stroke="#ffb300" stroke-width="${Math.max(4, 24 * k)}" stroke-linecap="round" opacity=".9"/>`).join('') },
+  { id: 'sn', x: 820, y: 680, w: 'sensor', t: 10.7, svg: `<g ${an('pulse', 1)}><circle r="72" fill="#1c2630" stroke="${INK}" stroke-width="7"/><circle r="40" fill="#ffe08a" opacity=".85"/></g>${T(0, 130, 'SENSOR', 30)}` },
+  { id: 'sum', x: 820, y: 860, w: 'adds', t: 12.1, svg: `${T(0, 0, '0.5+0.8+0.2', 30, INK, 'middle', FM, 'font-weight="bold"')}${sfx(0, 56, '= 1.5', -3, THEME.accent2, 56, '#fff')}` },
+  { id: 'mm', x: 500, y: 1090, w: 'multiply', t: 12.8, svg: T(0, 0, 'MULTIPLY + ADD = AI MATH', 48, THEME.accent2) },
+  { id: 'sp', x: 500, y: 1260, w: 'speed', t: 17.2, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'AT THE SPEED OF LIGHT', -2, THEME.accent, 60, '#fff')}</g>` }
  ]})));
 
-// ── E11 RECAP + CTA ──────────────────────────────────────────────
-const CMD = [['DEFINE', 'give the meaning, then link it to the passage', THEME.accent], ['CALCULATE', 'show your working, then the answer', THEME.accent2], ['EXPLAIN', 'make a point and say why it matters', '#2d5fb5'], ['EVALUATE', 'both sides, then a justified judgement', '#b8860b']];
-ES.push(scene(THEME.paper,
- "Quick recap on how the marks work. Define: give the meaning, then link it to the passage. Calculate: show your working. Explain: make a point and say why it matters. Evaluate: weigh both sides, then give a justified judgement. And always apply your answer to RM Footwear. That's Section A done. Subscribe, and next we'll tackle the Section B essays.",
- comicScene({ badge: 'HOW TO WIN THE MARKS', badgeColor: THEME.accent2, groups: [
-  ...CMD.map(([c, m, col], i) => ({ id: 'k' + i, x: 0, y: 20 + i * 215, w: c.toLowerCase(), t: 3.4 + i * 4.8,
-     svg: `<g ${an('grow', .5, 0, 'left')}><rect x="20" y="0" width="960" height="190" rx="20" fill="#fff" stroke="${col}" stroke-width="8"/><rect x="20" y="0" width="330" height="190" rx="20" fill="${col}"/><rect x="330" y="0" width="30" height="190" fill="${col}"/>${T(185, 118, c, 52, '#fff')}${T(380, 82, m.split(', ')[0].split(' then ')[0], 30, THEME.ink, 'start', GEO, 'font-weight="bold"')}${T(380, 128, m.includes(' then ') ? 'then ' + m.split(' then ')[1] : (m.includes(', ') ? m.split(', ').slice(1).join(', ') : ''), 30, THEME.ink, 'start', GEO, 'font-weight="bold"')}</g>` })),
-  { id: 'app', w: 'apply', t: 23, svg: `<g ${an('pulse', 1)}><rect x="20" y="900" width="960" height="130" rx="24" fill="${THEME.accent}" stroke="${THEME.ink}" stroke-width="7"/>${T(500, 984, 'ALWAYS APPLY IT TO RM FOOTWEAR', 50, '#fff')}</g>` },
-  { id: 'tch', x: 130, y: 1330, w: 'done', t: 29, svg: stickman(0, 0, [-34, -8], [58, -62], { wave: true, wide: true }) },
-  { id: 'sub', w: 'subscribe', t: 32, svg: `<g transform="translate(600 1250)"><g ${an('pulse', .8)}><rect x="-210" y="-48" width="420" height="96" rx="18" fill="${THEME.accent}" stroke="${THEME.ink}" stroke-width="7"/>${T(0, 20, 'SUBSCRIBE', 58, '#fff')}</g></g><g transform="translate(900 1210)"><g ${an('wobble', .5, 0, [0, -60])}><path d="M-44 20 L-44 -20 Q-44 -64 0 -64 Q44 -64 44 -20 L44 20 Z" fill="${THEME.highlight}" stroke="${THEME.ink}" stroke-width="7"/><circle cx="0" cy="34" r="12" fill="${THEME.ink}"/></g></g>` },
-  { id: 'nxt', w: 'essays', t: 36, svg: `<g ${an('pulse', 1.1)}>${T(560, 1380, 'NEXT: SECTION B ESSAYS', 44, THEME.accent2)}</g>` }
+// ── 10 MATH WITH RIPPLES ────────────────────────────────────────
+S.push(scene(THEME.paper,
+ "Real photonic chips often use ripples instead. When two waves meet in step, they add into a bigger wave. When they meet opposite, they cancel to nothing, like a pond going flat. Tune the paths, and the way the ripples combine becomes the answer.",
+ comicScene({ badge: '10 - MATH WITH RIPPLES', badgeColor: THEME.accent2, groups: [
+  { id: 'rp', x: 500, y: 190, w: 'ripples', t: 1.7, svg: `${[0, .6, 1.2].map(d => `<circle r="40" fill="none" stroke="#2d5fb5" stroke-width="6" ${an('ring', 1.8, d, 'center', '--dir:normal;')}/>`).join('')}<circle r="10" fill="#2d5fb5"/>${T(0, 150, 'RIPPLES ON A POND', 36)}` },
+  { id: 'A', x: 500, y: 600, w: 'step', t: 4.1, svg: `${T(0, -150, 'IN STEP: THEY ADD UP', 38, THEME.accent2)}${wave(-80, 26, 0, THEME.accent)}${wave(0, 26, 0, '#2d5fb5')}${wave(120, 52, 0, THEME.accent2, 8)}${T(-345, -74, 'WAVE 1', 22, INK, 'end', FM, 'font-weight="bold"')}${T(-345, 6, 'WAVE 2', 22, INK, 'end', FM, 'font-weight="bold"')}${T(-345, 126, 'SUM', 22, INK, 'end', FM, 'font-weight="bold"')}${T(0, 215, 'BIGGER WAVE', 32, THEME.accent2)}` },
+  { id: 'B', x: 500, y: 1010, w: 'opposite', t: 7.6, svg: `${T(0, -150, 'OPPOSITE: THEY CANCEL', 38, THEME.accent)}${wave(-80, 26, 0, THEME.accent)}${wave(0, 26, Math.PI, '#2d5fb5')}<line x1="-330" y1="120" x2="330" y2="120" stroke="${THEME.accent}" stroke-width="8" stroke-linecap="round"/>${T(-345, -74, 'WAVE 1', 22, INK, 'end', FM, 'font-weight="bold"')}${T(-345, 6, 'WAVE 2', 22, INK, 'end', FM, 'font-weight="bold"')}${T(-345, 126, 'SUM', 22, INK, 'end', FM, 'font-weight="bold"')}` },
+  { id: 'pd', x: 500, y: 1230, w: 'pond', t: 10, svg: T(0, 0, 'FLAT POND = ZERO', 36, THEME.accent) },
+  { id: 'tune', x: 500, y: 1340, w: 'paths', t: 11.7, svg: `${pipe('M-330 0 H-220', 26)}${pipe('M-220 0 Q-140 -90 0 -90 Q140 -90 220 0', 26)}${pipe('M-220 0 H220', 26)}${pipe('M220 0 H330', 26)}<rect x="-40" y="-130" width="80" height="26" rx="6" fill="#e63946" stroke="${INK}" stroke-width="4"/>${T(0, -144, 'TUNE THE PATH', 28, THEME.accent)}` },
+  { id: 'an', x: 500, y: 1445, w: 'answer', t: 14.8, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'THE PATTERN IS THE ANSWER', -2, THEME.accent2, 48, '#fff')}</g>` }
  ]})));
 
-// Re-time the timestamp fallbacks from the narration itself: each group is revealed at
-// (position of its trigger word / speech rate), so fallbacks track the real script length.
-function retime(s) {
-    const words = s.tts.text.split(/\s+/).map(w => w.toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean);
-    const dur = words.length / 2.6;
-    s.layers[1].html = s.layers[1].html.replace(/wire\((\{.*?\}), (\{.*?\}), (\[.*?\]), (\[.*?\])\);/s, (m0, rmS, hmS, fbS, hfbS) => {
-        const rm = JSON.parse(rmS), hm = JSON.parse(hmS), fb = JSON.parse(fbS), hfb = JSON.parse(hfbS);
-        const tShow = {}, tHide = {};
-        Object.entries(rm).forEach(([w, ids]) => { const i = words.indexOf(w); if (i >= 0) ids.forEach(id => tShow[id] = i / 2.6 + .5); });
-        Object.entries(hm).forEach(([w, ids]) => { const i = words.indexOf(w); if (i >= 0) ids.forEach(id => tHide[id] = i / 2.6 + .5); });
-        const fix = (list, map) => list.map(([id, t]) => [id, +Math.min(map[id] !== undefined ? map[id] : t, Math.max(.2, dur - 2.5)).toFixed(1)]);
-        return `wire(${rmS}, ${hmS}, ${JSON.stringify(fix(fb, tShow))}, ${JSON.stringify(fix(hfb, tHide))});`;
-    });
-    return s;
-}
+// ── 11 WHY NOT ALL LIGHT? ───────────────────────────────────────
+S.push(scene(THEME.paper,
+ "So why isn't your laptop made of light? Because photons are too polite. They ignore each other, so one beam cannot easily switch another on and off, and a computer needs exactly that. You also cannot park a photon, since light never stands still, so memory still needs electrons. And optical parts are huge, a dinner plate next to a transistor's grain of rice.",
+ comicScene({ badge: '11 - WHY NOT ALL LIGHT?', badgeColor: THEME.accent, groups: [
+  { id: 'why', x: 500, y: 110, w: 'why', t: .3, svg: sfx(0, 0, 'WHY NOT ALL LIGHT?', -2, THEME.accent, 70, '#fff') },
+  { id: 'c1', x: 500, y: 400, w: 'polite', t: 4.1, svg: wideCard(`<line x1="-90" y1="-60" x2="90" y2="60" stroke="#ff9900" stroke-width="10" stroke-linecap="round"/><line x1="-90" y1="60" x2="90" y2="-60" stroke="#0a7ea4" stroke-width="10" stroke-linecap="round"/><circle r="16" fill="#fff" stroke="${INK}" stroke-width="4"/>${T(0, 58, '?', 44, THEME.accent)}`, 'LIGHT IGNORES LIGHT', 'beams pass through each other,', 'so one cannot flip another', THEME.accent) },
+  { id: 'c2', x: 500, y: 800, w: 'park', t: 12.4, svg: wideCard(`<path d="M-90 -10 q30 -40 60 0 t60 0 t60 0" fill="none" stroke="#2d5fb5" stroke-width="10" stroke-linecap="round" ${an('flow dash', .8)}/><path d="M-90 40 q30 -40 60 0 t60 0 t60 0" fill="none" stroke="#2d5fb5" stroke-width="10" stroke-linecap="round" ${an('flow dash', .8, .2)}/><line x1="-80" y1="-70" x2="80" y2="80" stroke="${THEME.accent}" stroke-width="10" stroke-linecap="round"/>`, 'LIGHT CAN\'T BE PARKED', 'like a river you cannot pause:', 'storing it needs electrons', THEME.accent) },
+  { id: 'c3', x: 500, y: 1200, w: 'huge', t: 18.3, svg: wideCard(`<circle r="88" fill="#fff" stroke="${INK}" stroke-width="7"/><circle r="60" fill="none" stroke="#aab3bd" stroke-width="5"/><ellipse cx="62" cy="62" rx="14" ry="7" fill="#f3e2b3" stroke="${INK}" stroke-width="3" transform="rotate(-30 62 62)"/>`, 'LIGHT PARTS ARE HUGE', 'a dinner plate beside a grain', 'of rice: optics vs transistors', THEME.accent) }
+ ]})));
 
+// ── 12 THE TEAM-UP ──────────────────────────────────────────────
+S.push(scene(THEME.paper,
+ "The realistic answer is a team. Electrons stay the thinkers. They make decisions and hold memory. Photons become the couriers, carrying data between chips at the speed of light, and doing the heavy math. Light and electrons, working together. Subscribe for more.",
+ comicScene({ badge: 'THE TEAM-UP', badgeColor: THEME.accent2, groups: [
+  { id: 'tm', x: 500, y: 100, w: 'team', t: 1.7, svg: sfx(0, 0, 'THE REALISTIC ANSWER:', -2, THEME.accent, 60, '#fff') + T(0, 64, 'A TEAM', 60, THEME.accent2) },
+  { id: 'cL', x: 230, y: 560, w: 'thinkers', t: 3.1, svg: `<g transform="translate(0 0)">${chip(260, 'THINK')}</g>` },
+  { id: 'cR', x: 770, y: 560, w: 'thinkers', t: 3.3, svg: chip(260, 'THINK') },
+  { id: 'th', x: 500, y: 360, w: 'thinkers', t: 3.4, svg: T(0, 0, 'ELECTRONS = THE THINKERS', 40, '#1565c0') },
+  { id: 'mem', x: 230, y: 790, w: 'memory', t: 5.2, svg: `${[0, 1, 2].map(i => [0, 1, 2].map(j => `<rect x="${-45 + i * 32}" y="${-30 + j * 24}" width="26" height="18" fill="#ffd23f" stroke="${INK}" stroke-width="3"/>`).join('')).join('')}${T(0, 70, 'MEMORY + DECISIONS', 28)}` },
+  { id: 'br', w: 'couriers', t: 6.6, svg: `<rect x="372" y="520" width="256" height="80" rx="30" fill="rgba(160,210,255,.4)" stroke="#2d5fb5" stroke-width="6"/>${LANES.slice(0, 4).map((c, i) => `<line x1="384" y1="${534 + i * 18}" x2="616" y2="${534 + i * 18}" stroke="${c}" stroke-width="9" stroke-dasharray="26 22" ${an('flow', .5, i * .1)}/>`).join('')}${T(500, 650, 'PHOTONS = COURIERS', 36, THEME.accent)}${T(500, 696, 'data at the speed of light', 26, INK, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'eng', x: 500, y: 1030, w: 'math', t: 11.4, svg: `<rect x="-230" y="-110" width="460" height="220" rx="18" fill="#fff" stroke="${INK}" stroke-width="6"/>${[-60, 0, 60].map(y => `<line x1="-210" y1="${y}" x2="-80" y2="${y}" stroke="#ffb300" stroke-width="12" stroke-linecap="round"/><rect x="-80" y="${y - 22}" width="26" height="44" rx="8" fill="rgba(20,20,20,.55)" stroke="${INK}" stroke-width="4"/><path d="M-54 ${y} Q40 ${y} 120 0" fill="none" stroke="#ffb300" stroke-width="8"/>`).join('')}<circle cx="150" cy="0" r="36" fill="#1c2630" stroke="${INK}" stroke-width="5"/><circle cx="150" cy="0" r="18" fill="#ffe08a"/>${T(0, 160, 'PHOTONIC MATH ENGINE', 34, THEME.accent2)}` },
+  { id: 'tg', x: 500, y: 1290, w: 'together', t: 13.1, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'LIGHT + ELECTRONS', -2, THEME.accent2, 66, '#fff')}</g>` },
+  { id: 'sub', x: 500, y: 1400, w: 'subscribe', t: 13.4, svg: `<g ${an('pulse', .8)}><rect x="-210" y="-44" width="420" height="88" rx="18" fill="${THEME.accent}" stroke="${INK}" stroke-width="7"/>${T(0, 20, 'SUBSCRIBE', 54, '#fff')}</g>` }
+ ]})));
+
+// ── export ──────────────────────────────────────────────────────
+const TRANS = ['fade', 'wipe-left', 'fade', 'wipe-left', 'fade', 'wipe-up', 'fade', 'wipe-left', 'fade', 'wipe-left', 'fade', 'wipe-up', 'fade'];
 module.exports = {
-    output: { title: 'rm-footwear-paper2-section-a', format: 'portrait', fps: 30, crf: 23, preset: 'medium' },
-    defaults: { voice: 'am_adam', speed: 1.0, transition: 'fade', transitionDuration: 0.3 },
-    scenes: ES.map(retime).map((s, i) => Object.assign(s, { transition: ['fade', 'wipe-left', 'fade', 'wipe-left', 'fade', 'wipe-left', 'fade', 'wipe-up', 'fade', 'wipe-left', 'fade', 'fade'][i] })),
+    output: { title: 'could-computers-run-on-light', format: 'portrait', fps: 30, crf: 23, preset: 'medium' },
+    defaults: { voice: 'am_adam', speed: 1.02, transition: 'fade', transitionDuration: 0.3 },
+    scenes: S.map((s, i) => Object.assign(s, { transition: TRANS[i] || 'fade' })),
 };
