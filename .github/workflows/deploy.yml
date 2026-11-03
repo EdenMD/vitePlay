@@ -33,6 +33,11 @@ jobs:
         with:
           path: _public-configs
 
+      - name: Setup Python 3.11 for Kokoro
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Place selected config at workspace root
         run: |
           CONFIG_FILE="${{ github.event.inputs.config || 'config.js' }}"
@@ -68,7 +73,7 @@ jobs:
 
       - name: Install yt-dlp
         run: |
-          pip3 install --quiet -U yt-dlp
+          python -m pip install --quiet -U yt-dlp
           yt-dlp --version
 
       - name: Detect WhisperX requirement
@@ -87,7 +92,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: kokoro-pip-${{ runner.os }}-v5-wx${{ env.NEED_WHISPERX }}
+          key: kokoro-pip-${{ runner.os }}-v6-py311-wx${{ env.NEED_WHISPERX }}
 
       - name: Cache Kokoro model weights (Hugging Face hub)
         uses: actions/cache@v4
@@ -95,8 +100,7 @@ jobs:
           path: ~/.cache/huggingface
           key: kokoro-hf-weights-v1
 
-            
-- name: Install Kokoro TTS
+      - name: Install Kokoro TTS
         run: |
           python -m pip install --quiet --upgrade pip
           python -m pip install --quiet numpy soundfile "misaki[en]" "kokoro>=0.9.4"
@@ -107,8 +111,8 @@ jobs:
         if: env.NEED_WHISPERX == 'true'
         run: |
           echo "Installing WhisperX for precise word alignment..."
-          pip3 install --quiet whisperx
-          python3 -c "import whisperx; print('WhisperX OK')"
+          python -m pip install --quiet whisperx
+          python -c "import whisperx; print('WhisperX OK')"
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
