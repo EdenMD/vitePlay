@@ -95,12 +95,13 @@ jobs:
           path: ~/.cache/huggingface
           key: kokoro-hf-weights-v1
 
-      - name: Install Kokoro TTS
+            
+- name: Install Kokoro TTS
         run: |
-          pip3 install --quiet --upgrade pip
-          pip3 install --quiet numpy soundfile "misaki[en]" "kokoro>=0.9.4"
-          pip3 install --quiet Pillow
-          python3 -c "from kokoro import KPipeline; print('Kokoro OK')"
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet numpy soundfile "misaki[en]" "kokoro>=0.9.4"
+          python -m pip install --quiet Pillow
+          python -c "from kokoro import KPipeline; print('Kokoro OK')"
 
       - name: Install WhisperX (only when config requires it)
         if: env.NEED_WHISPERX == 'true'
