@@ -1,8 +1,8 @@
-// config.photon-chip-story.js
-// "Could Computers Run on Light?" — APEX Video Engine config (same architecture as the rocket/solar configs)
-// 13 scenes, analogy-driven: tap -> logic gates -> stadium of bits -> heat -> thin wires -> leaks
-//                            -> photons -> cool + many colors -> sunglasses math -> ripple math -> why not all light -> team-up
-//            -> p-n junction -> light makes current -> panel to home -> advantages -> disadvantages -> recap
+// config.ai-math-story.js
+// "How Can AI Do Math If It Only Predicts Words?" — APEX Video Engine config (same architecture as earlier configs)
+// 13 scenes: puzzle -> neural net (mixing board) -> training (fill-in-the-blank) -> learning (hiker in fog)
+//            -> prediction needs understanding -> math in the blank -> phone book vs recipe -> clock trick
+//            -> two parallel paths -> chess master -> failures -> fixes -> verdict
 
 const THEME = {
     paper: '#efe6d3', ink: '#231b12', accent: '#b5402c', accent2: '#2c6b5a',
@@ -183,231 +183,186 @@ const scene = (bg, tts, layer, transition = 'fade') => ({
 const S = [];
 const INK = THEME.ink;
 
-// ── extra helpers for this video ────────────────────────────────
-const pipe = (d, w = 50, fill = '#fff') => `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${w}" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${fill}" stroke-width="${w - 12}" stroke-linejoin="round"/>`;
-const water = (d, w = 50, dl = 0) => `<path d="${d}" fill="none" stroke="#4dd0ff" stroke-width="${w - 12}" stroke-linejoin="round" opacity=".9"/><path d="${d}" fill="none" stroke="#fff" stroke-width="5" stroke-dasharray="14 12" ${an('flow', .5, dl)}/>`;
-const valve = (x, y, open) => `<g transform="translate(${x} ${y})"><line x1="0" y1="-34" x2="0" y2="-80" stroke="${INK}" stroke-width="8"/><rect x="-34" y="-34" width="68" height="68" rx="10" fill="#8a929b" stroke="${INK}" stroke-width="5"/><rect x="-32" y="-102" width="64" height="22" rx="11" fill="${open ? '#2e8b57' : '#c0392b'}" stroke="${INK}" stroke-width="4"/></g>`;
-const sinePts = (x0, x1, cy, amp, ph, per = 3) => { const o = [], n = Math.round((x1 - x0) / 6); for (let i = 0; i <= n; i++) { const x = x0 + i * 6; o.push(`${x},${(cy + amp * Math.sin((x - x0) / (x1 - x0) * per * 2 * Math.PI + ph)).toFixed(1)}`); } return o.join(' '); };
-const wave = (cy, amp, ph, col, w = 6) => `<polyline points="${sinePts(-330, 330, cy, amp, ph)}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
-const LANES = ['#ff4d4d', '#ff9d3d', '#ffe14d', '#4dff88', '#4dd0ff', '#c77dff'];
-const chip = (w, label) => `<rect x="${-w / 2}" y="${-w / 2}" width="${w}" height="${w}" rx="16" fill="#2b3a55" stroke="#c9ced6" stroke-width="8"/>
-  ${[-.3, -.1, .1, .3].map(k => `<line x1="${-w / 2 - 28}" y1="${k * w}" x2="${-w / 2}" y2="${k * w}" stroke="#c9ced6" stroke-width="8"/><line x1="${w / 2}" y1="${k * w}" x2="${w / 2 + 28}" y2="${k * w}" stroke="#c9ced6" stroke-width="8"/><line x1="${k * w}" y1="${-w / 2 - 28}" x2="${k * w}" y2="${-w / 2}" stroke="#c9ced6" stroke-width="8"/><line x1="${k * w}" y1="${w / 2}" x2="${k * w}" y2="${w / 2 + 28}" stroke="#c9ced6" stroke-width="8"/>`).join('')}
-  <rect x="${-w * .32}" y="${-w * .32}" width="${w * .64}" height="${w * .64}" rx="8" fill="#1c2630" stroke="#8fbcff" stroke-width="3"/>
-  ${[-.15, 0, .15].map((k, i) => `<polyline points="${-w * .28},${k * w} ${-w * .1},${k * w} ${-w * .05},${k * w + 16} ${w * .1},${k * w + 16} ${w * .28},${k * w}" fill="none" stroke="#4dd0ff" stroke-width="5" ${an('flow dash', .8, i * .2)}/>`).join('')}
-  ${T(0, w * .45 - 6, label, 30, '#fff')}`;
+// ── extra helpers ───────────────────────────────────────────────
 const wideCard = (icon, title, a1, a2, col) => `<rect x="-440" y="-150" width="880" height="300" rx="18" fill="#fff" stroke="${INK}" stroke-width="6"/><g transform="translate(-300 0)">${icon}</g>${T(-170, -30, title, 42, col, 'start')}${T(-170, 28, a1, 28, INK, 'start', FM, 'font-weight="bold"')}${T(-170, 68, a2, 28, INK, 'start', FM, 'font-weight="bold"')}`;
+const card = (x, y, w, h, fill = '#fff', stroke = INK, sw = 6) => `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="16" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+const gearSvg = (r, teeth, dur, rev, fill = '#aab3bd') => `<g ${an('spin', dur, 0, [0, 0], rev ? '--dir:reverse;' : '')}>${Array.from({ length: teeth }, (_, i) => `<rect x="-${r * .14}" y="-${r * 1.32}" width="${r * .28}" height="${r * .4}" fill="${fill}" stroke="${INK}" stroke-width="4" transform="rotate(${i * 360 / teeth})"/>`).join('')}<circle r="${r}" fill="${fill}" stroke="${INK}" stroke-width="6"/><circle r="${r * .3}" fill="#fff" stroke="${INK}" stroke-width="4"/></g>`;
+const speech = (x, y, w, h, txt, fill, tx = 28, tail = 'left') => `<g transform="translate(${x} ${y})"><rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="26" fill="${fill}" stroke="${INK}" stroke-width="6"/><polygon points="${tail === 'left' ? `${-w / 2 + 40},${h / 2 - 2} ${-w / 2 + 20},${h / 2 + 40} ${-w / 2 + 80},${h / 2 - 2}` : `${w / 2 - 40},${h / 2 - 2} ${w / 2 - 20},${h / 2 + 40} ${w / 2 - 80},${h / 2 - 2}`}" fill="${fill}" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>${T(0, tx / 3, txt, tx, INK)}</g>`;
 
-// ── 0 HOOK ──────────────────────────────────────────────────────
+// ── 0 THE PUZZLE ────────────────────────────────────────────────
 S.push(scene('#050818',
- "Your phone chip does billions of calculations every second, and it runs hot. Light is the fastest thing in the universe. So could we compute with photons instead of electrons? The answer is yes, no, and a surprising maybe.",
- comicScene({ badge: 'LIGHT VS ELECTRONS', theme: 'night', groups: [
-  { id: 'stars', always: true, svg: stars(50, 31) },
-  { id: 'chip', x: 500, y: 430, w: 'chip', t: .7, svg: chip(300, 'CPU') },
-  { id: 'hot', x: 500, y: 430, w: 'hot', t: 4.1, svg: `<g ${an('pulse', .9)}><ellipse rx="230" ry="200" fill="rgba(255,70,40,.25)"/></g>${[-90, 0, 90].map((x, i) => `<path d="M${x} -190 q18 -30 0 -60 q-18 -30 0 -60" fill="none" stroke="#ff7a1a" stroke-width="8" stroke-linecap="round" ${an('bob', 1, i * .3)}/>`).join('')}${sfx(0, 270, 'RUNS HOT', -3, '#ff7a1a', 70, '#050818')}` },
-  { id: 'light', w: 'light', t: 4.5, svg: `<path d="${wavy(40, 850, 960, 850, 22, 18)}" fill="none" stroke="#ffd23f" stroke-width="9" stroke-linecap="round" ${an('flow dash', .5)}/>${T(500, 810, 'LIGHT: THE FASTEST THING THERE IS', 34, '#ffd23f')}` },
-  { id: 'ph', x: 300, y: 1030, w: 'photons', t: 9, svg: `<g ${an('pulse', 1)}><circle r="46" fill="#ffd23f" stroke="#fff" stroke-width="6"/></g>${T(0, 100, 'PHOTONS', 40, '#ffd23f')}` },
-  { id: 'vs', x: 500, y: 1050, w: 'photons', t: 9.5, svg: `${T(0, 0, 'VS', 56, '#fff')}` },
-  { id: 'el', x: 700, y: 1030, w: 'electrons', t: 10, svg: `<g ${an('pulse', 1.2)}><circle r="46" fill="#4dd0ff" stroke="#fff" stroke-width="6"/>${T(0, 14, 'e-', 40, '#050818')}</g>${T(0, 100, 'ELECTRONS', 40, '#4dd0ff')}` },
-  { id: 'yes', x: 190, y: 1300, w: 'yes', t: 11.4, svg: sfx(0, 0, 'YES', -4, '#6dff9c', 90, '#050818') },
-  { id: 'no', x: 440, y: 1300, w: 'no', t: 11.7, svg: sfx(0, 0, 'NO', 3, '#ff6b6b', 90, '#050818') },
-  { id: 'maybe', x: 780, y: 1300, w: 'maybe', t: 13.1, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'MAYBE', -3, '#ffd23f', 96, '#050818')}</g>` }
+ "Here is a puzzle. AI language models are trained to predict the next word. So how can one solve a math problem it has never seen? You cannot autocomplete your way to a correct answer, or can you? Let's build one from scratch and find out.",
+ comicScene({ badge: 'CAN AI REALLY DO MATH?', theme: 'night', groups: [
+  { id: 'stars', always: true, svg: stars(50, 52) },
+  { id: 'pz', x: 500, y: 110, w: 'puzzle', t: 1, svg: sfx(0, 0, 'THE PUZZLE', -3, '#ffd23f', 96, '#050818') },
+  { id: 'pr', x: 500, y: 450, w: 'predict', t: 3.4, svg: `${card(0, 0, 800, 220, '#fff', '#8fbcff')}${T(0, -20, 'the cat sat on the', 46, INK, 'middle', FM, 'font-weight="bold"')}<rect x="262" y="-52" width="14" height="52" fill="#2d5fb5" ${an('blink', .8)}/>${['mat', 'sofa', 'floor'].map((w, i) => `<g transform="translate(${-200 + i * 200} 60)"><rect x="-80" y="-28" width="160" height="56" rx="28" fill="#e8f1ff" stroke="#2d5fb5" stroke-width="4"/>${T(0, 12, w, 34, '#2d5fb5')}</g>`).join('')}${T(0, 170, 'PREDICT THE NEXT WORD', 36, '#8fbcff')}` },
+  { id: 'mc', x: 500, y: 830, w: 'math', t: 6.9, svg: `${card(0, 0, 800, 220, '#fff', '#ffd23f')}${T(0, 28, '3,847 + 5,296 = ?', 82, INK)}${T(0, 170, 'A MATH PROBLEM IT HAS NEVER SEEN', 34, '#ffd23f')}` },
+  { id: 'au', x: 500, y: 1110, w: 'autocomplete', t: 9.7, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'CAN AUTOCOMPLETE DO THIS?', -2, '#ff6b6b', 58, '#050818')}</g>` },
+  { id: 'bd', x: 500, y: 1290, w: 'build', t: 13.4, svg: sfx(0, 0, "LET'S BUILD ONE FROM SCRATCH", -2, '#6dff9c', 54, '#050818') }
  ]})));
 
-// ── 1 THE TRANSISTOR IS A TAP ───────────────────────────────────
+// ── 1 THE MIXING BOARD ──────────────────────────────────────────
+const sliders = (() => { const r = rng(13); let o = ''; for (let i = 0; i < 12; i++) { const x = -360 + i * 65.5, y = -120 + r() * 240; o += `<line x1="${x}" y1="-150" x2="${x}" y2="150" stroke="#111" stroke-width="10" stroke-linecap="round"/><g transform="translate(${x} ${y.toFixed(0)})"><g ${an('bob', (.6 + r()).toFixed(2), r().toFixed(2))}><rect x="-20" y="-12" width="40" height="24" rx="6" fill="${['#ff6b6b', '#ffd23f', '#4dd0ff', '#6dff9c'][i % 4]}" stroke="#fff" stroke-width="3"/></g></g>`; } return o; })();
 S.push(scene(THEME.paper,
- "Inside every chip are tens of billions of tiny switches called transistors. Think of each one as a water tap. Turn the handle on, and water flows. That's a one. Turn it off, and nothing flows. That's a zero. The handle is a small voltage, and the water is electrons.",
- comicScene({ badge: '1 - THE CHIP IS A TAP', badgeColor: THEME.accent2, groups: [
-  { id: 'bill', x: 500, y: 110, w: 'billions', t: 2.1, svg: `${sfx(0, 0, 'TENS OF BILLIONS', -2, THEME.accent, 72, '#fff')}${T(0, 56, 'of switches on one chip', 30, INK, 'middle', FM, 'font-weight="bold"')}` },
-  { id: 'tr', x: 500, y: 290, w: 'transistors', t: 3.8, svg: T(0, 0, 'TRANSISTOR = A TINY SWITCH', 42) },
-  { id: 'tap', w: 'tap', t: 6.6, svg: `${pipe('M80 760 H920', 56)}<rect x="450" y="690" width="100" height="140" rx="14" fill="#8a929b" stroke="${INK}" stroke-width="6"/><line x1="500" y1="690" x2="500" y2="640" stroke="${INK}" stroke-width="12"/>${T(130, 700, 'IN', 30)}${T(870, 700, 'OUT', 30)}` },
-  { id: 'on', w: 'on', t: 7.9, hw: 'off', ht: 11, svg: `${water('M90 760 H446', 56)}${water('M554 760 H910', 56, .2)}<line x1="500" y1="650" x2="590" y2="590" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><circle cx="596" cy="586" r="24" fill="#2e8b57" stroke="${INK}" stroke-width="6"/>${T(640, 570, 'OPEN', 36, THEME.accent2, 'start')}` },
-  { id: 'off', w: 'off', t: 11, svg: `${water('M90 760 H446', 56)}<line x1="500" y1="650" x2="500" y2="580" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><circle cx="500" cy="566" r="24" fill="#c0392b" stroke="${INK}" stroke-width="6"/>${T(560, 570, 'CLOSED', 36, THEME.accent, 'start')}` },
-  { id: 'b1', x: 500, y: 1070, w: 'flows', t: 9, hw: 'off', ht: 11, svg: `<circle r="90" fill="#fff" stroke="${INK}" stroke-width="7"/>${T(0, 38, '1', 120, THEME.accent2)}${T(0, 150, 'ON = ONE', 40)}` },
-  { id: 'b0', x: 500, y: 1070, w: 'zero', t: 13.1, svg: `<circle r="90" fill="#fff" stroke="${INK}" stroke-width="7"/>${T(0, 38, '0', 120, THEME.accent)}${T(0, 150, 'OFF = ZERO', 40)}` },
-  { id: 'vo', x: 230, y: 520, w: 'voltage', t: 15.2, svg: `${T(0, 0, 'HANDLE = VOLTAGE', 34, THEME.accent)}${arrow(110, 20, 230, 100, THEME.accent, 6)}` },
-  { id: 'el', x: 500, y: 900, w: 'electrons', t: 16.9, svg: `${T(0, 0, 'WATER = ELECTRONS', 34, '#1565c0')}${arrow(-120, -30, -170, -90, '#1565c0', 6)}` }
+ "Start with a neural network. Picture a giant mixing board with billions of dials. Words go in one side, and a guess comes out the other. At first every dial is set randomly, so the guess is pure gibberish.",
+ comicScene({ badge: '1 - THE MIXING BOARD', badgeColor: THEME.accent2, groups: [
+  { id: 'tt', x: 500, y: 120, w: 'network', t: 1.4, svg: `${sfx(0, 0, 'NEURAL NETWORK', -2, THEME.accent, 80, '#fff')}${T(0, 60, '= a giant mixing board', 36, INK, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'in', x: 500, y: 390, w: 'words', t: 4.8, svg: `${['CAT', 'SAT', 'ON'].map((w, i) => `<g transform="translate(${-150 + i * 150} 0)"><rect x="-60" y="-34" width="120" height="68" rx="12" fill="#fff" stroke="${INK}" stroke-width="5"/>${T(0, 13, w, 38)}</g>`).join('')}${arrow(0, 50, 0, 150, INK, 8)}${T(330, 10, 'WORDS IN', 30, THEME.accent2, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'bd', x: 500, y: 820, w: 'board', t: 3.1, svg: `<rect x="-420" y="-200" width="840" height="400" rx="22" fill="#2b3a55" stroke="${INK}" stroke-width="8"/>${sliders}` },
+  { id: 'bl', x: 500, y: 590, w: 'billions', t: 3.8, svg: T(0, 0, 'BILLIONS OF DIALS', 40, THEME.accent) },
+  { id: 'out', x: 500, y: 1130, w: 'guess', t: 7.2, svg: `${arrow(0, -90, 0, -20, INK, 8)}${card(0, 60, 420, 100)}${T(0, 74, 'GUESS: ???', 46, INK)}` },
+  { id: 'rnd', x: 250, y: 1090, w: 'randomly', t: 11, svg: T(0, 0, 'ALL SET AT RANDOM', 28, THEME.accent) },
+  { id: 'gib', x: 500, y: 1380, w: 'gibberish', t: 13.1, svg: `<g ${an('wobble', .4)}>${sfx(0, 0, 'ZXQ PLORB!?', -3, THEME.accent, 84, '#fff')}</g>` }
  ]})));
 
-// ── 2 TAPS BECOME LOGIC ─────────────────────────────────────────
-const tileG = (id, w, t, x, label, fs = 40) => ({ id, x, y: 1260, w, t, svg: `<rect x="-110" y="-55" width="220" height="110" rx="14" fill="#fff" stroke="${INK}" stroke-width="6"/>${T(0, fs / 3, label, fs, THEME.accent2)}` });
+// ── 2 FILL IN THE BLANK ─────────────────────────────────────────
 S.push(scene(THEME.paper,
- "Connect two taps in a row, and water only reaches the end if both are open. That's an AND gate. Put them side by side, and water arrives if either one is open. That's an OR gate. Stack enough of these gates and you can add numbers, multiply them, and run your whole phone.",
- comicScene({ badge: '2 - TAPS BECOME LOGIC', badgeColor: THEME.accent2, groups: [
-  { id: 'row', x: 500, y: 350, w: 'row', t: 1.7, svg: `${pipe('M-400 0 H400')}${valve(-120, 0, false)}${valve(120, 0, false)}${T(-370, 50, 'IN', 28)}${T(370, 50, 'OUT', 28)}` },
-  { id: 'both', x: 500, y: 350, w: 'both', t: 4.5, svg: `${water('M-396 0 H-154')}${water('M-86 0 H86', 50, .2)}${water('M154 0 H396', 50, .4)}${valve(-120, 0, true)}${valve(120, 0, true)}${T(0, 110, 'OUT = 1', 48, THEME.accent2)}` },
-  { id: 'and', x: 500, y: 170, w: 'gate', t: 6.6, svg: T(0, 0, 'AND GATE: BOTH TAPS OPEN', 38, THEME.accent2) },
-  { id: 'side', x: 500, y: 830, w: 'side', t: 7.6, svg: `${pipe('M-400 0 H-250')}${pipe('M-250 0 V-90 H250 V0')}${pipe('M-250 0 V90 H250 V0')}${pipe('M250 0 H400')}${valve(0, -90, false)}${valve(0, 90, false)}${T(-370, 50, 'IN', 28)}${T(370, 50, 'OUT', 28)}` },
-  { id: 'either', x: 500, y: 830, w: 'either', t: 10, svg: `${water('M-396 0 H-250 V-90 H-40')}${water('M40 -90 H250 V0 H396', 50, .2)}${valve(0, -90, true)}${T(0, 190, 'OUT = 1', 48, THEME.accent2)}` },
-  { id: 'or', x: 500, y: 700, w: 'or', t: 12.1, svg: T(0, 0, 'OR GATE: EITHER TAP OPEN', 38, THEME.accent2) },
-  { id: 'stk', x: 500, y: 1110, w: 'stack', t: 12.8, svg: sfx(0, 0, 'STACK BILLIONS OF GATES', -2, THEME.accent, 56, '#fff') },
-  tileG('t1', 'add', 15.5, 160, 'ADD'),
-  tileG('t2', 'multiply', 16.2, 500, 'MULTIPLY', 36),
-  tileG('t3', 'phone', 18.3, 840, 'RUN A PHONE', 28)
+ "Now the training. We show it huge amounts of text from books, websites and code, with the next word hidden. It is a giant fill in the blank test. The cat sat on the blank. The model guesses, and then we reveal the real answer.",
+ comicScene({ badge: '2 - THE TRAINING GAME', badgeColor: THEME.accent2, groups: [
+  { id: 'src', x: 500, y: 170, w: 'text', t: 3.1, svg: `${[[-300, 'BOOKS'], [0, 'WEBSITES'], [300, 'CODE']].map(([x, l], i) => `<g transform="translate(${x} 0)">${card(0, 0, 250, 140)}${i === 0 ? `<rect x="-40" y="-40" width="80" height="60" fill="#c8702a" stroke="${INK}" stroke-width="4"/><line x1="0" y1="-40" x2="0" y2="20" stroke="${INK}" stroke-width="4"/>` : i === 1 ? `<rect x="-60" y="-40" width="120" height="60" fill="#e8f1ff" stroke="${INK}" stroke-width="4"/><circle cx="-46" cy="-30" r="4" fill="#e63946"/>` : T(0, 12, '&lt;/&gt;', 54, '#2d5fb5', 'middle', FM, 'font-weight="bold"')}${T(0, 52, l, 28)}</g>`).join('')}` },
+  { id: 'fl', x: 500, y: 400, w: 'fill', t: 8.3, svg: T(0, 0, 'A GIANT FILL-IN-THE-BLANK TEST', 38, THEME.accent2) },
+  { id: 'sn', x: 500, y: 530, w: 'hidden', t: 6.6, svg: `${card(0, 0, 840, 130)}${T(-390, 16, 'THE CAT SAT ON THE', 44, INK, 'start', FM, 'font-weight="bold"')}<rect x="150" y="-40" width="200" height="80" rx="12" fill="#2b3a55"/>${T(250, 22, '?', 64, '#ffd23f')}` },
+  { id: 'bars', x: 500, y: 830, w: 'guesses', t: 12.8, svg: `${T(0, -60, 'THE MODEL GUESSES', 36, INK)}${[['mat', 55], ['sofa', 25], ['rug', 12], ['moon', 1]].map(([w, p], i) => `<g transform="translate(0 ${i * 70})">${T(-300, 12, w, 32, INK, 'end')}<g ${an('growx', 1, i * .15, 'left')}><rect x="-270" y="-18" width="${Math.max(6, p * 8)}" height="40" rx="8" fill="${i === 0 ? THEME.accent2 : '#aab3bd'}" stroke="${INK}" stroke-width="4"/></g>${T(-270 + Math.max(6, p * 8) + 14, 12, p + '%', 30, INK, 'start')}</g>`).join('')}` },
+  { id: 'rv', x: 500, y: 830, w: 'reveal', t: 14.1, svg: `<rect x="-370" y="-24" width="640" height="50" rx="12" fill="none" stroke="#ffd23f" stroke-width="8" ${an('pulse', .7)}/>${sfx(0, 380, 'REAL ANSWER: MAT', -2, THEME.accent, 66, '#fff')}` }
  ]})));
 
-// ── 3 THE STADIUM OF BITS ───────────────────────────────────────
-const SMILE = ['....######....', '..##########..', '.############.', '####..##..####', '####..##..####', '##############', '##############', '##.########.##', '###.######.###', '.####....####.', '..##########..', '....######....', '..............', '..............'];
-const gridBase = (() => { const r = rng(7); let o = ''; for (let j = 0; j < 14; j++) for (let i = 0; i < 14; i++) { const b = r() > .5; o += `<rect x="${-403 + i * 58}" y="${-403 + j * 58}" width="52" height="52" rx="6" fill="${b ? INK : '#fff'}" stroke="${INK}" stroke-width="3"/>`; } return o; })();
-const gridFlip = (() => { const r = rng(7), q = rng(77); let o = ''; for (let j = 0; j < 14; j++) for (let i = 0; i < 14; i++) { const b = r() > .5; if (q() < .6) o += `<rect x="${-403 + i * 58}" y="${-403 + j * 58}" width="52" height="52" rx="6" fill="${b ? '#fff' : INK}" stroke="${INK}" stroke-width="3" ${an('blink', (.3 + q() * .6).toFixed(2), (q() * .5).toFixed(2), 'center', '--dir:normal;')}/>`; } return o; })();
-const gridPic = SMILE.map((row, j) => row.split('').map((c, i) => `<rect x="${-403 + i * 58}" y="${-403 + j * 58}" width="52" height="52" rx="6" fill="${c === '#' ? '#ffd23f' : '#fff'}" stroke="${INK}" stroke-width="3"/>`).join('')).join('');
-S.push(scene(THEME.paper,
- "A modern chip flips these taps billions of times every second. Picture a giant stadium where every person holds up a black or white card, and everyone flips at once, billions of times a second. The patterns they form are your video, your game, your message.",
- comicScene({ badge: '3 - THE STADIUM OF BITS', badgeColor: THEME.accent2, groups: [
-  { id: 'clk', x: 500, y: 120, w: 'billions', t: 2.1, svg: `${sfx(0, 0, '~5 BILLION FLIPS', -2, THEME.accent, 72, '#fff')}${T(0, 58, 'EVERY SECOND', 36)}` },
-  { id: 'grid', x: 500, y: 760, w: 'stadium', t: 4.8, svg: gridBase },
-  { id: 'bw', x: 500, y: 1210, w: 'black', t: 7.2, svg: T(0, 0, 'BLACK CARD = 1    WHITE CARD = 0', 32, INK, 'middle', FM, 'font-weight="bold"') },
-  { id: 'flip', x: 500, y: 760, w: 'once', t: 10, svg: gridFlip },
-  { id: 'pic', x: 500, y: 760, w: 'patterns', t: 12.4, svg: gridPic },
-  { id: 'p1', x: 190, y: 1330, w: 'video', t: 14.1, svg: `<rect x="-130" y="-40" width="260" height="80" rx="40" fill="${THEME.accent}" stroke="${INK}" stroke-width="5"/>${T(0, 14, 'VIDEO', 44, '#fff')}` },
-  { id: 'p2', x: 500, y: 1330, w: 'game', t: 14.8, svg: `<rect x="-130" y="-40" width="260" height="80" rx="40" fill="${THEME.accent2}" stroke="${INK}" stroke-width="5"/>${T(0, 14, 'GAME', 44, '#fff')}` },
-  { id: 'p3', x: 810, y: 1330, w: 'message', t: 15.5, svg: `<rect x="-130" y="-40" width="260" height="80" rx="40" fill="#2d5fb5" stroke="${INK}" stroke-width="5"/>${T(0, 14, 'MESSAGE', 44, '#fff')}` }
- ]})));
-
-// ── 4 PROBLEM 1: HEAT ───────────────────────────────────────────
-S.push(scene(THEME.paper,
- "But electrons have a problem. They carry charge and they crash into the atoms of the metal. Picture a crowd sprinting down a hallway full of furniture. Every bump wastes energy as heat. That is why your phone gets warm, and why data centers need giant cooling systems.",
- comicScene({ badge: '4 - PROBLEM: HEAT', badgeColor: THEME.accent, groups: [
-  { id: 'prob', x: 500, y: 100, w: 'problem', t: 1.4, svg: sfx(0, 0, 'PROBLEM 1: HEAT', -2, THEME.accent, 72, '#fff') },
-  { id: 'hall', w: 'atoms', t: 4.5, svg: `<rect x="60" y="190" width="880" height="16" fill="#8a7f6f" stroke="${INK}" stroke-width="4"/><rect x="60" y="590" width="880" height="16" fill="#8a7f6f" stroke="${INK}" stroke-width="4"/>
-    ${[[200, 330], [340, 480], [480, 340], [620, 490], [760, 330], [260, 500], [560, 260], [860, 480]].map(([x, y], i) => `<g transform="translate(${x} ${y})"><g ${an('wobble', .4 + i * .05)}><circle r="32" fill="#c8702a" stroke="${INK}" stroke-width="5"/><circle cx="-8" cy="-8" r="8" fill="#fff" opacity=".4"/></g></g>`).join('')}${T(500, 650, 'A WIRE, UP CLOSE', 30, INK, 'middle', FM, 'font-weight="bold"')}` },
-  { id: 'crowd', w: 'crowd', t: 6.6, svg: [240, 300, 380, 440, 520, 560].map((y, i) => `<g transform="translate(70 ${y})"><g ${an('move', 2.2 + i * .25, i * .3, 'center', '--dx:820px;')}><g ${an('bob', .18, i * .05)}><circle r="14" fill="#4dd0ff" stroke="${INK}" stroke-width="3"/><text y="5" font-size="15" text-anchor="middle" font-family="${FI}" fill="${INK}">e</text></g></g></g>`).join('') },
-  { id: 'furn', x: 500, y: 720, w: 'furniture', t: 9, svg: `${T(0, 0, 'ATOMS = FURNITURE', 36, '#8a5a1a')}${T(0, 48, 'ELECTRONS = THE CROWD', 36, '#1565c0')}` },
-  { id: 'bump', w: 'bump', t: 9.7, svg: [[340, 480], [480, 340], [620, 490], [760, 330]].map(([x, y], i) => sparks(x, y, 6, '#ff7a1a', 46, .35 + i * .05)).join('') },
-  { id: 'heat', w: 'heat', t: 11, svg: `<g ${an('pulse', .9)}><ellipse cx="500" cy="400" rx="470" ry="260" fill="rgba(230,60,40,.16)"/></g>${[200, 500, 800].map((x, i) => `<path d="M${x} 170 q20 -30 0 -60 q-20 -30 0 -60" fill="none" stroke="#e63946" stroke-width="8" stroke-linecap="round" ${an('bob', 1, i * .3)}/>`).join('')}${sfx(500, 800, 'WASTED AS HEAT', -2, '#e63946', 60, '#fff')}` },
-  { id: 'ph', x: 250, y: 1100, w: 'phone', t: 12.8, svg: `<g ${an('pulse', 1)}><ellipse rx="130" ry="150" fill="rgba(230,60,40,.22)"/></g><rect x="-60" y="-110" width="120" height="220" rx="20" fill="#222" stroke="${INK}" stroke-width="6"/><rect x="-50" y="-90" width="100" height="170" rx="8" fill="#ff9d7a"/>${[-30, 10].map((x, i) => `<path d="M${x} -120 q10 -20 0 -36" fill="none" stroke="#e63946" stroke-width="6" stroke-linecap="round" ${an('bob', .8, i * .3)}/>`).join('')}${T(0, 170, 'WARM PHONE', 34)}` },
-  { id: 'dc', x: 730, y: 1100, w: 'cooling', t: 15.9, svg: `${[-110, 0, 110].map((x, i) => `<rect x="${x - 45}" y="-110" width="90" height="230" rx="8" fill="#3a4654" stroke="${INK}" stroke-width="5"/>${[0, 1, 2, 3].map(k => `<circle cx="${x - 20}" cy="${-80 + k * 40}" r="6" fill="${['#6dff9c', '#ffd23f', '#ff4d4d', '#6dff9c'][k]}" ${an('blink', .8 + k * .2, i * .2)}/>`).join('')}`).join('')}
-    <g transform="translate(0 -170)"><circle r="42" fill="#fff" stroke="${INK}" stroke-width="5"/><g ${an('spin', .8, 0, [0, 0])}>${[0, 90, 180, 270].map(a => `<ellipse cx="0" cy="-22" rx="9" ry="20" fill="#4dd0ff" stroke="${INK}" stroke-width="3" transform="rotate(${a})"/>`).join('')}</g></g>${T(0, 190, 'GIANT COOLING', 34)}` }
- ]})));
-
-// ── 5 PROBLEM 2: WIRES ──────────────────────────────────────────
-S.push(scene(THEME.paper,
- "The wires are an even bigger problem. As chips shrink, wires get thinner, like a garden hose squeezed down to a coffee straw. Pushing signals through gets slower and hotter. Today, moving data around a chip can cost more energy than the math itself.",
- comicScene({ badge: '5 - PROBLEM: WIRES', badgeColor: THEME.accent, groups: [
-  { id: 'tt', x: 500, y: 100, w: 'wires', t: .3, svg: sfx(0, 0, 'PROBLEM 2: WIRES', -2, THEME.accent, 72, '#fff') },
-  { id: 'fun', w: 'thinner', t: 4.1, svg: `<polygon points="80,200 520,318 920,318 920,354 520,354 80,460" fill="#cfd6de" stroke="${INK}" stroke-width="7" stroke-linejoin="round"/>
-    ${[0, 1, 2, 3].map(i => `<g transform="translate(110 ${250 + i * 50})"><g ${an('drift', 3, -i * .7, 'center', '--dx:330px;')}><circle r="14" fill="#4dd0ff" stroke="${INK}" stroke-width="3"/></g></g>`).join('')}` },
-  { id: 'hose', x: 230, y: 160, w: 'hose', t: 5.5, svg: T(0, 0, 'GARDEN HOSE', 36, '#2e8b57') },
-  { id: 'straw', x: 740, y: 280, w: 'straw', t: 7.6, svg: T(0, 0, 'COFFEE STRAW', 36, THEME.accent) },
-  { id: 'jam', w: 'slower', t: 9.3, svg: `${[[430, 320], [450, 345], [425, 365], [470, 335], [455, 305], [400, 340]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="13" fill="#ff7a7a" stroke="${INK}" stroke-width="3" ${an('wobble', .3, i * .05)}/>`).join('')}${sfx(500, 520, 'TRAFFIC JAM', -3, THEME.accent, 56, '#fff')}` },
-  { id: 'hot', w: 'hotter', t: 10, svg: `<g ${an('pulse', .8)}><ellipse cx="560" cy="336" rx="240" ry="70" fill="rgba(230,60,40,.28)"/></g>${[500, 580, 660].map((x, i) => `<path d="M${x} 290 q14 -22 0 -44 q-14 -22 0 -44" fill="none" stroke="#e63946" stroke-width="7" stroke-linecap="round" ${an('bob', .9, i * .3)}/>`).join('')}` },
-  { id: 'bars', x: 500, y: 1330, w: 'energy', t: 13.4, svg: `${T(0, -440, 'ENERGY COST', 42, INK)}
-    <rect x="-250" y="-340" width="180" height="340" fill="#e63946" stroke="${INK}" stroke-width="6"/><g ${an('growy', 1.2, 0, 'bottom')}><rect x="-250" y="-340" width="180" height="340" fill="#e63946" stroke="${INK}" stroke-width="6"/></g>
-    <g ${an('growy', 1.2, .3, 'bottom')}><rect x="70" y="-90" width="180" height="90" fill="#2e8b57" stroke="${INK}" stroke-width="6"/></g>
-    ${T(-160, 50, 'MOVING DATA', 30)}${T(160, 50, 'THE MATH', 30)}` }
- ]})));
-
-// ── 6 PROBLEM 3: LEAKS (blueprint) ──────────────────────────────
-S.push(scene('#0f3d7a',
- "And the switches themselves are nearly atom sized. The barrier inside a transistor is only a few atoms thick, so electrons sometimes slip straight through, like a ghost walking through a wall. Those leaks waste power, and clock speeds have been stuck around a few gigahertz for years.",
- comicScene({ badge: '6 - PROBLEM: LEAKS', theme: 'blue', groups: [
-  { id: 'fr', x: 500, y: 380, w: 'switches', t: .7, svg: `${M(0, -280, 'PROBLEM 3: TINY SWITCHES', 32, THEME.bpHi)}
-    ${dr('M-340 70 H340 V220 H-340Z', 0, 1.6)}${dr('M-340 70 V10 H-180 V70', .4, 1.2)}${dr('M340 70 V10 H180 V70', .4, 1.2)}${dr('M-140 52 V-30 H140 V52', .8, 1.2)}
-    ${M(-260, -10, 'SOURCE', 24)}${M(260, -10, 'DRAIN', 24)}${M(0, -50, 'GATE (THE HANDLE)', 24, THEME.bpHi)}
-    <line x1="-300" y1="120" x2="300" y2="120" stroke="#4dd0ff" stroke-width="6" ${an('flow dash', .7)}/>${M(0, 160, 'ELECTRONS FLOW HERE', 22, '#7fe0ff')}` },
-  { id: 'bar', x: 500, y: 380, w: 'barrier', t: 3.1, svg: `<rect x="-130" y="52" width="260" height="16" fill="${THEME.bpHi}"/>${M(0, 270, 'BARRIER (INSULATOR)', 26, THEME.bpHi)}${dr('M0 258 V76', 0, .8, 4, THEME.bpHi)}` },
-  { id: 'at', x: 500, y: 640, w: 'atoms', t: 5.9, svg: `${[-90, -30, 30, 90].map(x => `<circle cx="${x}" cy="0" r="24" fill="#2b3a55" stroke="${THEME.bpLine}" stroke-width="5"/>`).join('')}${M(0, 70, 'ONLY A FEW ATOMS THICK', 26, '#fff')}` },
-  { id: 'gh', x: 500, y: 960, w: 'ghost', t: 9.3, svg: `<rect x="-40" y="-120" width="80" height="240" fill="#7d8791" stroke="${THEME.bpLine}" stroke-width="6"/>${M(0, 170, 'WALL', 28, '#fff')}
-    <g transform="translate(-260 0)"><g ${an('move', 3, 0, 'center', '--dx:520px;')}><path d="M-34 30 V-6 A34 34 0 0 1 34 -6 V30 L22 18 L11 30 L0 18 L-11 30 L-22 18Z" fill="#fff" fill-opacity=".85" stroke="${THEME.bpLine}" stroke-width="4"/><circle cx="-11" cy="-8" r="5" fill="#0f3d7a"/><circle cx="11" cy="-8" r="5" fill="#0f3d7a"/></g></g>${M(-250, 90, 'ELECTRON = GHOST', 22, THEME.bpHi)}` },
-  { id: 'lk', x: 500, y: 1130, w: 'leaks', t: 11.4, svg: `${sfx(0, 0, 'LEAKS WASTE POWER', -2, '#ff9d9d', 58, '#0f3d7a')}` },
-  { id: 'ck', x: 500, y: 1330, w: 'clock', t: 12.8, svg: `${dr('M-330 0 V-160 M-330 0 H330', 0, 1, 4)}${dr('M-310 -10 L-220 -20 L-130 -80 L-40 -130 L40 -146 L130 -148 L230 -150 L320 -150', .5, 2.2, 8, THEME.bpHi)}${M(-330, 40, '1995', 22, THEME.bpSoft)}${M(0, 40, '2005', 22, THEME.bpSoft)}${M(330, 40, 'TODAY', 22, THEME.bpSoft)}${M(-370, -90, 'GHz', 24, '#fff')}` },
-  { id: 'gz', x: 500, y: 1245, w: 'gigahertz', t: 15.5, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'STUCK AT A FEW GHz', -2, THEME.bpHi, 54, '#0f3d7a')}</g>` }
- ]})));
-
-// ── 7 ENTER THE PHOTON ──────────────────────────────────────────
+// ── 3 LEARNING = HIKER IN FOG ───────────────────────────────────
+const TERR = 'M60 520 C180 470 260 800 420 780 C540 765 560 600 660 640 C740 680 740 980 830 980 C900 980 940 900 960 800';
 S.push(scene('#cfeeff',
- "Now meet the photon, a particle of light. It has no electric charge, and it travels at the top speed anything can go. Two electron streams crossing would collide, like cars at an intersection. But shine two flashlights across each other, and the beams pass straight through, no crash, no traffic jam.",
- comicScene({ badge: '7 - ENTER THE PHOTON', badgeColor: THEME.accent, theme: 'sky', groups: [
-  { id: 'ph', x: 250, y: 220, w: 'photon', t: 1, svg: `<g ${an('pulse', 1)}><circle r="44" fill="#ffd23f" stroke="${INK}" stroke-width="6"/></g><path d="${wavy(-200, 0, -60, 0, 14, 6)}" fill="none" stroke="#ff9900" stroke-width="8" stroke-linecap="round" ${an('flow dash', .5)}/>${T(0, 110, 'A PHOTON', 40)}` },
-  { id: 'chg', x: 730, y: 190, w: 'charge', t: 4.1, svg: sfx(0, 0, '0 CHARGE', -3, THEME.accent2, 64, '#fff') },
-  { id: 'spd', x: 730, y: 300, w: 'speed', t: 6.6, svg: sfx(0, 0, 'TOP SPEED!', 3, THEME.accent, 64, '#fff') },
-  { id: 'cars', x: 500, y: 720, w: 'collide', t: 9.7, svg: `${T(0, -230, 'ELECTRONS: CARS AT AN INTERSECTION', 32, '#1565c0')}
-    <rect x="-380" y="-50" width="760" height="100" fill="#6b6b6b"/><rect x="-50" y="-170" width="100" height="340" fill="#6b6b6b"/>
-    <line x1="-370" y1="0" x2="-60" y2="0" stroke="#ffd23f" stroke-width="5" stroke-dasharray="18 14"/><line x1="60" y1="0" x2="370" y2="0" stroke="#ffd23f" stroke-width="5" stroke-dasharray="18 14"/>
-    <g transform="translate(-300 0)"><g ${an('move', 1.4, 0, 'center', '--dx:230px;')}><rect x="-40" y="-20" width="80" height="40" rx="8" fill="#2d5fb5" stroke="${INK}" stroke-width="4"/><rect x="-10" y="-14" width="30" height="28" fill="#bfe6ff"/></g></g>
-    <g transform="translate(0 -150)"><g ${an('move', 1.4, 0, 'center', '--dy:120px;')}><rect x="-20" y="-40" width="40" height="80" rx="8" fill="#e63946" stroke="${INK}" stroke-width="4"/><rect x="-14" y="-10" width="28" height="30" fill="#bfe6ff"/></g></g>
-    ${sparks(0, 0, 10, '#ff7a1a', 50, .35)}${sfx(120, -60, 'CRASH!', 8, THEME.accent, 64, '#fff')}` },
-  { id: 'fl', x: 500, y: 1130, w: 'flashlights', t: 12.8, svg: `${T(0, -210, 'PHOTONS: TWO FLASHLIGHTS', 32, '#b36b00')}
-    <polygon points="-330,-96 400,40 400,100" fill="rgba(255,210,60,.5)"/><polygon points="-330,96 400,-40 400,-100" fill="rgba(77,208,255,.45)"/>
-    <line x1="-330" y1="-96" x2="400" y2="70" stroke="#ff9900" stroke-width="6" ${an('flow dash', .5)}/><line x1="-330" y1="96" x2="400" y2="-70" stroke="#0a7ea4" stroke-width="6" ${an('flow dash', .5)}/>
-    <rect x="-430" y="-124" width="100" height="56" rx="10" fill="#555" stroke="${INK}" stroke-width="5"/><rect x="-430" y="68" width="100" height="56" rx="10" fill="#555" stroke="${INK}" stroke-width="5"/>` },
-  { id: 'pt', x: 500, y: 1370, w: 'through', t: 15.9, svg: sfx(0, 0, 'THEY PASS THROUGH', -2, THEME.accent2, 60, '#fff') },
-  { id: 'nj', x: 800, y: 1000, w: 'jam', t: 17.6, svg: `<g ${an('pulse', .8)}>${sfx(0, 0, 'NO JAM!', 4, THEME.accent2, 64, '#fff')}</g>` }
+ "Every wrong guess shows the model how far off it was. Then a little math nudges every dial toward the right answer. Think of a hiker in thick fog, trying to reach a valley. They cannot see it, but they can feel which way is downhill, so they take a small step. Repeat that trillions of times, and the dials settle.",
+ comicScene({ badge: '3 - HOW IT LEARNS', badgeColor: THEME.accent, theme: 'sky', groups: [
+  { id: 'loss', x: 500, y: 120, w: 'wrong', t: .3, svg: `${sfx(0, 0, 'HOW WRONG? = LOSS', -2, THEME.accent, 70, '#fff')}${T(0, 52, 'lower is better', 30, INK, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'ng', w: 'nudges', t: 5.2, svg: `<circle cx="160" cy="1250" r="64" fill="#2b3a55" stroke="${INK}" stroke-width="7"/><g ${an('rot', .8, 0, [160, 1250], '--r0:-14deg;--r1:14deg;')}><line x1="160" y1="1250" x2="160" y2="1198" stroke="#ffd23f" stroke-width="9" stroke-linecap="round"/></g>${T(580, 1262, 'NUDGE EVERY DIAL A TINY BIT', 36)}` },
+  { id: 'hill', w: 'hiker', t: 8.6, svg: `<path d="${TERR} V1100 H60Z" fill="#8a7f6f" stroke="${INK}" stroke-width="7" stroke-linejoin="round"/>
+    <g><circle cy="-24" r="24" fill="#e63946" stroke="${INK}" stroke-width="5"/><circle cx="-8" cy="-28" r="3.5" fill="#fff"/><circle cx="8" cy="-28" r="3.5" fill="#fff"/><animateMotion dur="9s" repeatCount="indefinite" path="${TERR}" calcMode="spline" keyTimes="0;1" keySplines=".3 0 .7 1"/></g>` },
+  { id: 'fog', w: 'fog', t: 9.7, svg: `<g ${an('float', 3)}>${cloud(60, 700, 2.6, '#fff', .8)}${cloud(380, 780, 2.4, '#fff', .8)}${cloud(690, 820, 2.2, '#fff', .8)}</g>${T(500, 1170, 'FOG: YOU CANNOT SEE THE VALLEY', 30, INK, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'val', x: 720, y: 1040, w: 'valley', t: 11.4, svg: `${T(0, 0, 'VALLEY = FEWEST MISTAKES', 32, '#fff')}` },
+  { id: 'dh', w: 'downhill', t: 15.5, svg: `${arrow(150, 470, 330, 700, THEME.accent2, 10)}${T(500, 410, 'FEEL THE SLOPE: STEP DOWNHILL', 28, THEME.accent2, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'tr', x: 500, y: 1390, w: 'trillions', t: 18.6, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'REPEAT x TRILLIONS', -2, THEME.accent, 66, '#fff')}</g>` }
  ]})));
 
-// ── 8 COOL AND MANY COLORS ──────────────────────────────────────
-const therm = (x, h, col, label) => `<g transform="translate(${x} 0)"><rect x="-18" y="-130" width="36" height="200" rx="18" fill="#fff" stroke="#fff" stroke-width="5"/><circle cy="80" r="34" fill="${col}" stroke="#fff" stroke-width="5"/><g ${an('growy', 1.4, 0, 'bottom')}><rect x="-9" y="${70 - h}" width="18" height="${h}" fill="${col}"/></g>${T(0, 170, label, 32, '#fff')}</g>`;
+// ── 4 PREDICTION NEEDS UNDERSTANDING ────────────────────────────
+const note = (x, y, txt, rot) => `<g transform="translate(${x} ${y}) rotate(${rot})"><rect x="-120" y="-56" width="240" height="112" rx="6" fill="#fff8c8" stroke="${INK}" stroke-width="4"/><circle cx="0" cy="-48" r="9" fill="#e63946" stroke="${INK}" stroke-width="3"/>${T(0, 12, txt, 28)}</g>`;
+S.push(scene(THEME.paper,
+ "Here's the twist. To guess the next word well, the model must understand what came before. Imagine a mystery novel with the last line hidden. The killer is blank. To fill that in, you have to follow every clue in the whole story. Guessing the next word turns out to demand real understanding.",
+ comicScene({ badge: '4 - THE BIG TWIST', badgeColor: THEME.accent, groups: [
+  { id: 'tw', x: 500, y: 110, w: 'twist', t: .7, svg: sfx(0, 0, 'THE TWIST', -3, THEME.accent, 100, '#fff') },
+  { id: 'un', x: 500, y: 230, w: 'understand', t: 4.1, svg: T(0, 0, 'GUESS WELL  =  UNDERSTAND FIRST', 40, THEME.accent2) },
+  { id: 'bd', x: 500, y: 760, w: 'novel', t: 6.6, svg: `<rect x="-420" y="-300" width="840" height="600" rx="16" fill="#b98b55" stroke="${INK}" stroke-width="8"/>${note(-250, -190, 'MUDDY BOOTS', -3)}${note(250, -190, 'TORN LETTER', 3)}${note(-250, 190, 'STOPPED CLOCK', 2)}${note(250, 190, 'MISSING KEY', -2)}${T(0, -290 + 30, 'A MYSTERY NOVEL', 30, '#fff', 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'kl', x: 500, y: 760, w: 'killer', t: 9, svg: `${card(0, 0, 340, 130, '#fff', THEME.accent, 7)}${T(0, -4, 'THE KILLER IS', 34, INK)}${T(0, 44, '________', 38, THEME.accent)}` },
+  { id: 'cl', x: 500, y: 760, w: 'clue', t: 13.1, svg: `${dr('M-250 -170 L-70 -40', 0, 1, 5, '#e63946').replace(THEME.bpLine, '#e63946')}${dr('M250 -170 L70 -40', .2, 1, 5, '#e63946')}${dr('M-250 170 L-70 40', .4, 1, 5, '#e63946')}${dr('M250 170 L70 40', .6, 1, 5, '#e63946')}` },
+  { id: 'ud', x: 500, y: 1230, w: 'understanding', t: 17.9, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'GUESSING DEMANDS UNDERSTANDING', -2, THEME.accent2, 42, '#fff')}</g>` }
+ ]})));
+
+// ── 5 MATH IN THE BLANK ─────────────────────────────────────────
+S.push(scene(THEME.paper,
+ "Now put math in the blank. Twenty three plus forty eight equals blank. The training text is full of these. And no model can memorize every sum, because there are far too many numbers. To score well across millions of different problems, it has to find an actual method.",
+ comicScene({ badge: '5 - MATH IN THE BLANK', badgeColor: THEME.accent2, groups: [
+  { id: 'tt', x: 500, y: 110, w: 'math', t: .7, svg: sfx(0, 0, 'MATH IN THE BLANK', -2, THEME.accent, 84, '#fff') },
+  { id: 'eq', x: 500, y: 330, w: 'twenty', t: 2.1, svg: `${card(0, 0, 700, 170)}${T(0, 34, '23 + 48 = ___', 92, INK)}` },
+  { id: 'tx', x: 500, y: 560, w: 'text', t: 5.2, svg: `${T(0, -70, 'TRAINING TEXT IS FULL OF SUMS', 34, THEME.accent2)}${['7+5=12', '31+9=40', '56+17=73'].map((s, i) => `<g transform="translate(${-300 + i * 300} 10)">${card(0, 0, 250, 90)}${T(0, 14, s, 38, INK, 'middle', FM, 'font-weight="bold"')}</g>`).join('')}` },
+  { id: 'mem', x: 500, y: 930, w: 'memorize', t: 8.3, svg: `${T(0, -210, 'MEMORIZE EVERY SUM?', 40, THEME.accent)}<rect x="-280" y="-170" width="560" height="340" rx="12" fill="#fff" stroke="${INK}" stroke-width="6"/><line x1="-230" y1="-170" x2="-230" y2="170" stroke="#e63946" stroke-width="3"/>${Array.from({ length: 8 }, (_, i) => `<line x1="-270" y1="${-130 + i * 40}" x2="270" y2="${-130 + i * 40}" stroke="#8fbcff" stroke-width="2"/>${T(-210, -118 + i * 40, `${11 + i * 7} + ${23 + i * 5} = ${34 + i * 12}`, 24, INK, 'start', FM, 'font-weight="bold"')}`).join('')}<g ${an('float', 1.6)}>${T(0, 215, '...AND ON, AND ON', 30, THEME.accent, 'middle', FM, 'font-weight="bold"')}</g>` },
+  { id: 'many', x: 500, y: 1262, w: 'many', t: 11, svg: `${sfx(0, 0, '10 BILLION PAIRS', -2, THEME.accent, 70, '#fff')}${T(0, 52, 'just for 5-digit numbers', 30, INK, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'mt', x: 500, y: 1405, w: 'method', t: 16.6, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'IT MUST FIND A METHOD', -2, THEME.accent2, 60, '#fff')}</g>` }
+ ]})));
+
+// ── 6 PHONE BOOK VS RECIPE ──────────────────────────────────────
+S.push(scene(THEME.paper,
+ "It's like the difference between memorizing a phone book and learning a recipe. A phone book works only for the exact entries inside it. A recipe works for any ingredients you bring. During training, the dials slowly drift away from memorizing, and toward the recipe, because the recipe is a much smaller thing to store.",
+ comicScene({ badge: '6 - MEMORIZE OR LEARN?', badgeColor: THEME.accent, groups: [
+  { id: 'pb', x: 250, y: 540, w: 'phone', t: 2.4, svg: `<rect x="-150" y="-200" width="300" height="400" rx="10" fill="#f3e2b3" stroke="${INK}" stroke-width="7"/>${Array.from({ length: 9 }, (_, i) => `<line x1="-120" y1="${-150 + i * 36}" x2="120" y2="${-150 + i * 36}" stroke="#a07848" stroke-width="3"/>`).join('')}${T(0, -158, 'PHONE BOOK', 28, INK, 'middle', FM, 'font-weight="bold"')}${T(0, 250, 'MEMORIZING', 38, THEME.accent)}` },
+  { id: 'rc', x: 750, y: 540, w: 'recipe', t: 4.1, svg: `<rect x="-130" y="-170" width="260" height="340" rx="12" fill="#fff" stroke="${INK}" stroke-width="7"/>${T(0, -110, 'RECIPE', 40, THEME.accent2)}${['1. MIX', '2. HEAT', '3. SERVE'].map((s, i) => T(-90, -40 + i * 60, s, 28, INK, 'start', FM, 'font-weight="bold"')).join('')}${T(0, 250, 'LEARNING', 38, THEME.accent2)}` },
+  { id: 'ex', x: 250, y: 900, w: 'exact', t: 6.6, svg: `${T(0, 0, 'ONLY EXACT ENTRIES', 32, THEME.accent)}${T(0, 46, 'new name = no answer', 28, INK, 'middle', FM, 'font-weight="bold"')}<line x1="-60" y1="70" x2="60" y2="130" stroke="${THEME.accent}" stroke-width="9" stroke-linecap="round"/><line x1="60" y1="70" x2="-60" y2="130" stroke="${THEME.accent}" stroke-width="9" stroke-linecap="round"/>` },
+  { id: 'ig', x: 750, y: 900, w: 'ingredients', t: 10, svg: `${T(0, 0, 'ANY INGREDIENTS WORK', 32, THEME.accent2)}${T(0, 46, 'new numbers = new answer', 28, INK, 'middle', FM, 'font-weight="bold"')}<circle cx="-60" cy="100" r="28" fill="#e63946" stroke="${INK}" stroke-width="4"/><circle cx="20" cy="100" r="28" fill="#ffd23f" stroke="${INK}" stroke-width="4"/>${T(100, 112, '7', 44, INK)}<path d="M-24 150 l22 24 l50 -50" fill="none" stroke="${THEME.accent2}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>` },
+  { id: 'dr', w: 'drift', t: 12.8, svg: `${arrow(410, 540, 590, 540, THEME.accent2, 10)}${T(500, 490, 'DIALS DRIFT', 24, THEME.accent2, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'sm', x: 500, y: 1250, w: 'smaller', t: 17.6, svg: `<rect x="-330" y="-60" width="300" height="120" rx="10" fill="#f3e2b3" stroke="${INK}" stroke-width="6"/><rect x="70" y="-24" width="90" height="48" rx="8" fill="#fff" stroke="${INK}" stroke-width="6"/>${T(-180, 100, 'BIG TO STORE', 28)}${T(115, 100, 'SMALL', 28, THEME.accent2)}${T(0, 190, 'RECIPE = MUCH SMALLER TO STORE', 34, THEME.accent2)}` }
+ ]})));
+
+// ── 7 THE CLOCK TRICK (blueprint) ───────────────────────────────
+const clockNums = Array.from({ length: 12 }, (_, i) => { const n = i === 0 ? 12 : i, a = i * Math.PI / 6; return M((215 * Math.sin(a)).toFixed(0), (-215 * Math.cos(a) + 12).toFixed(0), String(n), 38, '#fff'); }).join('');
+S.push(scene('#0f3d7a',
+ "Scientists have opened up small networks and watched this happen. One learned to add by turning numbers into positions on a clock face. Adding became rotating the hand. Nine o'clock plus five hours lands on two, and the network found that trick all by itself.",
+ comicScene({ badge: '7 - THE CLOCK TRICK', theme: 'blue', groups: [
+  { id: 'fr', w: 'opened', t: .7, svg: `${dr('M20 20 H980 V1440 H20Z', 0, 2.2, 4)}${M(500, 140, 'FIG. 1 - A SMALL NETWORK, OPENED UP', 28, THEME.bpHi)}${M(500, 200, '(adding numbers that wrap around)', 24, THEME.bpSoft)}` },
+  { id: 'ck', x: 500, y: 700, w: 'clock', t: 7.2, svg: `${dr('M-260 0 a260 260 0 1 0 520 0 a260 260 0 1 0 -520 0', 0, 2, 6)}${clockNums}${M(0, 360, 'NUMBER  =  AN ANGLE', 34, THEME.bpHi)}<circle r="12" fill="#fff"/>` },
+  { id: 'hd', x: 500, y: 700, w: 'rotating', t: 8.6, svg: `<line x1="0" y1="0" x2="0" y2="-170" stroke="${THEME.bpSoft}" stroke-width="8" stroke-linecap="round" opacity=".6" transform="rotate(-90)"/><g ${an('rot', 3, 0, [0, 0], '--r0:-90deg;--r1:60deg;--n:1;')}><line x1="0" y1="0" x2="0" y2="-170" stroke="${THEME.bpHi}" stroke-width="12" stroke-linecap="round"/></g>${M(0, 420, 'ADD  =  ROTATE THE HAND', 34, '#fff')}` },
+  { id: 'nn', x: 500, y: 1260, w: 'nine', t: 9.7, svg: `${sfx(0, 0, '9 + 5 HOURS = 2', -2, THEME.bpHi, 70, '#0f3d7a')}` },
+  { id: 'it', x: 500, y: 1390, w: 'itself', t: 15.2, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'IT INVENTED THIS ITSELF', -2, '#6dff9c', 56, '#0f3d7a')}</g>` }
+ ]})));
+
+// ── 8 TWO PARALLEL PATHS (blueprint) ────────────────────────────
+S.push(scene('#0f3d7a',
+ "Inside a big model, researchers found something different. When adding, two paths run at the same time. One makes a rough estimate, like knowing the answer lands near seventy. The other nails the last digit exactly. It's like finding an address: one detective knows the neighborhood, the other knows the house number. Merge them, and out pops seventy one.",
+ comicScene({ badge: '8 - TWO PATHS AT ONCE', theme: 'blue', groups: [
+  { id: 'fr', w: 'adding', t: 3.1, svg: `${dr('M20 20 H980 V1440 H20Z', 0, 2.2, 4)}${M(500, 140, 'FIG. 2 - ADDING INSIDE A BIG MODEL', 28, THEME.bpHi)}${sfx(500, 270, '23 + 48', -2, '#fff', 90, '#0f3d7a')}` },
+  { id: 'pt', w: 'paths', t: 3.8, svg: `${dr('M500 320 Q250 320 250 440 V820', 0, 1.6, 6)}${dr('M500 320 Q750 320 750 440 V820', 0, 1.6, 6)}` },
+  { id: 'ro', x: 250, y: 610, w: 'rough', t: 6.9, svg: `<rect x="-165" y="-110" width="330" height="220" rx="14" fill="rgba(255,255,255,.08)" stroke="${THEME.bpLine}" stroke-width="5"/>${M(0, -66, 'ROUGH ESTIMATE', 26, THEME.bpHi)}<line x1="-130" y1="10" x2="130" y2="10" stroke="${THEME.bpLine}" stroke-width="5"/><rect x="-30" y="-14" width="90" height="48" rx="10" fill="${THEME.bpHi}" opacity=".4"/>${M(-130, 60, '40', 22, THEME.bpSoft)}${M(130, 60, '100', 22, THEME.bpSoft)}${M(15, 90, 'NEAR 70', 26, '#fff')}` },
+  { id: 'ld', x: 750, y: 610, w: 'digit', t: 11.7, svg: `<rect x="-165" y="-110" width="330" height="220" rx="14" fill="rgba(255,255,255,.08)" stroke="${THEME.bpLine}" stroke-width="5"/>${M(0, -66, 'LAST DIGIT', 26, '#7fe0ff')}${Array.from({ length: 10 }, (_, i) => `<rect x="${-150 + i * 30}" y="-20" width="28" height="44" fill="${i === 1 ? '#7fe0ff' : 'none'}" stroke="${THEME.bpLine}" stroke-width="3"/>${M(-136 + i * 30, 12, String(i), 22, i === 1 ? '#0f3d7a' : '#fff')}`).join('')}${M(0, 70, '3 + 8 = 11', 24, THEME.bpSoft)}${M(0, 100, 'ENDS IN 1', 26, '#fff')}` },
+  { id: 'nb', x: 250, y: 790, w: 'neighborhood', t: 15.5, svg: sfx(0, 0, 'NEIGHBORHOOD', -2, THEME.bpHi, 44, '#0f3d7a') },
+  { id: 'hn', x: 750, y: 790, w: 'house', t: 17.2, svg: sfx(0, 0, 'HOUSE NUMBER', 2, '#7fe0ff', 44, '#0f3d7a') },
+  { id: 'mg', w: 'merge', t: 17.9, svg: `${dr('M250 830 Q250 960 450 990', 0, 1, 6, THEME.bpHi)}${dr('M750 830 Q750 960 550 990', 0, 1, 6, '#7fe0ff')}` },
+  { id: 'rs', x: 500, y: 1050, w: 'pops', t: 19.3, svg: `<g ${an('pulse', .8)}><circle r="80" fill="#fff" stroke="${THEME.bpHi}" stroke-width="8"/>${T(0, 28, '71', 84, '#0f3d7a')}</g>` },
+  { id: 'ad', x: 500, y: 1240, w: 'address', t: 13.8, svg: sfx(0, 0, 'LIKE FINDING AN ADDRESS', -2, '#fff', 56, '#0f3d7a') },
+  { id: 'nt', x: 500, y: 1380, w: 'pops', t: 19.8, svg: M(0, 0, 'REAL FINDING FROM INTERPRETABILITY RESEARCH', 22, THEME.bpSoft) }
+ ]})));
+
+// ── 9 THE CHESS MASTER ──────────────────────────────────────────
+const board = (() => { let o = ''; for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) o += `<rect x="${-144 + i * 36}" y="${-144 + j * 36}" width="36" height="36" fill="${(i + j) % 2 ? '#8a5a1a' : '#f3e2b3'}"/>`; return o; })();
+S.push(scene(THEME.paper,
+ "Here is the funny part. Ask the model how it added, and it says it carried the one, like you learned in school. But that is not what happened inside. It's like a chess master who explains a move with textbook reasons, when really they just saw the board and felt the answer.",
+ comicScene({ badge: '9 - THE FUNNY PART', badgeColor: THEME.accent, groups: [
+  { id: 'fn', x: 500, y: 100, w: 'funny', t: 1, svg: sfx(0, 0, 'THE FUNNY PART', -3, THEME.accent, 90, '#fff') },
+  { id: 'q', w: 'ask', t: 1.7, svg: speech(640, 320, 600, 130, 'HOW DID YOU ADD 23 + 48?', '#e8f1ff', 30, 'right') },
+  { id: 'a', w: 'carried', t: 5.2, svg: speech(360, 560, 640, 130, 'I CARRIED THE ONE, LIKE IN SCHOOL!', '#fff8c8', 28, 'left') },
+  { id: 'in', x: 500, y: 880, w: 'inside', t: 10, svg: `<rect x="-400" y="-110" width="800" height="220" rx="20" fill="#2b3a55" stroke="${INK}" stroke-width="7"/><g transform="translate(-250 0)">${gearSvg(34, 8, 4)}</g><g transform="translate(-170 -36) ">${gearSvg(26, 7, 3, true)}</g>${T(90, -10, 'ACTUALLY INSIDE:', 32, '#ffd23f', 'middle', FM, 'font-weight="bold"')}${T(90, 40, 'TWO PARALLEL SHORTCUTS', 36, '#fff')}` },
+  { id: 'ch', x: 260, y: 1250, w: 'chess', t: 11.4, svg: `${board}<rect x="-144" y="-144" width="288" height="288" fill="none" stroke="${INK}" stroke-width="6"/><g ${an('pulse', .9)}><rect x="0" y="-72" width="36" height="36" fill="none" stroke="#ffd23f" stroke-width="6"/></g>${T(0, 200, 'A CHESS MASTER', 32)}` },
+  { id: 'tb', x: 720, y: 1170, w: 'textbook', t: 13.8, svg: `${T(0, 0, 'EXPLAINS WITH', 30, INK, 'middle', FM, 'font-weight="bold"')}${T(0, 44, 'TEXTBOOK REASONS', 38, THEME.accent)}` },
+  { id: 'ft', x: 720, y: 1320, w: 'felt', t: 17.2, svg: `<g ${an('pulse', .9)}>${T(0, 0, 'REALLY: JUST', 30, INK, 'middle', FM, 'font-weight="bold"')}${T(0, 44, 'FELT THE ANSWER', 38, THEME.accent2)}</g>` }
+ ]})));
+
+// ── 10 WHERE IT FAILS ───────────────────────────────────────────
+S.push(scene(THEME.paper,
+ "But this is a bag of tricks, not a perfect calculator. Big multiplications can go wrong, because the model answers in one breath, with a fixed amount of thinking per word. Numbers also get chopped into odd chunks, so the digits do not line up neatly.",
+ comicScene({ badge: '10 - WHERE IT SLIPS', badgeColor: THEME.accent, groups: [
+  { id: 'bg', x: 500, y: 200, w: 'bag', t: 1.4, svg: `<path d="M-90 -30 Q-120 130 0 150 Q120 130 90 -30Z" fill="#8a6a4a" stroke="${INK}" stroke-width="7"/><path d="M-40 -30 Q0 -90 40 -30" fill="none" stroke="${INK}" stroke-width="7"/>${[[-60, -50], [0, -70], [60, -50]].map(([x, y], i) => `<g ${an('bob', .9, i * .2)}><circle cx="${x}" cy="${y}" r="16" fill="${['#ffd23f', '#4dd0ff', '#6dff9c'][i]}" stroke="${INK}" stroke-width="4"/></g>`).join('')}${T(130, 20, 'A BAG OF TRICKS', 34, THEME.accent, 'start')}${T(130, 62, 'not a perfect calculator', 22, INK, 'start', FM, 'font-weight="bold"')}` },
+  { id: 'mu', x: 500, y: 560, w: 'multiplications', t: 4.1, svg: `${card(0, 0, 820, 220)}${T(0, -30, '8,347 x 6,291', 70, INK)}${T(0, 40, 'MODEL SAYS: 52,509,977', 40, THEME.accent, 'middle', FM, 'font-weight="bold"')}${T(0, 84, 'TRUE ANSWER: 52,510,977', 34, THEME.accent2, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'wr', x: 780, y: 400, w: 'wrong', t: 5.2, svg: sfx(0, 0, 'OFF BY 1,000!', 6, THEME.accent, 56, '#fff') },
+  { id: 'br', x: 270, y: 900, w: 'breath', t: 7.6, svg: `<circle r="72" fill="#fff" stroke="${INK}" stroke-width="7"/><line x1="0" y1="-72" x2="0" y2="-90" stroke="${INK}" stroke-width="8"/><g ${an('spin', 2, 0, [0, 0])}><line x1="0" y1="0" x2="0" y2="-52" stroke="${THEME.accent}" stroke-width="7" stroke-linecap="round"/></g><circle r="8" fill="${INK}"/>${T(0, 130, 'ONE BREATH', 40, THEME.accent)}` },
+  { id: 'fx', x: 740, y: 880, w: 'fixed', t: 8.6, svg: `${[0, 1, 2].map(i => `<rect x="${-150 + i * 110}" y="-60" width="90" height="120" rx="10" fill="#cfd6de" stroke="${INK}" stroke-width="5"/>`).join('')}${T(0, 120, 'SAME THINKING PER WORD', 28, INK, 'middle', FM, 'font-weight="bold"')}${T(0, 154, 'easy sum or hard sum', 26, THEME.accent, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'tk', x: 500, y: 1245, w: 'chopped', t: 11.7, svg: `${T(0, -90, 'NUMBERS GET CHOPPED INTO CHUNKS', 34)}${[['123', -220], ['45', 0], ['67', 180]].map(([s, x]) => `<rect x="${x - 80}" y="-40" width="${s.length * 52 + 30}" height="80" rx="12" fill="#e8f1ff" stroke="#2d5fb5" stroke-width="5"/>${T(x - 80 + (s.length * 52 + 30) / 2, 16, s, 52, '#2d5fb5', 'middle', FM, 'font-weight="bold"')}`).join('')}${T(0, 90, 'example: 1234567', 26, INK, 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'dg', x: 500, y: 1405, w: 'digits', t: 13.8, svg: `<g ${an('wobble', .5)}>${sfx(0, 0, "DIGITS DON'T LINE UP", -2, THEME.accent, 58, '#fff')}</g>` }
+ ]})));
+
+// ── 11 THE FIXES ────────────────────────────────────────────────
+S.push(scene(THEME.paper,
+ "So we give it help. First, scratch paper: let it write out its steps before answering, so each step is small enough to get right. Second, a calculator: hand the big sums to real code. Third, practice with rewards: train it on math problems where only a correct answer earns points.",
+ comicScene({ badge: '11 - THREE FIXES', badgeColor: THEME.accent2, groups: [
+  { id: 's1', x: 500, y: 330, w: 'scratch', t: 2.1, svg: wideCard(`<rect x="-80" y="-100" width="160" height="200" rx="8" fill="#fff8c8" stroke="${INK}" stroke-width="6"/>${[-60, -20, 20, 60].map((y, i) => `<line x1="-56" y1="${y}" x2="${i === 3 ? 20 : 56}" y2="${y}" stroke="#2d5fb5" stroke-width="5" stroke-linecap="round"/>`).join('')}`, '1. SCRATCH PAPER', 'write the steps out first,', 'so each step is easy to get right', THEME.accent2) },
+  { id: 's2', x: 500, y: 760, w: 'calculator', t: 9.3, svg: wideCard(`<rect x="-70" y="-100" width="140" height="200" rx="14" fill="#3a4654" stroke="${INK}" stroke-width="6"/><rect x="-54" y="-84" width="108" height="44" rx="6" fill="#bfe6ff"/>${[0, 1, 2].map(i => [0, 1, 2].map(j => `<rect x="${-52 + i * 38}" y="${-24 + j * 36}" width="28" height="26" rx="5" fill="#ffd23f"/>`).join('')).join('')}`, '2. A CALCULATOR', 'hand big sums to real code,', 'exact every single time', THEME.accent2) },
+  { id: 's3', x: 500, y: 1190, w: 'rewards', t: 13.1, svg: wideCard(`<path d="M-60 -90 H60 V-20 Q60 40 0 50 Q-60 40 -60 -20Z" fill="#ffd23f" stroke="${INK}" stroke-width="6"/><path d="M-60 -70 H-96 Q-96 -10 -50 0 M60 -70 H96 Q96 -10 50 0" fill="none" stroke="${INK}" stroke-width="6"/><rect x="-14" y="50" width="28" height="30" fill="#c8a000" stroke="${INK}" stroke-width="5"/><rect x="-50" y="80" width="100" height="20" rx="6" fill="#8a6a4a" stroke="${INK}" stroke-width="5"/>`, '3. PRACTICE + REWARDS', 'only correct answers earn points,', 'so the model gets sharper', THEME.accent2) },
+  { id: 'pt', x: 760, y: 1000, w: 'points', t: 17.2, svg: `<g ${an('pulse', .8)}>${sfx(0, 0, '+1 POINT!', 6, THEME.accent2, 64, '#fff')}</g>` }
+ ]})));
+
+// ── 12 VERDICT ──────────────────────────────────────────────────
+const keys = Array.from({ length: 10 }, (_, i) => `<rect x="${-300 + i * 60}" y="-70" width="58" height="140" rx="4" fill="#fff" stroke="${INK}" stroke-width="4"/>`).join('') + [0, 1, 3, 4, 5, 7, 8].map(i => `<rect x="${-300 + i * 60 + 42}" y="-70" width="34" height="86" rx="3" fill="${INK}"/>`).join('');
 S.push(scene('#050818',
- "Light inside a glass channel does not bump into atoms the way electrons do, so far less energy is lost as heat. And light can carry many colors at once, like a highway where every lane is a different color. One channel, many conversations, all at the same time.",
- comicScene({ badge: '8 - COOL AND PARALLEL', theme: 'night', groups: [
-  { id: 'stars', always: true, svg: stars(40, 41) },
-  { id: 'hw', x: 500, y: 150, w: 'highway', t: 11, svg: sfx(0, 0, 'LIKE A HIGHWAY', -2, '#ffd23f', 64, '#050818') },
-  { id: 'tube', x: 500, y: 400, w: 'glass', t: 1, svg: `<rect x="-440" y="-140" width="880" height="280" rx="40" fill="rgba(160,210,255,.12)" stroke="#8fd0ff" stroke-width="7"/>${T(0, -170, 'GLASS CHANNEL (WAVEGUIDE)', 34, '#fff')}` },
-  { id: 'beam', x: 500, y: 400, w: 'bump', t: 2.4, hw: 'colors', ht: 9.3, svg: `<line x1="-420" y1="0" x2="420" y2="0" stroke="#fff" stroke-width="16" stroke-dasharray="30 26" ${an('flow', .5)}/>${T(0, 200, 'ONE LIGHT PULSE, NO BUMPS', 30, '#8fd0ff')}` },
-  { id: 'lanes', x: 500, y: 400, w: 'colors', t: 9.3, svg: LANES.map((c, i) => `<line x1="-420" y1="${-100 + i * 40}" x2="420" y2="${-100 + i * 40}" stroke="${c}" stroke-width="14" stroke-dasharray="30 26" ${an('flow', .5 + i * .06, i * .1)}/>`).join('') },
-  { id: 'ln', x: 500, y: 610, w: 'lane', t: 12, svg: T(0, 0, 'EACH COLOR = ITS OWN LANE', 36, '#fff') },
-  { id: 'cv', x: 500, y: 740, w: 'conversations', t: 14.8, svg: LANES.map((c, i) => `<g transform="translate(${-350 + i * 140} 0)"><g ${an('bob', .9, i * .15)}><rect x="-48" y="-30" width="96" height="60" rx="18" fill="${c}"/><polygon points="-18,28 -30,52 2,28" fill="${c}"/>${[-20, 0, 20].map(x => `<circle cx="${x}" cy="0" r="6" fill="#fff"/>`).join('')}</g></g>`).join('') },
-  { id: 'cool', x: 500, y: 960, w: 'heat', t: 7.2, svg: `${therm(-220, 40, '#4dd0ff', 'PHOTONS: COOL')}${therm(220, 170, '#ff4d4d', 'ELECTRONS: HOT')}` },
-  { id: 'tm', x: 500, y: 1300, w: 'time', t: 16.5, svg: `<g ${an('pulse', .8)}>${sfx(0, 0, 'ALL AT ONCE!', -3, '#ffd23f', 84, '#050818')}</g>` }
- ]})));
-
-// ── 9 MATH WITH SUNGLASSES ──────────────────────────────────────
-const LENS = [[520, .5, .5], [680, .8, .2], [840, .2, .8]];
-S.push(scene(THEME.paper,
- "Light can even do math while it travels. Think of sunglasses. Light passing through tinted glass gets dimmed by a set amount, and that is multiplication. Merge several beams onto one sensor, and their brightness adds up. Multiply and add, that is most of what AI needs, done at the speed of light.",
- comicScene({ badge: '9 - MATH WITH SUNGLASSES', badgeColor: THEME.accent2, groups: [
-  { id: 'tt', x: 500, y: 100, w: 'math', t: 1.4, svg: sfx(0, 0, 'MATH WITH LIGHT', -2, THEME.accent, 72, '#fff') },
-  { id: 'sg', w: 'sunglasses', t: 3.4, svg: `<g transform="translate(500 270)"><ellipse cx="-70" rx="60" ry="42" fill="#222" stroke="${INK}" stroke-width="6"/><ellipse cx="70" rx="60" ry="42" fill="#222" stroke="${INK}" stroke-width="6"/><path d="M-12 -6 Q0 -18 12 -6" fill="none" stroke="${INK}" stroke-width="7"/><ellipse cx="-86" cy="-14" rx="16" ry="8" fill="#fff" opacity=".3"/></g>${T(500, 370, 'THINK: SUNGLASSES', 36)}
-    ${LENS.map(([y, k, o]) => `<line x1="40" y1="${y}" x2="300" y2="${y}" stroke="#ffb300" stroke-width="24" stroke-linecap="round"/><line x1="40" y1="${y}" x2="300" y2="${y}" stroke="#fff" stroke-width="5" stroke-dasharray="14 12" ${an('flow', .5)}/><rect x="300" y="${y - 62}" width="60" height="124" rx="16" fill="rgba(20,20,20,${o})" stroke="${INK}" stroke-width="6"/>`).join('')}${T(170, 460, 'FULL BRIGHT IN', 28, INK, 'middle', FM, 'font-weight="bold"')}` },
-  { id: 'dim', w: 'dimmed', t: 5.9, svg: LENS.map(([y, k]) => `<line x1="360" y1="${y}" x2="460" y2="${y}" stroke="#ffb300" stroke-width="${Math.max(4, 24 * k)}" stroke-linecap="round"/>${T(330, y - 76, `x${k}`, 38, THEME.accent)}`).join('') },
-  { id: 'mul', x: 500, y: 960, w: 'multiplication', t: 8.6, svg: T(0, 0, 'DIMMING = MULTIPLYING', 40, THEME.accent) },
-  { id: 'mg', w: 'merge', t: 9, svg: LENS.map(([y, k]) => `<path d="M460 ${y} Q640 ${y} 750 680" fill="none" stroke="#ffb300" stroke-width="${Math.max(4, 24 * k)}" stroke-linecap="round" opacity=".9"/>`).join('') },
-  { id: 'sn', x: 820, y: 680, w: 'sensor', t: 10.7, svg: `<g ${an('pulse', 1)}><circle r="72" fill="#1c2630" stroke="${INK}" stroke-width="7"/><circle r="40" fill="#ffe08a" opacity=".85"/></g>${T(0, 130, 'SENSOR', 30)}` },
-  { id: 'sum', x: 820, y: 860, w: 'adds', t: 12.1, svg: `${T(0, 0, '0.5+0.8+0.2', 30, INK, 'middle', FM, 'font-weight="bold"')}${sfx(0, 56, '= 1.5', -3, THEME.accent2, 56, '#fff')}` },
-  { id: 'mm', x: 500, y: 1090, w: 'multiply', t: 12.8, svg: T(0, 0, 'MULTIPLY + ADD = AI MATH', 48, THEME.accent2) },
-  { id: 'sp', x: 500, y: 1260, w: 'speed', t: 17.2, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'AT THE SPEED OF LIGHT', -2, THEME.accent, 60, '#fff')}</g>` }
- ]})));
-
-// ── 10 MATH WITH RIPPLES ────────────────────────────────────────
-S.push(scene(THEME.paper,
- "Real photonic chips often use ripples instead. When two waves meet in step, they add into a bigger wave. When they meet opposite, they cancel to nothing, like a pond going flat. Tune the paths, and the way the ripples combine becomes the answer.",
- comicScene({ badge: '10 - MATH WITH RIPPLES', badgeColor: THEME.accent2, groups: [
-  { id: 'rp', x: 500, y: 190, w: 'ripples', t: 1.7, svg: `${[0, .6, 1.2].map(d => `<circle r="40" fill="none" stroke="#2d5fb5" stroke-width="6" ${an('ring', 1.8, d, 'center', '--dir:normal;')}/>`).join('')}<circle r="10" fill="#2d5fb5"/>${T(0, 150, 'RIPPLES ON A POND', 36)}` },
-  { id: 'A', x: 500, y: 600, w: 'step', t: 4.1, svg: `${T(0, -150, 'IN STEP: THEY ADD UP', 38, THEME.accent2)}${wave(-80, 26, 0, THEME.accent)}${wave(0, 26, 0, '#2d5fb5')}${wave(120, 52, 0, THEME.accent2, 8)}${T(-345, -74, 'WAVE 1', 22, INK, 'end', FM, 'font-weight="bold"')}${T(-345, 6, 'WAVE 2', 22, INK, 'end', FM, 'font-weight="bold"')}${T(-345, 126, 'SUM', 22, INK, 'end', FM, 'font-weight="bold"')}${T(0, 215, 'BIGGER WAVE', 32, THEME.accent2)}` },
-  { id: 'B', x: 500, y: 1010, w: 'opposite', t: 7.6, svg: `${T(0, -150, 'OPPOSITE: THEY CANCEL', 38, THEME.accent)}${wave(-80, 26, 0, THEME.accent)}${wave(0, 26, Math.PI, '#2d5fb5')}<line x1="-330" y1="120" x2="330" y2="120" stroke="${THEME.accent}" stroke-width="8" stroke-linecap="round"/>${T(-345, -74, 'WAVE 1', 22, INK, 'end', FM, 'font-weight="bold"')}${T(-345, 6, 'WAVE 2', 22, INK, 'end', FM, 'font-weight="bold"')}${T(-345, 126, 'SUM', 22, INK, 'end', FM, 'font-weight="bold"')}` },
-  { id: 'pd', x: 500, y: 1230, w: 'pond', t: 10, svg: T(0, 0, 'FLAT POND = ZERO', 36, THEME.accent) },
-  { id: 'tune', x: 500, y: 1340, w: 'paths', t: 11.7, svg: `${pipe('M-330 0 H-220', 26)}${pipe('M-220 0 Q-140 -90 0 -90 Q140 -90 220 0', 26)}${pipe('M-220 0 H220', 26)}${pipe('M220 0 H330', 26)}<rect x="-40" y="-130" width="80" height="26" rx="6" fill="#e63946" stroke="${INK}" stroke-width="4"/>${T(0, -144, 'TUNE THE PATH', 28, THEME.accent)}` },
-  { id: 'an', x: 500, y: 1445, w: 'answer', t: 14.8, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'THE PATTERN IS THE ANSWER', -2, THEME.accent2, 48, '#fff')}</g>` }
- ]})));
-
-// ── 11 WHY NOT ALL LIGHT? ───────────────────────────────────────
-S.push(scene(THEME.paper,
- "So why isn't your laptop made of light? Because photons are too polite. They ignore each other, so one beam cannot easily switch another on and off, and a computer needs exactly that. You also cannot park a photon, since light never stands still, so memory still needs electrons. And optical parts are huge, a dinner plate next to a transistor's grain of rice.",
- comicScene({ badge: '11 - WHY NOT ALL LIGHT?', badgeColor: THEME.accent, groups: [
-  { id: 'why', x: 500, y: 110, w: 'why', t: .3, svg: sfx(0, 0, 'WHY NOT ALL LIGHT?', -2, THEME.accent, 70, '#fff') },
-  { id: 'c1', x: 500, y: 400, w: 'polite', t: 4.1, svg: wideCard(`<line x1="-90" y1="-60" x2="90" y2="60" stroke="#ff9900" stroke-width="10" stroke-linecap="round"/><line x1="-90" y1="60" x2="90" y2="-60" stroke="#0a7ea4" stroke-width="10" stroke-linecap="round"/><circle r="16" fill="#fff" stroke="${INK}" stroke-width="4"/>${T(0, 58, '?', 44, THEME.accent)}`, 'LIGHT IGNORES LIGHT', 'beams pass through each other,', 'so one cannot flip another', THEME.accent) },
-  { id: 'c2', x: 500, y: 800, w: 'park', t: 12.4, svg: wideCard(`<path d="M-90 -10 q30 -40 60 0 t60 0 t60 0" fill="none" stroke="#2d5fb5" stroke-width="10" stroke-linecap="round" ${an('flow dash', .8)}/><path d="M-90 40 q30 -40 60 0 t60 0 t60 0" fill="none" stroke="#2d5fb5" stroke-width="10" stroke-linecap="round" ${an('flow dash', .8, .2)}/><line x1="-80" y1="-70" x2="80" y2="80" stroke="${THEME.accent}" stroke-width="10" stroke-linecap="round"/>`, 'LIGHT CAN\'T BE PARKED', 'like a river you cannot pause:', 'storing it needs electrons', THEME.accent) },
-  { id: 'c3', x: 500, y: 1200, w: 'huge', t: 18.3, svg: wideCard(`<circle r="88" fill="#fff" stroke="${INK}" stroke-width="7"/><circle r="60" fill="none" stroke="#aab3bd" stroke-width="5"/><ellipse cx="62" cy="62" rx="14" ry="7" fill="#f3e2b3" stroke="${INK}" stroke-width="3" transform="rotate(-30 62 62)"/>`, 'LIGHT PARTS ARE HUGE', 'a dinner plate beside a grain', 'of rice: optics vs transistors', THEME.accent) }
- ]})));
-
-// ── 12 THE TEAM-UP ──────────────────────────────────────────────
-S.push(scene(THEME.paper,
- "The realistic answer is a team. Electrons stay the thinkers. They make decisions and hold memory. Photons become the couriers, carrying data between chips at the speed of light, and doing the heavy math. Light and electrons, working together. Subscribe for more.",
- comicScene({ badge: 'THE TEAM-UP', badgeColor: THEME.accent2, groups: [
-  { id: 'tm', x: 500, y: 100, w: 'team', t: 1.7, svg: sfx(0, 0, 'THE REALISTIC ANSWER:', -2, THEME.accent, 60, '#fff') + T(0, 64, 'A TEAM', 60, THEME.accent2) },
-  { id: 'cL', x: 230, y: 560, w: 'thinkers', t: 3.1, svg: `<g transform="translate(0 0)">${chip(260, 'THINK')}</g>` },
-  { id: 'cR', x: 770, y: 560, w: 'thinkers', t: 3.3, svg: chip(260, 'THINK') },
-  { id: 'th', x: 500, y: 360, w: 'thinkers', t: 3.4, svg: T(0, 0, 'ELECTRONS = THE THINKERS', 40, '#1565c0') },
-  { id: 'mem', x: 230, y: 790, w: 'memory', t: 5.2, svg: `${[0, 1, 2].map(i => [0, 1, 2].map(j => `<rect x="${-45 + i * 32}" y="${-30 + j * 24}" width="26" height="18" fill="#ffd23f" stroke="${INK}" stroke-width="3"/>`).join('')).join('')}${T(0, 70, 'MEMORY + DECISIONS', 28)}` },
-  { id: 'br', w: 'couriers', t: 6.6, svg: `<rect x="372" y="520" width="256" height="80" rx="30" fill="rgba(160,210,255,.4)" stroke="#2d5fb5" stroke-width="6"/>${LANES.slice(0, 4).map((c, i) => `<line x1="384" y1="${534 + i * 18}" x2="616" y2="${534 + i * 18}" stroke="${c}" stroke-width="9" stroke-dasharray="26 22" ${an('flow', .5, i * .1)}/>`).join('')}${T(500, 650, 'PHOTONS = COURIERS', 36, THEME.accent)}${T(500, 696, 'data at the speed of light', 26, INK, 'middle', FM, 'font-weight="bold"')}` },
-  { id: 'eng', x: 500, y: 1030, w: 'math', t: 11.4, svg: `<rect x="-230" y="-110" width="460" height="220" rx="18" fill="#fff" stroke="${INK}" stroke-width="6"/>${[-60, 0, 60].map(y => `<line x1="-210" y1="${y}" x2="-80" y2="${y}" stroke="#ffb300" stroke-width="12" stroke-linecap="round"/><rect x="-80" y="${y - 22}" width="26" height="44" rx="8" fill="rgba(20,20,20,.55)" stroke="${INK}" stroke-width="4"/><path d="M-54 ${y} Q40 ${y} 120 0" fill="none" stroke="#ffb300" stroke-width="8"/>`).join('')}<circle cx="150" cy="0" r="36" fill="#1c2630" stroke="${INK}" stroke-width="5"/><circle cx="150" cy="0" r="18" fill="#ffe08a"/>${T(0, 160, 'PHOTONIC MATH ENGINE', 34, THEME.accent2)}` },
-  { id: 'tg', x: 500, y: 1290, w: 'together', t: 13.1, svg: `<g ${an('pulse', .9)}>${sfx(0, 0, 'LIGHT + ELECTRONS', -2, THEME.accent2, 66, '#fff')}</g>` },
-  { id: 'sub', x: 500, y: 1400, w: 'subscribe', t: 13.4, svg: `<g ${an('pulse', .8)}><rect x="-210" y="-44" width="420" height="88" rx="18" fill="${THEME.accent}" stroke="${INK}" stroke-width="7"/>${T(0, 20, 'SUBSCRIBE', 54, '#fff')}</g>` }
+ "So the puzzle is solved. Predicting the next word was only the training game. To win it on math, the network had to build real machinery inside. Like a pianist who practices scales and ends up playing music nobody taught them. It's not just autocomplete, and not a perfect calculator either. Subscribe for more.",
+ comicScene({ badge: 'PUZZLE SOLVED', theme: 'night', groups: [
+  { id: 'stars', always: true, svg: stars(50, 61) },
+  { id: 'sv', x: 500, y: 110, w: 'solved', t: 1.4, svg: sfx(0, 0, 'PUZZLE SOLVED', -3, '#6dff9c', 96, '#050818') },
+  { id: 'gm', x: 500, y: 330, w: 'game', t: 4.5, svg: `${card(0, 0, 800, 150, '#fff', '#ffd23f')}${T(0, -10, 'THE TRAINING GAME', 44, INK)}${T(0, 40, 'guess the next word', 32, '#2d5fb5', 'middle', FM, 'font-weight="bold"')}` },
+  { id: 'mc', x: 500, y: 640, w: 'machinery', t: 8.6, svg: `<rect x="-400" y="-130" width="800" height="260" rx="20" fill="#2b3a55" stroke="#8fbcff" stroke-width="6"/><g transform="translate(-230 -10)">${gearSvg(54, 10, 5)}</g><g transform="translate(-100 40)">${gearSvg(38, 8, 4, true)}</g><g transform="translate(-40 -50)">${gearSvg(30, 7, 3)}</g>${T(180, -10, 'REAL MACHINERY', 36, '#ffd23f')}${T(180, 40, 'BUILT INSIDE', 36, '#fff')}` },
+  { id: 'pn', x: 500, y: 980, w: 'pianist', t: 10, svg: `${keys}${T(0, 130, 'PRACTICE: SCALES', 34, '#8fbcff')}` },
+  { id: 'mu', x: 500, y: 1180, w: 'music', t: 12.8, svg: `${[-200, -60, 80, 220].map((x, i) => `<circle ${an('rise', 2.2, i * .5, 'center', '--dy:-120px;--sc:1.3;')} cx="${x}" cy="-20" r="14" fill="#ffd23f"/>`).join('')}${sfx(0, 40, 'RESULT: MUSIC NOBODY TAUGHT', -2, '#ffd23f', 44, '#050818')}` },
+  { id: 'n1', x: 500, y: 1265, w: 'autocomplete', t: 15.2, svg: `<rect x="-330" y="-32" width="660" height="64" rx="32" fill="#2e8b57" stroke="#fff" stroke-width="4"/>${T(0, 14, 'NOT JUST AUTOCOMPLETE', 38, '#fff')}` },
+  { id: 'n2', x: 500, y: 1340, w: 'calculator', t: 16.9, svg: `<rect x="-330" y="-32" width="660" height="64" rx="32" fill="#b5402c" stroke="#fff" stroke-width="4"/>${T(0, 14, 'NOT A PERFECT CALCULATOR', 38, '#fff')}` },
+  { id: 'sub', x: 500, y: 1430, w: 'subscribe', t: 17.6, svg: `<g ${an('pulse', .8)}><rect x="-170" y="-34" width="340" height="68" rx="16" fill="#b5402c" stroke="#fff" stroke-width="5"/>${T(0, 16, 'SUBSCRIBE', 44, '#fff')}</g>` }
  ]})));
 
 // ── export ──────────────────────────────────────────────────────
 const TRANS = ['fade', 'wipe-left', 'fade', 'wipe-left', 'fade', 'wipe-up', 'fade', 'wipe-left', 'fade', 'wipe-left', 'fade', 'wipe-up', 'fade'];
 module.exports = {
-    output: { title: 'could-computers-run-on-light', format: 'portrait', fps: 30, crf: 23, preset: 'medium' },
+    output: { title: 'how-ai-does-math', format: 'portrait', fps: 30, crf: 23, preset: 'medium' },
     defaults: { voice: 'am_adam', speed: 1.02, transition: 'fade', transitionDuration: 0.3 },
     scenes: S.map((s, i) => Object.assign(s, { transition: TRANS[i] || 'fade' })),
 };
