@@ -566,6 +566,11 @@ ES.push(scene(THEME.paper, N20, comicScene({ badge: 'Q20  ABBREVIATIONS', badgeC
 
 module.exports = {
     output: { title: 'eht-interview-past-paper-20-questions', format: 'portrait', fps: 30, crf: 23, preset: 'medium' },
-    defaults: { voice: 'am_adam', speed: 1.0, transition: 'fade', transitionDuration: 0.3 },
+    defaults: {
+    voice: 'af_heart',   // changed from 'am_adam'
+    speed: 0.8,          // changed from 1.0
+    transition: 'fade',
+    transitionDuration: 0.3
+},
     scenes: ES.map(retime).map((s, i) => Object.assign(s, { transition: ['fade', 'wipe-left', 'fade', 'wipe-up'][i % 4] })),
 };
