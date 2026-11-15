@@ -1,8 +1,10 @@
-// config.booksco-ad.js
-// books.co.zw (ExamineAI) — APEX Video Engine config (same architecture as config.solar-story.js / config.baileys-ad.js)
-// Style: WhatsApp-ad look — cream gradients, flat vector, no outlines, soft shadows, spring pop-ins.
-// NEW: a small ILLUSTRATION LIBRARY (characters + props + icons) lives in the section below.
-// 6 scenes (~45s): hook -> past papers -> AI agent -> CV templates -> job alerts -> CTA
+// config.booksco-library-ad.js
+// books.co.zw LIBRARY ad — APEX Video Engine config (same architecture as the solar / baileys / booksco configs)
+// Focus: the Library (search novels, question papers, marking schemes, study notes; share a paper to grow it).
+// Voice-over avoids "ZIMSEC" (TTS can't pronounce it) -> says "question papers".
+// Style: WhatsApp-ad look — cream gradients, flat vector, soft shadows, spring pop-ins + the ILLUSTRATION LIBRARY.
+// v1.1: visuals slowed x1.5 (SLOW), voice af_heart @ 0.94, transition 0.25s.
+// 5 scenes (~35s): hook -> search -> what's inside -> share a paper -> CTA
 
 const THEME = {
     paper: '#fbf6ea', ink: '#1d2b25', green: '#25d366', green2: '#128c7e', deep: '#075e54',
@@ -21,12 +23,14 @@ function T(x, y, str, size = 30, fill = THEME.ink, anchor = 'middle', font = FI,
 }
 const M = (x, y, str, size = 26, fill = THEME.ink, anchor = 'middle') =>
     T(x, y, str, size, fill, anchor, FM, 'font-weight="bold"');
+// The engine speeds visuals up when compiling to video, so every animation is slowed x1.5 here.
+const SLOW = 1.5;
 const ORG = { top: '50% 0%', bottom: '50% 100%', left: '0% 50%', right: '100% 50%', center: '50% 50%' };
 function an(cls, d = 2, dl = 0, o = 'center', extra = '') {
     const org = Array.isArray(o)
         ? `transform-box:view-box;transform-origin:${o[0]}px ${o[1]}px;`
         : `transform-box:fill-box;transform-origin:${ORG[o] || o};`;
-    return `class="a ${cls}" style="--d:${d}s;--dl:${dl}s;${org}${extra}"`;
+    return `class="a ${cls}" style="--d:${(d * SLOW).toFixed(2)}s;--dl:${(dl * SLOW).toFixed(2)}s;${org}${extra}"`;
 }
 function arrow(x1, y1, x2, y2, color = THEME.green2, w = 8) {
     const dx = x2 - x1, dy = y2 - y1, ang = Math.atan2(dy, dx), cx = x1 + dx / 2 - dy * .15, cy = y1 + dy / 2 + dx * .15, h = 24;
@@ -160,8 +164,31 @@ const GL = {
 };
 const dot = (color, glyph, r = 30, s = 1) => `<circle r="${r}" fill="${color}"/><g transform="scale(${s})">${glyph}</g>`;
 
-// expose the library for preview sheets (non-enumerable: ignored by the engine)
-const ILLO = { person, desk, avatar, paper, book, MARK, OPENBOOK, laptopBack, BELL, ENVELOPE, AI_ORB, GL, dot, sparkle, checkBadge, card, pill, bubble, typing };
+// ── library additions (v2): shelves, search, upload, timer, notebook ──
+function shelf(w = 860, rows = 2, seed = 3, gap = 0, rowH = 210) {
+    const rnd = rng(seed), cols = [THEME.green2, THEME.coral, THEME.sky, THEME.sun, THEME.deep, THEME.green, '#b78cf0', '#ff9f68'];
+    const H = rows * rowH + 24;
+    let o = `<g filter="url(#sh)"><rect x="${-w / 2}" y="${-H / 2}" width="${w}" height="${H}" rx="28" fill="#f7e8c9"/></g><rect x="${-w / 2 + 8}" y="${-H / 2 + 8}" width="${w - 16}" height="${H - 16}" rx="22" fill="none" stroke="#dcb985" stroke-width="16"/>`;
+    for (let r = 0; r < rows; r++) {
+        const by = -H / 2 + 12 + (r + 1) * rowH;
+        let x = -w / 2 + 34;
+        for (;;) {
+            const bw = 34 + Math.floor(rnd() * 28), bh = 100 + Math.floor(rnd() * (rowH - 150)), c = cols[Math.floor(rnd() * cols.length)];
+            if (x + bw > w / 2 - 34 - gap) break;
+            o += `<rect x="${x}" y="${by - bh}" width="${bw}" height="${bh}" rx="7" fill="${c}"/><rect x="${x}" y="${by - bh + 20}" width="${bw}" height="7" fill="#fff" opacity=".65"/><rect x="${x + bw * .25}" y="${by - bh + 44}" width="${bw * .5}" height="${Math.min(40, bh - 70)}" rx="4" fill="#fff" opacity=".25"/>`;
+            x += bw + 7;
+        }
+        o += `<rect x="${-w / 2 + 14}" y="${by}" width="${w - 28}" height="16" rx="8" fill="#dcb985"/>`;
+    }
+    return o;
+}
+const MAGNIFIER = (col = '#fff') => `<circle cx="-5" cy="-5" r="15" fill="none" stroke="${col}" stroke-width="5"/><line x1="7" y1="7" x2="18" y2="18" stroke="${col}" stroke-width="6" stroke-linecap="round"/>`;
+const CLOUD_UP = `<path d="M-70 36 Q-112 36 -112 -4 Q-112 -42 -72 -44 Q-60 -90 -8 -90 Q42 -90 54 -46 Q104 -46 106 -4 Q106 36 66 36Z" fill="#fff" filter="url(#sh)"/><path d="M0 18 V-38 M-24 -14 L0 -40 L24 -14" fill="none" stroke="${THEME.green2}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>`;
+const STOPWATCH = `<rect x="-11" y="-92" width="22" height="18" rx="6" fill="${THEME.green2}"/><circle r="62" fill="#fff" filter="url(#sh)"/><circle r="62" fill="none" stroke="${THEME.green2}" stroke-width="10"/>${[0, 90, 180, 270].map(a => `<line x1="0" y1="-50" x2="0" y2="-42" stroke="${THEME.muted}" stroke-width="5" stroke-linecap="round" transform="rotate(${a})"/>`).join('')}<g ${an('spin', 2, 0, [0, 0])}><line x1="0" y1="0" x2="0" y2="-38" stroke="${THEME.coral}" stroke-width="7" stroke-linecap="round"/></g><circle r="7" fill="${THEME.ink}"/>`;
+const NOTEBOOK = `<rect x="-62" y="-82" width="124" height="164" rx="16" fill="${THEME.sun}" filter="url(#sh)"/>${[-56, -28, 0, 28, 56].map(y => `<circle cx="-62" cy="${y}" r="7" fill="${shade(THEME.sun, .25)}"/>`).join('')}<rect x="-36" y="-52" width="74" height="10" rx="5" fill="#fff" opacity=".9"/>${[-24, -2, 20, 42].map((y, i) => `<rect x="-36" y="${y}" width="${i % 2 ? 54 : 74}" height="8" rx="4" fill="#fff" opacity=".6"/>`).join('')}`;
+const G_TICK = `<path d="M-12 0 l8 9 l16 -18" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+const ILLO = { person, desk, avatar, paper, book, MARK, OPENBOOK, laptopBack, BELL, ENVELOPE, AI_ORB, GL, dot, sparkle, checkBadge, card, pill, bubble, typing, shelf, MAGNIFIER, CLOUD_UP, STOPWATCH, NOTEBOOK };
 
 // ── scene engine (identical to the solar/baileys config) ────────
 const REVEAL_JS = `
@@ -194,6 +221,7 @@ const CSS_ANIM = `
   .blink{animation-name:blink;--e:steps(1,end)}.ring{animation-name:ring;--dir:normal;--e:ease-out}
   .fadein{animation-name:fadein;--n:1;--dir:normal}
   .pop{animation-name:pop;--n:1;--dir:normal;--e:cubic-bezier(.2,1.6,.4,1)}
+  .shrinkx{animation-name:shrinkx;--n:1;--dir:normal;--e:steps(11,end)}
   @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
   @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
   @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.06);opacity:.92}}
@@ -212,6 +240,7 @@ const CSS_ANIM = `
   @keyframes ring{0%{transform:scale(.2);opacity:.9}100%{transform:scale(2.8);opacity:0}}
   @keyframes fadein{from{opacity:0}to{opacity:1}}
   @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+  @keyframes shrinkx{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 `;
 const THEMES = {
     cream: `background:radial-gradient(900px 700px at 12% 8%,rgba(255,214,170,.55),transparent 60%),radial-gradient(900px 800px at 92% 88%,rgba(197,240,205,.6),transparent 60%),linear-gradient(165deg,#fffaf1,#f7eedb)`,
@@ -226,13 +255,14 @@ const DEFS = `<defs>
     <radialGradient id="blC"><stop offset="0" stop-color="#fff0b3" stop-opacity=".9"/><stop offset="1" stop-color="#fff0b3" stop-opacity="0"/></radialGradient>
   </defs>`;
 function comicScene({ badge, badgeColor, theme = 'cream', groups }) {
+    const TSCALE = 1.02 / 0.94; // fallback times were written for speed 1.02
     const rm = {}, hm = {}, fb = [], hfb = [];
     groups.forEach(g => {
         if (g.always) return;
         if (g.w) (rm[g.w] = rm[g.w] || []).push(g.id);
-        if (g.t !== undefined) fb.push([g.id, g.t]);
+        if (g.t !== undefined) fb.push([g.id, +(g.t * TSCALE).toFixed(2)]);
         if (g.hw) (hm[g.hw] = hm[g.hw] || []).push(g.id);
-        if (g.ht !== undefined) hfb.push([g.id, g.ht]);
+        if (g.ht !== undefined) hfb.push([g.id, +(g.ht * TSCALE).toFixed(2)]);
     });
     const bc = badgeColor || THEME.deep;
     const gh = groups.map(g => `<g transform="translate(${g.x || 0} ${g.y || 0})"><g transform="scale(${g.s || 1})"><g id="${g.id}" class="${g.always ? 'always' : 'revealgrp'}">${g.svg}</g></g></g>`).join('\n');
@@ -240,11 +270,11 @@ function comicScene({ badge, badgeColor, theme = 'cream', groups }) {
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{width:1080px;height:1920px;overflow:hidden;${THEMES[theme]};font-family:${FI};color:${THEME.ink}}
   .badge{position:absolute;top:120px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:16px;background:#fff;color:${bc};
-    font:800 44px ${FI};padding:16px 42px 16px 30px;border-radius:999px;box-shadow:0 12px 34px ${THEME.shadow};white-space:nowrap;z-index:10;opacity:0;transition:opacity .4s ease}
+    font:800 44px ${FI};padding:16px 42px 16px 30px;border-radius:999px;box-shadow:0 12px 34px ${THEME.shadow};white-space:nowrap;z-index:10;opacity:0;transition:opacity .6s ease}
   .badge::before{content:'';width:20px;height:20px;border-radius:50%;background:${THEME.green}}
   .badge.on{opacity:1}
   svg#stage{position:absolute;left:40px;top:260px;width:1000px;height:1480px;overflow:visible}
-  .revealgrp{opacity:0;transform:translateY(34px) scale(.86);transform-box:fill-box;transform-origin:center;transition:opacity .45s ease,transform .6s cubic-bezier(.2,1.5,.4,1)}
+  .revealgrp{opacity:0;transform:translateY(34px) scale(.86);transform-box:fill-box;transform-origin:center;transition:opacity .68s ease,transform .9s cubic-bezier(.2,1.5,.4,1)}
   .revealgrp.on{opacity:1;transform:none}
   .revealgrp.fadeout{opacity:0 !important;transform:translateY(-20px) scale(.9) !important;pointer-events:none}
   ${CSS_ANIM}
@@ -271,129 +301,94 @@ const scene = (bg, tts, layer, transition = 'fade') => ({
 const S = [];
 const INK = THEME.ink;
 
-// ── 0 HOOK ──────────────────────────────────────────────────────
-const stuWorry = `${person({ skin: SKIN.deep, style: 'short', top: THEME.green2, mood: 'worry', arms: 'desk' })}${desk(780)}
-  <g transform="translate(-250 98) rotate(-8) scale(.8)">${paper({ w: 150, h: 200, lines: 4, badge: '' })}</g>
-  <g transform="translate(-160 112) rotate(6) scale(.7)">${paper({ w: 150, h: 200, head: THEME.coral, lines: 4, badge: '' })}</g>
-  <g transform="translate(250 108) rotate(4)">${book(THEME.coral, 100, 130)}</g>`;
-const stuHappy = `${person({ skin: SKIN.deep, style: 'short', top: THEME.green2, mood: 'happy', arms: 'desk' })}${desk(780)}
-  <g transform="translate(-170 176)">${laptopBack(280, 170)}</g>
-  <g transform="translate(250 108) rotate(4)">${book(THEME.sky, 100, 130)}</g>
-  <g transform="translate(300 20)">${sparkle(THEME.sun, 1.2)}</g><g transform="translate(-300 -40)">${sparkle(THEME.green, .9)}</g>`;
+// ── 0 HOOK: everything in one place ─────────────────────────────
+const P_CURIOUS = person({ skin: SKIN.deep, style: 'short', top: THEME.green2, mood: 'worry' });
+const P_HAPPY = person({ skin: SKIN.deep, style: 'short', top: THEME.green2, mood: 'happy' });
+const urlCard = (mk = .62, size = 72) => `${card(860, 150, '#fff', 50)}<g transform="translate(-340 0)">${MARK(mk)}</g>${T(-270, size * .36, 'books.co.zw', size, THEME.deep, 'start')}`;
 S.push(scene(THEME.paper,
- "Studying for ZIMSEC? Stop hunting for past papers. Meet books dot co dot zed double you. And it is completely free.",
- comicScene({ badge: 'For ZIMSEC students', theme: 'cream', groups: [
-  { id: 'bl', always: true, svg: blobs(2) },
-  { id: 'stuW', x: 500, y: 480, s: 1.15, w: 'studying', t: .2, hw: 'meet', ht: 3.5, svg: stuWorry },
-  { id: 'qm', x: 500, y: 480, s: 1.15, w: 'hunting', t: 1.9, hw: 'meet', ht: 3.5, svg: [[-190, -190, -10], [190, -170, 12], [20, -270, 0]].map(([x, y, r], i) => `<g ${an('bob', 1 + i * .2, i * .25)}>${T(x, y, '?', 100, THEME.coral, 'middle', FI, `transform="rotate(${r} ${x} ${y})"`)}</g>`).join('') },
-  { id: 'fly', x: 500, y: 480, s: 1.15, w: 'past', t: 2.4, hw: 'meet', ht: 3.5, svg: [[-330, -40, -18, .7], [330, -10, 14, .7], [-290, 170, 8, .55]].map(([x, y, r, s], i) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})"><g ${an('float', 2 + i * .4, i * .3)}>${paper({ w: 150, h: 200, head: [THEME.green2, THEME.coral, THEME.sky][i], lines: 4, badge: '' })}</g></g>`).join('') },
-  { id: 'stuH', x: 500, y: 480, s: 1.15, w: 'meet', t: 3.6, svg: stuHappy },
-  { id: 'logo', x: 500, y: 985, w: 'books', t: 4.0, svg: `<g ${an('float', 3)}>${MARK(1.5)}</g>${T(0, 200, 'books.co.zw', 104, THEME.deep)}<g transform="translate(0 290)">${pill(560, 76, '#fff', 'Free study + career platform', 30, THEME.green2)}</g>` },
-  { id: 'free', x: 500, y: 1400, w: 'free', t: 8.0, svg: `<g transform="rotate(-4)"><g ${an('pulse', 1)}>${pill(420, 96, THEME.sun, '100% free', 56, INK)}</g></g>${sparks(-250, -20, 8, THEME.coral, 26, .6)}${sparks(250, -20, 8, THEME.green, 26, .6)}` }
+ "Need question papers, novels or study notes? They are all in one place. The books dot co dot zed double you library.",
+ comicScene({ badge: 'The library', theme: 'cream', groups: [
+  { id: 'bl', always: true, svg: blobs(3) },
+  { id: 'avW', x: 500, y: 330, w: 'need', t: .2, hw: 'place', ht: 4.6, svg: avatar('ca', '#ffd9bf', P_CURIOUS) },
+  { id: 'qm', x: 500, y: 330, w: 'need', t: .5, hw: 'place', ht: 4.6, svg: [[-170, -165, -10], [170, -150, 12]].map(([x, y, r], i) => `<g ${an('bob', 1 + i * .2, i * .25)}>${T(x, y, '?', 84, THEME.coral, 'middle', FI, `transform="rotate(${r} ${x} ${y})"`)}</g>`).join('') },
+  { id: 'avH', x: 500, y: 330, w: 'place', t: 4.7, svg: avatar('cb', '#c9f2d0', P_HAPPY) },
+  { id: 'qp', x: 150, y: 330, w: 'question', t: .8, svg: `<g transform="rotate(-10)"><g ${an('float', 2.4)}>${paper({ w: 150, h: 200, lines: 4, badge: 'PDF' })}</g></g>` },
+  { id: 'nv', x: 850, y: 330, w: 'novels', t: 1.5, svg: `<g transform="rotate(10)"><g ${an('float', 2.6, .3)}>${book(THEME.coral, 120, 170)}</g></g>` },
+  { id: 'sn', x: 500, y: 600, w: 'notes', t: 2.6, svg: `<g ${an('float', 2.2, .5)}><g transform="scale(.8)">${NOTEBOOK}</g></g>` },
+  { id: 'sf', x: 500, y: 940, w: 'place', t: 4.7, svg: shelf(860, 2, 3) },
+  { id: 'url', x: 500, y: 1285, w: 'books', t: 5.7, svg: urlCard() },
+  { id: 'lib', x: 500, y: 1415, w: 'library', t: 8.4, svg: `<g transform="rotate(-3)"><g ${an('pulse', 1)}>${pill(400, 84, THEME.sun, 'The library', 46, INK)}</g></g>${sparks(-240, 0, 8, THEME.coral, 26, .6)}${sparks(240, 0, 8, THEME.green, 26, .6)}` }
  ]})));
 
-// ── 1 PAST PAPERS ───────────────────────────────────────────────
-const lvl = (id, w, t, x, label, sub, color) => ({ id, x, y: 230, w, t, svg: `${card(400, 190, '#fff', 44)}<g transform="translate(-125 0)">${dot(color, GL.cap, 52, 1.5)}</g>${T(-55, -2, label, 54, INK, 'start')}${M(-55, 44, sub, 24, THEME.muted, 'start')}` });
-const subj = (id, w, t, x, y, label, glyph, color) => ({ id, x, y, w, t, svg: `<rect x="-135" y="-45" width="270" height="90" rx="45" fill="#fff" filter="url(#sh)"/><g transform="translate(-90 0)">${dot(color, glyph)}</g>${T(-48, 11, label, 30, INK, 'start')}` });
+// ── 1 SEARCH: subject, level, year ──────────────────────────────
+const fchip = (id, w, t, x, label, color) => ({ id, x, y: 430, w, t, svg: `<rect x="-135" y="-42" width="270" height="84" rx="42" fill="#fff" filter="url(#sh)"/><circle cx="-92" cy="0" r="16" fill="${color}"/>${T(-62, 11, label, 32, INK, 'start')}<path d="M92 -5 L102 6 L112 -5" fill="none" stroke="${THEME.muted}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>` });
+const resRow = (id, w, t, y, title, sub, color, glyph) => ({ id, x: 500, y, w, t, svg: `${card(860, 150, '#fff', 40)}<rect x="-390" y="-45" width="90" height="90" rx="26" fill="${color}"/><g transform="translate(-345 0) scale(1.7)">${glyph}</g>${T(-275, -6, title, 38, INK, 'start')}${M(-275, 34, sub, 24, THEME.muted, 'start')}<g transform="translate(305 0)">${pill(150, 62, THEME.green, 'Open', 28)}</g>` });
 S.push(scene(THEME.paper,
- "Download free O Level and A Level past papers, with marking schemes. Maths, sciences, accounts, and more.",
- comicScene({ badge: 'Past papers', theme: 'mint', groups: [
-  { id: 'bl', always: true, svg: blobs(5) },
-  lvl('ol', 'level', 1.6, 270, 'O Level', 'past papers', THEME.green2),
-  lvl('al', 'a', 2.3, 730, 'A Level', 'past papers', THEME.coral),
-  { id: 'dl', x: 330, y: 700, w: 'download', t: .2, svg: `<g transform="scale(1.5)">${paper({ w: 170, h: 230, head: THEME.green2, lines: 5, badge: 'PDF', title: 'Mathematics' })}</g><g transform="translate(125 170)"><g ${an('bob', .9)}><circle r="44" fill="url(#gg)" filter="url(#sh)"/><path d="M0 -16 V14 M-14 2 L0 16 L14 2" stroke="#fff" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></g>` },
-  { id: 'ms', x: 670, y: 700, w: 'marking', t: 4.0, svg: `<g transform="scale(1.5)">${paper({ w: 170, h: 230, head: THEME.deep, lines: 5, badge: '', tick: true, title: 'Marking scheme' })}</g><g transform="translate(125 170)"><g ${an('pulse', 1)}>${checkBadge(44)}</g></g>` },
-  { id: 'fr', x: 500, y: 1010, w: 'free', t: .9, svg: pill(520, 80, THEME.green, 'Free PDF downloads', 36) },
-  subj('s1', 'maths', 5.2, 175, 1190, 'Maths', GL.maths, THEME.green2),
-  subj('s2', 'sciences', 5.7, 500, 1190, 'Physics', GL.physics, THEME.sky),
-  subj('s3', 'sciences', 5.7, 825, 1190, 'Chemistry', GL.chem, THEME.coral),
-  subj('s4', 'sciences', 5.7, 175, 1310, 'Biology', GL.bio, THEME.green),
-  subj('s5', 'accounts', 6.1, 500, 1310, 'Accounts', GL.acc, '#e8ab1e'),
-  subj('s6', 'more', 6.6, 825, 1310, 'and more', GL.more, THEME.muted)
+ "Just search by subject, level and year. Find the exact paper you need, in seconds.",
+ comicScene({ badge: 'Search', theme: 'mint', groups: [
+  { id: 'bl', always: true, svg: blobs(6) },
+  { id: 'sb', x: 500, y: 260, w: 'search', t: .5, svg: `${card(860, 130, '#fff', 65)}<g transform="translate(-370 0)">${dot(THEME.green2, MAGNIFIER('#fff'), 40, 1.4)}</g>${T(-310, 16, 'Mathematics', 46, INK, 'start', FI, 'font-weight="700"')}<rect x="-312" y="-36" width="640" height="72" fill="#fff" ${an('shrinkx', 1.2, .4, 'right')}/><rect x="16" y="-28" width="5" height="56" rx="2" fill="${THEME.green2}" ${an('blink', .9, 1.7)}/>` },
+  fchip('f1', 'subject', 1.3, 190, 'Subject', THEME.green2),
+  fchip('f2', 'level', 1.8, 500, 'Level', THEME.coral),
+  fchip('f3', 'year', 2.4, 810, 'Year', THEME.sky),
+  resRow('r1', 'find', 3.2, 640, 'Mathematics Paper 1', 'O Level · PDF', THEME.green2, GL.qpaper),
+  resRow('r2', 'exact', 3.8, 820, 'Mathematics Paper 2', 'O Level · PDF', THEME.coral, GL.qpaper),
+  resRow('r3', 'paper', 4.3, 1000, 'Marking scheme', 'check your answers', THEME.deep, G_TICK),
+  { id: 'sec', x: 500, y: 1270, w: 'seconds', t: 5.5, svg: `<g transform="translate(-200 0) scale(.9)">${STOPWATCH}</g>${T(-110, 22, 'In seconds', 80, THEME.deep, 'start')}` }
  ]})));
 
-// ── 2 AI AGENT ──────────────────────────────────────────────────
-const docCard = (id, w, t, y, color, title, sub, glyph) => ({ id, x: 500, y, w, t, svg: `${card(780, 170, '#fff', 40)}<rect x="-340" y="-55" width="110" height="110" rx="30" fill="${color}"/><g transform="translate(-285 0) scale(1.9)">${glyph}</g>${T(-200, -6, title, 44, INK, 'start')}${M(-200, 40, sub, 26, THEME.muted, 'start')}<g transform="translate(320 0)"><g ${an('pop', .5)}>${checkBadge(30)}</g></g>` });
+// ── 2 WHAT'S INSIDE ─────────────────────────────────────────────
+const cat = (id, w, t, x, y, label, sub, ill) => ({ id, x, y, w, t, svg: `${card(400, 330, '#fff', 44)}<g transform="translate(0 -40)"><g ${an('float', 2.6, (x % 3) * .3)}>${ill}</g></g>${T(0, 100, label, 40)}${M(0, 142, sub, 22, THEME.muted)}` });
+const I_NOV = `<g transform="translate(-62 22) rotate(-8)">${book(THEME.coral, 70, 110)}</g><g transform="translate(0 8)">${book(THEME.sky, 76, 128)}</g><g transform="translate(64 24) rotate(8)">${book(THEME.sun, 70, 106)}</g>`;
+const I_QP = `<g transform="translate(-36 8) rotate(-7)">${paper({ w: 110, h: 150, lines: 3, badge: '', head: THEME.green2 })}</g><g transform="translate(36 0) rotate(7)">${paper({ w: 110, h: 150, lines: 3, badge: '', head: THEME.coral })}</g>`;
+const I_MS = `${paper({ w: 120, h: 160, lines: 3, badge: '', tick: true, head: THEME.deep })}<g transform="translate(54 58)">${checkBadge(26)}</g>`;
+const I_SN = `<g transform="scale(.9)">${NOTEBOOK}</g>`;
 S.push(scene(THEME.paper,
- "Need something new? Ask the AI agent to write a question paper, study notes, or a full lesson plan.",
- comicScene({ badge: 'AI agent', theme: 'peach', groups: [
-  { id: 'bl', always: true, svg: blobs(8) },
-  { id: 'u', x: 620, y: 270, w: 'ask', t: 1.6, svg: `${bubble(520, 120, THEME.mint, 'right')}${T(0, 14, 'Make me a Maths paper', 36)}` },
-  { id: 'ai', x: 170, y: 480, w: 'ai', t: 2.2, svg: `<g ${an('float', 3)}>${AI_ORB}</g>` },
-  { id: 'ag', x: 290, y: 492, w: 'agent', t: 2.7, svg: T(0, 0, 'AI agent', 56, THEME.deep, 'start') },
-  { id: 'typ', x: 520, y: 650, w: 'write', t: 3.2, hw: 'question', ht: 3.8, svg: `${bubble(200, 100, '#fff', 'left')}${typing()}` },
-  docCard('d1', 'question', 3.8, 800, THEME.green2, 'Question paper', 'with a marking scheme', GL.qpaper),
-  docCard('d2', 'study', 4.9, 1000, THEME.coral, 'Study notes', 'any topic, any subject', GL.notes),
-  docCard('d3', 'lesson', 6.4, 1200, THEME.sky, 'Lesson plan', 'objectives + activities', GL.plan),
-  { id: 'tag', x: 500, y: 1390, w: 'plan', t: 7.2, svg: `<g ${an('pulse', 1.2)}>${T(0, 0, 'Just describe what you need.', 44, THEME.green2)}</g>` }
+ "Novels, question papers, marking schemes and study notes. All ready to read.",
+ comicScene({ badge: "What's inside", theme: 'cream', groups: [
+  { id: 'bl', always: true, svg: blobs(9) },
+  cat('c1', 'novels', .3, 270, 330, 'Novels', 'ready to read', I_NOV),
+  cat('c2', 'question', .9, 730, 330, 'Question papers', 'past papers', I_QP),
+  cat('c3', 'marking', 1.8, 270, 700, 'Marking schemes', 'check your answers', I_MS),
+  cat('c4', 'study', 2.9, 730, 700, 'Study notes', 'study material', I_SN),
+  { id: 'sf', x: 500, y: 1130, w: 'all', t: 3.8, svg: shelf(860, 1, 5) },
+  { id: 'rd', x: 500, y: 950, w: 'ready', t: 4.1, svg: `<g ${an('pulse', 1.1)}>${pill(440, 84, THEME.green, 'Ready to read', 42)}</g>` }
  ]})));
 
-// ── 3 CV + TEMPLATES ────────────────────────────────────────────
-const cvRows = [[-50, -232, 210, 16], [-50, -204, 140, 10], [-180, -118, 120, 14], [-180, -88, 340, 10], [-180, -64, 300, 10], [-180, -40, 220, 10],
-                [-180, 20, 120, 14], [-180, 50, 340, 10], [-180, 74, 280, 10], [-180, 98, 320, 10], [-180, 160, 120, 14], [-180, 190, 340, 10], [-180, 214, 260, 10]];
-const cvBase = `<defs><clipPath id="cvav"><circle cx="-120" cy="-215" r="48"/></clipPath></defs>
-  <rect x="-210" y="-280" width="420" height="560" rx="26" fill="#fff" filter="url(#sh)"/>
-  <path d="M-210 -254 Q-210 -280 -184 -280 H184 Q210 -280 210 -254 V-150 H-210Z" fill="${THEME.green2}"/>
-  <circle cx="-120" cy="-215" r="52" fill="#fff"/><g clip-path="url(#cvav)"><circle cx="-120" cy="-215" r="48" fill="${THEME.mint}"/><circle cx="-120" cy="-228" r="20" fill="${SKIN.deep}"/><path d="M-160 -166 Q-160 -202 -120 -202 Q-80 -202 -80 -166Z" fill="${THEME.sky}"/></g>
-  ${cvRows.map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="${y < -150 ? 'rgba(255,255,255,.35)' : '#e3e8e4'}"/>`).join('')}`;
-const cvFill = cvRows.map(([x, y, w, h], i) => `<g ${an('growx', .45, i * .22, 'left')}><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="${y < -150 ? '#fff' : (h > 12 ? THEME.green2 : '#9fb3a8')}"/></g>`).join('');
-const thumb = (kind, color) => `${card(220, 280, '#fff', 26)}` + ({
-    top: `<path d="M-110 -114 Q-110 -140 -84 -140 H84 Q110 -140 110 -114 V-60 H-110Z" fill="${color}"/>`,
-    side: `<path d="M-110 -114 Q-110 -140 -84 -140 H-40 V140 H-84 Q-110 140 -110 114Z" fill="${color}"/>`,
-    ring: `<circle cy="-80" r="36" fill="${color}"/>`
-}[kind]) + [0, 1, 2, 3, 4].map(i => `<rect x="${kind === 'side' ? -22 : -86}" y="${kind === 'ring' ? -20 + i * 28 : -30 + i * 30}" width="${(i % 3 === 2 ? 70 : 108) * (kind === 'side' ? .8 : 1.1)}" height="9" rx="4.5" fill="#e3e8e4"/>`).join('');
+// ── 3 SHARE A PAPER → THE LIBRARY GROWS ─────────────────────────────
+const mini = (id, bg, p) => `<g transform="scale(.42)">${avatar(id, bg, p)}</g>`;
 S.push(scene(THEME.paper,
- "Building a CV? Pick a ready made template and just fill in the blanks. Cover letters too.",
- comicScene({ badge: 'CVs & templates', theme: 'cream', groups: [
-  { id: 'bl', always: true, svg: blobs(12) },
-  { id: 'cv', x: 340, y: 590, w: 'cv', t: 1.0, svg: cvBase },
-  { id: 'fill', x: 340, y: 590, w: 'fill', t: 3.6, svg: cvFill },
-  { id: 'tick', x: 560, y: 320, w: 'blanks', t: 4.6, svg: `<g ${an('pop', .6)}>${checkBadge(46)}</g><g transform="translate(62 -50)"><g ${an('twinkle', 1.2)}>${sparkle(THEME.sun, 1)}</g></g><g transform="translate(-66 52)"><g ${an('twinkle', 1.2, .4)}>${sparkle(THEME.coral, .7)}</g></g>` },
-  { id: 'cl', x: 790, y: 660, w: 'cover', t: 5.4, svg: `<g transform="rotate(6)">${card(280, 380, '#fff', 24)}${M(-112, -140, 'Dear Hiring', 22, THEME.green2, 'start')}${M(-112, -112, 'Manager,', 22, THEME.green2, 'start')}${[0, 1, 2, 3, 4, 5].map(i => `<rect x="-112" y="${-70 + i * 30}" width="${i % 3 === 2 ? 130 : 224}" height="10" rx="5" fill="#e3e8e4"/>`).join('')}<g transform="translate(70 150)">${sparkle(THEME.sun, .9)}</g></g>${T(0, 250, 'Cover letters', 34, INK)}` },
-  { id: 'pk', x: 500, y: 985, w: 'pick', t: 1.7, svg: T(0, 0, 'Pick a template', 50, THEME.deep) },
-  { id: 'tp1', x: 200, y: 1200, w: 'template', t: 2.7, svg: `<g ${an('float', 2.6)}>${thumb('top', THEME.green2)}</g>` },
-  { id: 'tp2', x: 500, y: 1200, w: 'template', t: 2.7, svg: `<g ${an('float', 2.6, .3)}>${thumb('side', THEME.coral)}<rect x="-118" y="-148" width="236" height="296" rx="30" fill="none" stroke="${THEME.green}" stroke-width="7"/></g>` },
-  { id: 'tp3', x: 800, y: 1200, w: 'template', t: 2.7, svg: `<g ${an('float', 2.6, .6)}>${thumb('ring', THEME.sky)}</g>` }
+ "Got a paper or notes other students could use? Upload it and help the library grow.",
+ comicScene({ badge: 'Share a paper', theme: 'mint', groups: [
+  { id: 'bl', always: true, svg: blobs(11) },
+  { id: 'me', x: 200, y: 330, w: 'got', t: .2, s: .75, svg: avatar('cpme', '#ffd9bf', P_HAPPY) },
+  { id: 'pp', x: 470, y: 330, w: 'paper', t: .8, svg: `<g transform="rotate(8)"><g ${an('float', 2.4)}>${paper({ w: 150, h: 200, lines: 4, badge: 'PDF' })}</g></g>` },
+  { id: 'nt', x: 690, y: 340, w: 'notes', t: 1.5, svg: `<g transform="rotate(-6)"><g ${an('float', 2.4, .4)}>${NOTEBOOK}</g></g>` },
+  { id: 'st', x: 500, y: 540, w: 'students', t: 2.3, svg: [{ skin: SKIN.mid, style: 'short', top: THEME.coral }, { skin: SKIN.dark, style: 'afro', top: THEME.sky }, { skin: SKIN.deep, style: 'bun', top: THEME.green2 }].map((o, i) => `<g transform="translate(${[-110, 0, 110][i]} 0)">${mini('cps' + i, ['#c9f2d0', '#cfdcff', '#ffd9bf'][i], person(o))}</g>`).join('') + T(0, 108, 'other students', 34, THEME.deep) },
+  { id: 'dz', x: 500, y: 790, w: 'upload', t: 3.9, svg: `${card(760, 210, '#fff', 44)}<rect x="-366" y="-96" width="732" height="192" rx="34" fill="none" stroke="${THEME.green}" stroke-width="5" ${an('flow dash', 1)}/><g transform="translate(-230 8) scale(.8)">${CLOUD_UP}</g>${T(-60, -4, 'Upload a paper', 46, INK, 'start')}${M(-60, 44, 'or notes, for everyone', 26, THEME.muted, 'start')}` },
+  { id: 'ar', w: 'it', t: 4.3, svg: arrow(500, 912, 500, 972, THEME.green2, 10) },
+  { id: 'shf', x: 500, y: 1100, w: 'help', t: 4.7, svg: shelf(860, 1, 7, 120) },
+  { id: 'lb', x: 500, y: 1330, w: 'library', t: 5.1, svg: pill(420, 84, '#fff', 'The library', 40, THEME.deep) },
+  { id: 'nb', x: 500, y: 1100, w: 'grow', t: 5.6, svg: `<g transform="translate(336 27)"><g ${an('pop', .6)}>${book(THEME.coral, 80, 156)}</g></g><g transform="translate(336 -150)"><g ${an('pop', .6, .15)}><circle r="32" fill="${THEME.green}"/>${T(0, 11, '+1', 30, '#fff')}</g></g><g transform="translate(396 -40)"><g ${an('twinkle', 1.1)}>${sparkle(THEME.sun, 1)}</g></g><g transform="translate(276 -60)"><g ${an('twinkle', 1.1, .4)}>${sparkle(THEME.coral, .7)}</g></g>` }
  ]})));
 
-// ── 4 JOB ALERTS ────────────────────────────────────────────────
-const phoneSvg = `<g filter="url(#sh)"><rect x="-190" y="-380" width="380" height="760" rx="62" fill="${THEME.dark}"/></g><rect x="-172" y="-362" width="344" height="724" rx="48" fill="#f4fbf6"/><rect x="-50" y="-346" width="100" height="26" rx="13" fill="${THEME.dark}"/>${T(0, -270, 'Job alerts', 42, THEME.deep)}`;
-const jobCard = (id, w, t, y, color, glyph, title) => ({ id, x: 500, y: 800 + y, w, t, svg: `${card(300, 112, '#fff', 30)}<g transform="translate(-100 0)">${dot(color, glyph, 34, 1.15)}</g>${T(-50, -2, title, 36, INK, 'start')}${M(-50, 32, 'hiring now', 20, THEME.muted, 'start')}` });
+// ── 4 CTA ───────────────────────────────────────────────────────
 S.push(scene(THEME.paper,
- "And get free job alerts emailed straight to you. Teaching, retail, IT, trades, and more.",
- comicScene({ badge: 'Job alerts', theme: 'mint', groups: [
-  { id: 'bl', always: true, svg: blobs(17) },
-  { id: 'fr', x: 500, y: 175, w: 'free', t: .9, svg: pill(500, 80, THEME.green, 'Free job alerts', 40) },
-  { id: 'ph', x: 500, y: 800, w: 'job', t: 1.1, svg: phoneSvg },
-  { id: 'bell', x: 150, y: 350, w: 'alerts', t: 1.5, svg: `<g ${an('wobble', .7, 0, 'top')}><g transform="scale(1.1)">${BELL}</g></g><g transform="translate(52 -70)"><g ${an('pulse', .8)}><circle r="22" fill="${THEME.coral}"/>${T(0, 9, '1', 26, '#fff')}</g></g>` },
-  { id: 'env', x: 850, y: 350, w: 'emailed', t: 2.2, svg: `<g ${an('float', 2.2)}><g transform="scale(.95)">${ENVELOPE}</g><g transform="translate(70 -58)">${checkBadge(26)}</g></g>${sparks(-110, -70, 6, THEME.sun, 26, .6)}` },
-  jobCard('j1', 'teaching', 4.0, -170, THEME.sky, GL.cap, 'Teaching'),
-  jobCard('j2', 'retail', 4.5, -40, THEME.coral, GL.bag, 'Retail'),
-  jobCard('j3', 'it', 5.0, 90, THEME.green2, GL.monitor, 'IT'),
-  jobCard('j4', 'trades', 5.4, 220, '#e8ab1e', GL.wrench, 'Trades'),
-  { id: 'mo', x: 500, y: 1300, w: 'more', t: 6.0, svg: `<g ${an('pulse', 1.2)}>${pill(300, 80, '#fff', 'and more', 40, THEME.deep)}</g>` }
- ]})));
-
-// ── 5 CTA ───────────────────────────────────────────────────────
-const who = (id, w, t, x, bg, p, label, col) => ({ id, x, y: 640, w, t, svg: `${avatar('cp' + id, bg, p)}<g transform="translate(0 210)">${pill(label.length * 22 + 70, 64, col, label, 30)}</g>` });
-S.push(scene(THEME.paper,
- "It's free for Zimbabwean students, teachers and job seekers. Visit books dot co dot zed double you, and start today.",
+ "Open the library at books dot co dot zed double you. It is free.",
  comicScene({ badge: 'books.co.zw', theme: 'peach', groups: [
   { id: 'bl', always: true, svg: blobs(21) },
-  { id: 'f1', x: 500, y: 190, w: 'free', t: .6, svg: T(0, 0, 'Free for', 70, INK) },
-  { id: 'f2', x: 500, y: 290, w: 'zimbabwean', t: 1.3, svg: T(0, 0, 'Zimbabwe', 100, THEME.green2) },
-  who('w1', 'students', 1.9, 190, '#c9f2d0', person({ skin: SKIN.deep, style: 'short', top: THEME.green2 }), 'Students', THEME.green2),
-  who('w2', 'teachers', 2.4, 500, '#ffd9bf', person({ skin: SKIN.mid, style: 'bun', top: THEME.coral }), 'Teachers', THEME.coral),
-  who('w3', 'seekers', 3.4, 810, '#cfdcff', person({ skin: SKIN.dark, style: 'afro', top: THEME.sky }), 'Job seekers', THEME.sky),
-  { id: 'url', x: 500, y: 1040, w: 'books', t: 4.9, svg: `${card(860, 190, '#fff', 50)}<g transform="translate(-345 0)">${MARK(.95)}</g>${T(-250, 32, 'books.co.zw', 92, THEME.deep, 'start')}` },
-  { id: 'cta', x: 500, y: 1290, w: 'start', t: 7.0, svg: `<g ${an('pulse', .9)}>${pill(460, 100, THEME.green, 'Start today', 52)}</g>${sparks(-290, 0, 8, THEME.sun, 28, .6)}${sparks(290, 0, 8, THEME.coral, 28, .6)}` }
+  { id: 'av', x: 500, y: 330, w: 'open', t: .2, svg: `${avatar('f1', '#c9f2d0', P_HAPPY)}<g transform="translate(-200 -110) rotate(-14) scale(.6)"><g ${an('float', 2.4)}>${book(THEME.coral)}</g></g><g transform="translate(205 -100) rotate(12) scale(.6)"><g ${an('float', 2.6, .3)}>${book(THEME.sky)}</g></g><g transform="translate(180 120)">${sparkle(THEME.sun, 1.1)}</g><g transform="translate(-190 110)">${sparkle(THEME.green, .8)}</g>` },
+  { id: 'sf', x: 500, y: 1340, w: 'library', t: .9, svg: shelf(860, 1, 9) },
+  { id: 'url', x: 500, y: 790, w: 'books', t: 1.7, svg: `<g ${an('float', 3)}>${urlCard(.7, 82)}</g>` },
+  { id: 'cta', x: 500, y: 975, w: 'you', t: 4.1, svg: `<g ${an('pulse', .9)}>${pill(520, 100, THEME.green, 'Open the library', 48)}</g>${sparks(-320, 0, 8, THEME.sun, 28, .6)}${sparks(320, 0, 8, THEME.coral, 28, .6)}` },
+  { id: 'free', x: 500, y: 1120, w: 'free', t: 5.2, svg: `<g transform="rotate(-4)"><g ${an('pulse', 1)}>${pill(300, 84, THEME.sun, 'Free', 50, INK)}</g></g>` }
  ]})));
 
 // ── export ──────────────────────────────────────────────────────
-const TRANS = ['fade', 'wipe-left', 'fade', 'wipe-up', 'fade', 'wipe-left'];
+const TRANS = ['fade', 'wipe-left', 'fade', 'wipe-up', 'fade'];
 module.exports = {
-    output: { title: 'books-co-zw-ad', format: 'portrait', fps: 30, crf: 23, preset: 'medium' },
-    defaults: { voice: 'af_heart', speed: 0.94, transition: 'fade', transitionDuration: 0.3 },
+    output: { title: 'books-co-zw-library-ad', format: 'portrait', fps: 30, crf: 23, preset: 'medium' },
+    defaults: { voice: 'af_heart', speed: 0.94, transition: 'fade', transitionDuration: 0.25 },
     scenes: S.map((s, i) => Object.assign(s, { transition: TRANS[i] || 'fade' })),
 };
 Object.defineProperty(module.exports, '_illo', { value: ILLO, enumerable: false });
