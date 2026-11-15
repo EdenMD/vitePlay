@@ -393,7 +393,7 @@ S.push(scene(THEME.paper,
 const TRANS = ['fade', 'wipe-left', 'fade', 'wipe-up', 'fade', 'wipe-left'];
 module.exports = {
     output: { title: 'books-co-zw-ad', format: 'portrait', fps: 30, crf: 23, preset: 'medium' },
-    defaults: { voice: 'am_adam', speed: 1.02, transition: 'fade', transitionDuration: 0.3 },
+    defaults: { voice: 'af_heart', speed: 0.94, transition: 'fade', transitionDuration: 0.3 },
     scenes: S.map((s, i) => Object.assign(s, { transition: TRANS[i] || 'fade' })),
 };
 Object.defineProperty(module.exports, '_illo', { value: ILLO, enumerable: false });
